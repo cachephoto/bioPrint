@@ -1,0 +1,714 @@
+{
+  "currentState": {
+    "id": "config_1744665919185",
+    "grid": {
+      "cellSize": 0.19682539682539685,
+      "cellsX": 61,
+      "cellsY": 35
+    },
+    "panels": [
+      {
+        "id": "0_1",
+        "minCellIndex": {
+          "x": 26,
+          "y": 8
+        },
+        "maxCellIndex": {
+          "x": 37,
+          "y": 20
+        },
+        "orderNumber": 1,
+        "showOrderNumber": true
+      },
+      {
+        "id": "0_2",
+        "minCellIndex": {
+          "x": 9,
+          "y": 14
+        },
+        "maxCellIndex": {
+          "x": 24,
+          "y": 20
+        },
+        "orderNumber": 2,
+        "showOrderNumber": true
+      },
+      {
+        "id": "0_3",
+        "minCellIndex": {
+          "x": 1,
+          "y": 3
+        },
+        "maxCellIndex": {
+          "x": 24,
+          "y": 11
+        },
+        "orderNumber": 3,
+        "showOrderNumber": true
+      },
+      {
+        "id": "0_4",
+        "minCellIndex": {
+          "x": 1,
+          "y": 14
+        },
+        "maxCellIndex": {
+          "x": 7,
+          "y": 20
+        },
+        "orderNumber": 4,
+        "showOrderNumber": true
+      },
+      {
+        "id": "0_5",
+        "minCellIndex": {
+          "x": 40,
+          "y": 2
+        },
+        "maxCellIndex": {
+          "x": 58,
+          "y": 32
+        },
+        "orderNumber": 5,
+        "showOrderNumber": true
+      },
+      {
+        "id": "0_6",
+        "minCellIndex": {
+          "x": 18,
+          "y": 22
+        },
+        "maxCellIndex": {
+          "x": 38,
+          "y": 32
+        },
+        "orderNumber": 6,
+        "showOrderNumber": true
+      },
+      {
+        "id": "0_7",
+        "minCellIndex": {
+          "x": 4,
+          "y": 28
+        },
+        "maxCellIndex": {
+          "x": 15,
+          "y": 32
+        },
+        "orderNumber": 7,
+        "showOrderNumber": true
+      }
+    ],
+    "cameraPosition": {
+      "x": -0.28904084106471667,
+      "y": 0.17887536892150566,
+      "z": 5
+    },
+    "cameraZoom": 1,
+    "date": "2025-04-14T21:25:19.185Z"
+  },
+  "savedStates": [
+    {
+      "id": "state_1_1744665415824",
+      "cameraPosition": {
+        "x": 0,
+        "y": 3.061616997868383e-16,
+        "z": 5
+      },
+      "cameraTarget": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "gridDivisions": 10,
+      "panels": [
+        {
+          "id": "1_1",
+          "minCellIndex": {
+            "x": 9,
+            "y": 2
+          },
+          "maxCellIndex": {
+            "x": 17,
+            "y": 8
+          },
+          "orderNumber": 1,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "1_2",
+          "minCellIndex": {
+            "x": 1,
+            "y": 3
+          },
+          "maxCellIndex": {
+            "x": 7,
+            "y": 8
+          },
+          "orderNumber": 2,
+          "showOrderNumber": true,
+          "selected": true
+        }
+      ],
+      "timestamp": "3:16:55 PM",
+      "date": "2025-04-14T21:16:55.826Z"
+    },
+    {
+      "id": "state_2_1744665573338",
+      "cameraPosition": {
+        "x": -0.28904084106471667,
+        "y": 0.17887536892150566,
+        "z": 5
+      },
+      "cameraTarget": {
+        "x": -0.28904084106471667,
+        "y": 0.17887536892150535,
+        "z": -3.2723634279902026e-17
+      },
+      "gridDivisions": 35,
+      "panels": [
+        {
+          "id": "2_1",
+          "minCellIndex": {
+            "x": 26,
+            "y": 8
+          },
+          "maxCellIndex": {
+            "x": 37,
+            "y": 20
+          },
+          "orderNumber": 1,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "2_2",
+          "minCellIndex": {
+            "x": 9,
+            "y": 14
+          },
+          "maxCellIndex": {
+            "x": 24,
+            "y": 20
+          },
+          "orderNumber": 2,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "2_3",
+          "minCellIndex": {
+            "x": 1,
+            "y": 3
+          },
+          "maxCellIndex": {
+            "x": 24,
+            "y": 11
+          },
+          "orderNumber": 3,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "2_4",
+          "minCellIndex": {
+            "x": 1,
+            "y": 14
+          },
+          "maxCellIndex": {
+            "x": 7,
+            "y": 20
+          },
+          "orderNumber": 4,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "2_5",
+          "minCellIndex": {
+            "x": 40,
+            "y": 2
+          },
+          "maxCellIndex": {
+            "x": 58,
+            "y": 32
+          },
+          "orderNumber": 5,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "2_6",
+          "minCellIndex": {
+            "x": 18,
+            "y": 22
+          },
+          "maxCellIndex": {
+            "x": 38,
+            "y": 32
+          },
+          "orderNumber": 6,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "2_7",
+          "minCellIndex": {
+            "x": 4,
+            "y": 28
+          },
+          "maxCellIndex": {
+            "x": 15,
+            "y": 32
+          },
+          "orderNumber": 7,
+          "showOrderNumber": true,
+          "selected": false
+        }
+      ],
+      "timestamp": "3:19:33 PM",
+      "date": "2025-04-14T21:19:33.338Z"
+    },
+    {
+      "id": "state_3_1744665570907",
+      "cameraPosition": {
+        "x": -0.28904084106471667,
+        "y": 0.17887536892150566,
+        "z": 5
+      },
+      "cameraTarget": {
+        "x": -0.28904084106471667,
+        "y": 0.17887536892150535,
+        "z": -3.2723634279902026e-17
+      },
+      "gridDivisions": 35,
+      "panels": [
+        {
+          "id": "3_1",
+          "minCellIndex": {
+            "x": 26,
+            "y": 8
+          },
+          "maxCellIndex": {
+            "x": 37,
+            "y": 20
+          },
+          "orderNumber": 1,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "3_2",
+          "minCellIndex": {
+            "x": 9,
+            "y": 14
+          },
+          "maxCellIndex": {
+            "x": 24,
+            "y": 20
+          },
+          "orderNumber": 2,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "3_3",
+          "minCellIndex": {
+            "x": 1,
+            "y": 3
+          },
+          "maxCellIndex": {
+            "x": 24,
+            "y": 11
+          },
+          "orderNumber": 3,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "3_4",
+          "minCellIndex": {
+            "x": 1,
+            "y": 14
+          },
+          "maxCellIndex": {
+            "x": 7,
+            "y": 20
+          },
+          "orderNumber": 4,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "3_5",
+          "minCellIndex": {
+            "x": 40,
+            "y": 2
+          },
+          "maxCellIndex": {
+            "x": 58,
+            "y": 32
+          },
+          "orderNumber": 5,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "3_6",
+          "minCellIndex": {
+            "x": 18,
+            "y": 22
+          },
+          "maxCellIndex": {
+            "x": 38,
+            "y": 32
+          },
+          "orderNumber": 6,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "3_7",
+          "minCellIndex": {
+            "x": 4,
+            "y": 28
+          },
+          "maxCellIndex": {
+            "x": 15,
+            "y": 32
+          },
+          "orderNumber": 7,
+          "showOrderNumber": true,
+          "selected": false
+        }
+      ],
+      "timestamp": "3:19:30 PM",
+      "date": "2025-04-14T21:19:30.907Z"
+    },
+    {
+      "id": "state_4_1744665578030",
+      "cameraPosition": {
+        "x": -0.28904084106471667,
+        "y": 0.17887536892150566,
+        "z": 5
+      },
+      "cameraTarget": {
+        "x": -0.28904084106471667,
+        "y": 0.17887536892150535,
+        "z": -3.2723634279902026e-17
+      },
+      "gridDivisions": 35,
+      "panels": [
+        {
+          "id": "4_1",
+          "minCellIndex": {
+            "x": 26,
+            "y": 8
+          },
+          "maxCellIndex": {
+            "x": 37,
+            "y": 20
+          },
+          "orderNumber": 1,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "4_2",
+          "minCellIndex": {
+            "x": 9,
+            "y": 14
+          },
+          "maxCellIndex": {
+            "x": 24,
+            "y": 20
+          },
+          "orderNumber": 2,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "4_3",
+          "minCellIndex": {
+            "x": 1,
+            "y": 3
+          },
+          "maxCellIndex": {
+            "x": 24,
+            "y": 11
+          },
+          "orderNumber": 3,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "4_4",
+          "minCellIndex": {
+            "x": 1,
+            "y": 14
+          },
+          "maxCellIndex": {
+            "x": 7,
+            "y": 20
+          },
+          "orderNumber": 4,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "4_5",
+          "minCellIndex": {
+            "x": 40,
+            "y": 2
+          },
+          "maxCellIndex": {
+            "x": 58,
+            "y": 32
+          },
+          "orderNumber": 5,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "4_6",
+          "minCellIndex": {
+            "x": 18,
+            "y": 22
+          },
+          "maxCellIndex": {
+            "x": 38,
+            "y": 32
+          },
+          "orderNumber": 6,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "4_7",
+          "minCellIndex": {
+            "x": 4,
+            "y": 28
+          },
+          "maxCellIndex": {
+            "x": 15,
+            "y": 32
+          },
+          "orderNumber": 7,
+          "showOrderNumber": true,
+          "selected": false
+        }
+      ],
+      "timestamp": "3:19:38 PM",
+      "date": "2025-04-14T21:19:38.030Z"
+    },
+    {
+      "id": "state_5_1744665685110",
+      "cameraPosition": {
+        "x": 1.7001737697954964e-63,
+        "y": 3.061616997868383e-16,
+        "z": 5
+      },
+      "cameraTarget": {
+        "x": 1.7001737697954964e-63,
+        "y": 5.660989490883166e-63,
+        "z": -3.7488045898758956e-79
+      },
+      "gridDivisions": 31,
+      "panels": [
+        {
+          "id": "5_1",
+          "minCellIndex": {
+            "x": 26,
+            "y": 8
+          },
+          "maxCellIndex": {
+            "x": 37,
+            "y": 20
+          },
+          "orderNumber": 1,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "5_2",
+          "minCellIndex": {
+            "x": 9,
+            "y": 14
+          },
+          "maxCellIndex": {
+            "x": 24,
+            "y": 20
+          },
+          "orderNumber": 2,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "5_3",
+          "minCellIndex": {
+            "x": 1,
+            "y": 3
+          },
+          "maxCellIndex": {
+            "x": 24,
+            "y": 11
+          },
+          "orderNumber": 3,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "5_4",
+          "minCellIndex": {
+            "x": 1,
+            "y": 14
+          },
+          "maxCellIndex": {
+            "x": 7,
+            "y": 20
+          },
+          "orderNumber": 4,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "5_7",
+          "minCellIndex": {
+            "x": 1,
+            "y": 22
+          },
+          "maxCellIndex": {
+            "x": 12,
+            "y": 26
+          },
+          "orderNumber": 7,
+          "showOrderNumber": true,
+          "selected": false
+        }
+      ],
+      "timestamp": "3:21:25 PM",
+      "date": "2025-04-14T21:21:25.110Z"
+    },
+    {
+      "id": "state_6_1744665857026",
+      "cameraPosition": {
+        "x": -0.28904084106471667,
+        "y": 0.17887536892150566,
+        "z": 5
+      },
+      "cameraTarget": {
+        "x": -0.28904084106471667,
+        "y": 0.17887536892150535,
+        "z": -3.2723634279902026e-17
+      },
+      "gridDivisions": 35,
+      "panels": [
+        {
+          "id": "6_1",
+          "minCellIndex": {
+            "x": 26,
+            "y": 8
+          },
+          "maxCellIndex": {
+            "x": 37,
+            "y": 20
+          },
+          "orderNumber": 1,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "6_2",
+          "minCellIndex": {
+            "x": 9,
+            "y": 14
+          },
+          "maxCellIndex": {
+            "x": 24,
+            "y": 20
+          },
+          "orderNumber": 2,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "6_3",
+          "minCellIndex": {
+            "x": 1,
+            "y": 3
+          },
+          "maxCellIndex": {
+            "x": 24,
+            "y": 11
+          },
+          "orderNumber": 3,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "6_4",
+          "minCellIndex": {
+            "x": 1,
+            "y": 14
+          },
+          "maxCellIndex": {
+            "x": 7,
+            "y": 20
+          },
+          "orderNumber": 4,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "6_5",
+          "minCellIndex": {
+            "x": 40,
+            "y": 2
+          },
+          "maxCellIndex": {
+            "x": 58,
+            "y": 32
+          },
+          "orderNumber": 5,
+          "showOrderNumber": true,
+          "selected": true
+        },
+        {
+          "id": "6_6",
+          "minCellIndex": {
+            "x": 18,
+            "y": 22
+          },
+          "maxCellIndex": {
+            "x": 38,
+            "y": 32
+          },
+          "orderNumber": 6,
+          "showOrderNumber": true,
+          "selected": false
+        },
+        {
+          "id": "6_7",
+          "minCellIndex": {
+            "x": 4,
+            "y": 28
+          },
+          "maxCellIndex": {
+            "x": 15,
+            "y": 32
+          },
+          "orderNumber": 7,
+          "showOrderNumber": true,
+          "selected": false
+        }
+      ],
+      "timestamp": "3:24:17 PM",
+      "date": "2025-04-14T21:24:17.026Z"
+    },
+    null,
+    null,
+    null,
+    null
+  ]
+}
