@@ -915,7 +915,18 @@ const DOUBLE_TAP_DELAY = 300; // milisegundos entre taps para considerarlo doble
 renderer.domElement.addEventListener('touchstart', (event) => {
     event.preventDefault();
     const currentTime = Date.now();
-    touchStartTime = currentTime;
+    
+    // Limpiar inmediatamente cualquier estado de hover
+    if (currentlyHoveredPanel) {
+        currentlyHoveredPanel.hovered = false;
+        updatePanelColor(currentlyHoveredPanel);
+        currentlyHoveredPanel = null;
+    }
+
+    // Registrar tiempo de inicio para cada toque
+    Array.from(event.touches).forEach(touch => {
+        touchStartTimes.set(touch.identifier, currentTime);
+    });
     
     // Detectar doble tap
     const timeSinceLastTap = currentTime - lastTapTime;
@@ -1038,6 +1049,13 @@ renderer.domElement.addEventListener('touchstart', (event) => {
 renderer.domElement.addEventListener('touchmove', (event) => {
     event.preventDefault();
     
+    // Asegurar que no hay efecto hover durante el movimiento táctil
+    if (currentlyHoveredPanel) {
+        currentlyHoveredPanel.hovered = false;
+        updatePanelColor(currentlyHoveredPanel);
+        currentlyHoveredPanel = null;
+    }
+
     if (event.touches.length > 1) {
         return false;
     }
@@ -1088,6 +1106,18 @@ renderer.domElement.addEventListener('touchmove', (event) => {
 
 renderer.domElement.addEventListener('touchend', (event) => {
     event.preventDefault();
+    
+    // Limpiar estado de hover al finalizar el toque
+    if (currentlyHoveredPanel) {
+        currentlyHoveredPanel.hovered = false;
+        updatePanelColor(currentlyHoveredPanel);
+        currentlyHoveredPanel = null;
+    }
+
+    // Limpiar tiempos de inicio para los toques que terminaron
+    Array.from(event.changedTouches).forEach(touch => {
+        touchStartTimes.delete(touch.identifier);
+    });
     
     // Procesar el final de la selección por arrastre solo si estábamos seleccionando
     if (isTouchSelecting) {
@@ -1178,6 +1208,22 @@ renderer.domElement.addEventListener('touchend', (event) => {
     }
     
     touchStartTime = 0;
+}, { passive: false });
+
+// Agregar un nuevo event listener para touchcancel
+renderer.domElement.addEventListener('touchcancel', (event) => {
+    event.preventDefault();
+    
+    // Limpiar estado hover en caso de cancelación del toque
+    if (currentlyHoveredPanel) {
+        currentlyHoveredPanel.hovered = false;
+        updatePanelColor(currentlyHoveredPanel);
+        currentlyHoveredPanel = null;
+    }
+    
+    // Limpiar otros estados táctiles
+    isTouchSelecting = false;
+    selectionBox.style.display = 'none';
 }, { passive: false });
 
 // Desactivar gestos del navegador en el canvas y el documento
@@ -1498,7 +1544,7 @@ function get3DPointOnGrid(event) {
 
 // Función para crear paneles
 function createPanelFromSelection(start3D, end3D) {
-    const currentGridParams = getCurrentGridParams(); // Obtener parámetros actuales
+    const currentGridParams = getCurrentGridParams();
     if (!currentGridParams) return;
     const { cellSize, cellsX, cellsY, halfWidth, halfHeight } = currentGridParams;
 
@@ -1605,26 +1651,32 @@ function createPanelFromSelection(start3D, end3D) {
 
     // Crear el objeto panel (sin mesh ni group inicial)
     const panelData = {
-        group: null, // Usaremos group en lugar de mesh
+        group: null,
         minCellIndex: { x: pMinX, y: pMinY },
         maxCellIndex: { x: pMaxX, y: pMaxY },
-        orderNumber: panelOrderCounter++, // Asignar número de orden
-        showOrderNumber: false, // Por defecto, ocultar el número
-        hasText: false // Nuevo flag para indicar si el panel tiene texto
+        orderNumber: panelOrderCounter++,
+        showOrderNumber: false,
+        hasText: false,
+        isNewPanel: true // Marcar como panel nuevo
     };
 
-    // Calcular y asignar geometría/posición inicial (ahora crea el group y líneas)
+    // Calcular y asignar geometría/posición inicial
     updatePanelGeometryAndPosition(panelData, currentGridParams);
 
-    if(panelData.group) { // Comprobar si el grupo se creó
-        scene.add(panelData.group); // Añadir el grupo a la escena
-        panels.push(panelData); // Almacenar el objeto completo
+    if(panelData.group) {
+        // Iniciar con escala 0 para la animación de crecimiento
+        if (panelData.isNewPanel) {
+            panelData.group.scale.set(0.01, 0.01, 1);
+            panelData.growthProgress = 0;
+            panelsResizing.add(panelData);
+        }
+
+        scene.add(panelData.group);
+        panels.push(panelData);
         
         // Seleccionar el nuevo panel
         panelData.selected = true;
         updatePanelColor(panelData);
-        
-        // El flash ya se inicia en updatePanelGeometryAndPosition
         
         // Crear etiqueta con número de orden
         createPanelOrderLabel(panelData);
@@ -1843,7 +1895,7 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
 
 // Función para crear UN panel desde bounding box de índices
 function createPanelFromBoundingBox(bboxIndices, gridParams) {
-    const panelData = {
+     const panelData = {
         group: null,
         minCellIndex: { x: bboxIndices.minX, y: bboxIndices.minY },
         maxCellIndex: { x: bboxIndices.maxX, y: bboxIndices.maxY },
@@ -1891,7 +1943,8 @@ function updatePanelColor(panelData) {
     if (panelData.selected) {
         targetLineMaterial = panelLineMaterialSelected;
         targetFillMaterial = panelFillMaterialSelected;
-    } else if (panelData.hovered) {
+    } else if (panelData.hovered && !('ontouchstart' in window)) {
+        // Solo aplicar hover si no es un dispositivo táctil
         targetLineMaterial = panelLineMaterialHover;
         targetFillMaterial = panelFillMaterialHover;
     } else {
@@ -2352,6 +2405,14 @@ function getSerializableConfig() {
     
     const { width, height } = calculateGridSize();
     
+    // Obtener los valores actuales del bioFX
+    const currentColor = parseInt(colorPicker.value.substring(1), 16);
+    const currentBlendType = parseInt(blendTypePicker.value);
+    const currentIntensity = parseFloat(intensitySlider.value);
+    const currentGlowIntensity = parseFloat(glowSlider.value);
+    const currentGlowRadius = parseFloat(glowRadiusSlider.value);
+    const currentGlowThreshold = parseFloat(glowThresholdSlider.value);
+    
     // Serializar los paneles con su comportamiento
     const serializedPanels = panels.map((panel, index) => {
         return {
@@ -2382,8 +2443,8 @@ function getSerializableConfig() {
                 width: width,
                 height: height,
                 maxSize: 24, // El tamaño base del grid
-                cellSize: currentGridParams.cellSize,
-                cellsX: currentGridParams.cellsX,
+            cellSize: currentGridParams.cellSize,
+            cellsX: currentGridParams.cellsX,
                 cellsY: currentGridParams.cellsY,
                 adjustedWidth: currentGridParams.adjustedWidth,
                 adjustedHeight: currentGridParams.adjustedHeight
@@ -2396,7 +2457,17 @@ function getSerializableConfig() {
             z: camera.position.z
         },
         cameraZoom: camera.zoom,
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        bioFX: {
+            color: currentColor,
+            blendType: currentBlendType,
+            intensity: currentIntensity,
+            glow: {
+                intensity: currentGlowIntensity,
+                radius: currentGlowRadius,
+                threshold: currentGlowThreshold
+            }
+        }
     };
 }
 
@@ -2478,22 +2549,35 @@ function loadConfiguration() {
         // Limpiar paneles actuales sin guardar la configuración
         clearAllPanels(true);
 
+        // Restaurar configuración de bioFX si existe
+        if (config.bioFX) {
+            // Convertir el color hexadecimal a formato #RRGGBB
+            const colorHex = '#' + config.bioFX.color.toString(16).padStart(6, '0');
+            colorPicker.value = colorHex;
+            blendTypePicker.value = config.bioFX.blendType.toString();
+            intensitySlider.value = config.bioFX.intensity.toString();
+            
+            if (config.bioFX.glow) {
+                glowSlider.value = config.bioFX.glow.intensity.toString();
+                glowRadiusSlider.value = config.bioFX.glow.radius.toString();
+                glowThresholdSlider.value = config.bioFX.glow.threshold.toString();
+            }
+            
+            // Aplicar los efectos
+            updateBioFXEffect();
+            console.log('Efectos visuales restaurados:', {
+                color: colorHex,
+                blendType: config.bioFX.blendType,
+                intensity: config.bioFX.intensity
+            });
+        }
+
         // Actualizar la división del grid solo si es diferente
         const newDivisions = config.grid.divisions;
         if (typeof newDivisions === 'number' && newDivisions !== currentDivisions) {
             console.log(`Actualizando grid de ${currentDivisions} a ${newDivisions} divisiones`);
             currentDivisions = newDivisions;
             updateGrid(newDivisions);
-        }
-
-        // Actualizar la división del grid
-        if (config.grid.divisions && typeof config.grid.divisions === 'number') {
-            console.log(`Restaurando grid a ${config.grid.divisions} divisiones`);
-            currentDivisions = config.grid.divisions;
-            updateGrid(config.grid.divisions);
-        } else {
-            console.log('No se encontró el número de divisiones en la configuración, usando valor actual');
-            updateGrid(currentDivisions);
         }
 
         // Restaurar posición y zoom de la cámara si existen en la configuración
@@ -2512,11 +2596,11 @@ function loadConfiguration() {
         
         // Recrear paneles
         requestAnimationFrame(() => {
-            const currentGridParams = getCurrentGridParams();
-            if (!currentGridParams) {
-                console.error("No se pudieron obtener los parámetros del grid después de cargar.");
-                return;
-            }
+             const currentGridParams = getCurrentGridParams();
+             if (!currentGridParams) {
+                 console.error("No se pudieron obtener los parámetros del grid después de cargar.");
+                 return;
+             }
 
             // Verificar que los parámetros del grid coincidan
             if (config.grid.size) {
@@ -2526,21 +2610,21 @@ function loadConfiguration() {
                 console.log('Tamaño del grid actual:', currentSize);
             }
 
-            config.panels.forEach(panelInfo => {
-                const panelData = {
-                    group: null,
-                    minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
+             config.panels.forEach(panelInfo => {
+                 const panelData = {
+                     group: null,
+                     minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
                     maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
                     orderNumber: panelInfo.orderNumber,
                     showOrderNumber: panelInfo.showOrderNumber,
                     hasText: panelInfo.behavior?.hasText || false
                 };
 
-                updatePanelGeometryAndPosition(panelData, currentGridParams);
+                 updatePanelGeometryAndPosition(panelData, currentGridParams);
                 
-                if(panelData.group) {
-                    scene.add(panelData.group);
-                    panels.push(panelData);
+                 if(panelData.group) {
+                     scene.add(panelData.group);
+                     panels.push(panelData);
 
                     // Restaurar comportamiento del panel
                     if (panelInfo.behavior) {
@@ -2590,16 +2674,49 @@ function loadConfiguration() {
 
 // Función para descargar la configuración actual como archivo JSON
 function downloadConfiguration() {
-    const configData = getSerializableConfig();
-    if (!configData) return;
-    
-    const jsonData = JSON.stringify(configData, null, 2);
+    try {
+        // Obtener la configuración actual usando la misma función que saveConfiguration
+        const config = getSerializableConfig();
+        if (!config) {
+            console.error('No se pudo obtener la configuración para descargar');
+            return;
+        }
+
+        // Verificar que los datos son válidos
+        if (!config.grid || !config.panels) {
+            console.error('Error: Los datos a descargar están incompletos');
+            return;
+        }
+
+        // Convertir a JSON con formato legible
+        const jsonData = JSON.stringify(config, null, 2);
+
+        // Crear y descargar el archivo
     const blob = new Blob([jsonData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    
     const a = document.createElement('a');
     a.href = url;
     a.download = `bioPrint_config_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+        
+        // Guardar también en localStorage como backup
+        localStorage.setItem('gridConfig', jsonData);
+        localStorage.setItem('gridConfig_backup', jsonData);
+
+        // Verificar que se guardó correctamente en localStorage
+        const savedConfig = localStorage.getItem('gridConfig');
+        if (!savedConfig) {
+            console.error('Error: La configuración no se guardó correctamente en localStorage');
+            return;
+        }
+
+        // Verificar que los datos guardados son correctos
+        const parsedSavedConfig = JSON.parse(savedConfig);
+        if (!parsedSavedConfig.grid || !parsedSavedConfig.panels) {
+            console.error('Error: Los datos guardados en localStorage están incompletos');
+        return;
+    }
+    
+        // Si todo está correcto, proceder con la descarga
     document.body.appendChild(a);
     a.click();
     
@@ -2607,6 +2724,26 @@ function downloadConfiguration() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }, 100);
+
+        console.log('Configuración guardada y descargada exitosamente:', {
+            divisiones: parsedSavedConfig.grid.divisions,
+            paneles: parsedSavedConfig.panels.length,
+            fecha: parsedSavedConfig.date
+        });
+
+    } catch (error) {
+        console.error('Error al descargar configuración:', error);
+        // Intentar restaurar desde backup si hay error en localStorage
+        try {
+            const backup = localStorage.getItem('gridConfig_backup');
+            if (backup) {
+                localStorage.setItem('gridConfig', backup);
+                console.log('Configuración restaurada desde backup en localStorage.');
+            }
+        } catch (backupError) {
+            console.error('Error al restaurar desde backup:', backupError);
+        }
+    }
 }
 
 // Función para cargar configuración desde un archivo JSON
@@ -2619,7 +2756,7 @@ function loadConfigurationFromFile(event) {
         try {
             const data = JSON.parse(e.target.result);
             
-            applyConfigurationFromData(data);
+                applyConfigurationFromData(data);
         } catch (error) {
             console.error("Error al cargar el archivo:", error);
             alert("El archivo seleccionado no tiene un formato válido");
@@ -2634,6 +2771,70 @@ document.getElementById('save-config-btn').addEventListener('click', saveConfigu
 document.getElementById('load-config-btn').addEventListener('click', loadConfiguration);
 document.getElementById('download-config-btn').addEventListener('click', downloadConfiguration);
 document.getElementById('toggle-numbers-btn').addEventListener('click', togglePanelNumbers);
+
+// Agregar event listeners para cargar JSON
+document.getElementById('upload-config-btn').addEventListener('click', () => {
+    document.getElementById('config-file-input').click();
+});
+
+document.getElementById('config-file-input').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            // Parsear el JSON
+            const config = JSON.parse(e.target.result);
+            
+            // Validar la estructura del archivo
+            if (!config || !config.grid || !config.panels) {
+                console.error('El archivo JSON no tiene el formato correcto');
+                alert('Error: El archivo no tiene el formato correcto de configuración');
+                return;
+            }
+
+            // Guardar en localStorage
+            const jsonString = JSON.stringify(config);
+            localStorage.setItem('gridConfig', jsonString);
+            localStorage.setItem('gridConfig_backup', jsonString);
+
+            // Verificar que se guardó correctamente
+            const savedConfig = localStorage.getItem('gridConfig');
+            if (!savedConfig) {
+                console.error('Error al guardar la configuración en localStorage');
+                alert('Error al guardar la configuración');
+                return;
+            }
+
+            // Aplicar la configuración
+            console.log('Cargando configuración desde archivo:', {
+                divisiones: config.grid.divisions,
+                paneles: config.panels.length,
+                fecha: config.date
+            });
+
+            // Usar la función existente para aplicar la configuración
+            loadConfiguration();
+
+            console.log('Configuración cargada exitosamente desde archivo JSON');
+
+        } catch (error) {
+            console.error('Error al procesar el archivo JSON:', error);
+            alert('Error al procesar el archivo. Asegúrese de que es un archivo JSON válido.');
+        }
+    };
+
+    reader.onerror = function(error) {
+        console.error('Error al leer el archivo:', error);
+        alert('Error al leer el archivo');
+    };
+
+    reader.readAsText(file);
+
+    // Limpiar el input para permitir cargar el mismo archivo nuevamente
+    event.target.value = '';
+});
 
 // --- Carga Inicial --- 
 // Intentar cargar la configuración guardada al iniciar
@@ -2850,7 +3051,37 @@ function animateResizingPanels() {
     const panelsToFinalize = [];
     
     panelsResizing.forEach(panelData => {
-        if (!panelData.isResizing || !panelData.group) {
+        if (!panelData.group) {
+            panelsToFinalize.push(panelData);
+            return;
+        }
+
+        // Manejar animación de crecimiento inicial
+        if (panelData.isNewPanel) {
+            panelData.growthProgress = (panelData.growthProgress || 0) + 0.05;
+            const progress = Math.min(1, panelData.growthProgress);
+            
+            // Función de suavizado para el crecimiento
+            const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease out
+            const scale = THREE.MathUtils.lerp(0.01, 1, easedProgress);
+            
+            panelData.group.scale.set(scale, scale, 1);
+            
+            if (progress >= 1) {
+                delete panelData.isNewPanel;
+                delete panelData.growthProgress;
+                panelsToFinalize.push(panelData);
+                
+                // Iniciar flash al completar el crecimiento
+                panelData.flashProgress = 0;
+                panelData.shouldFlash = true;
+                panelsFlashing.add(panelData);
+            }
+            return;
+        }
+
+        // Manejar redimensionamiento normal (cuando cambia el nivel)
+        if (!panelData.isResizing) {
             panelsToFinalize.push(panelData);
             return;
         }
@@ -3254,7 +3485,7 @@ function clearAllPanels(skipSave = false) {
             scene.remove(panel.group);
             // Limpiar geometrías de los hijos
             while(panel.group.children.length > 0) {
-                const child = panel.group.children[0];
+                const child = panel.group.children[0]; 
                 panel.group.remove(child);
                 if (child.geometry) child.geometry.dispose();
                 if (child.material) child.material.dispose();
@@ -3263,8 +3494,8 @@ function clearAllPanels(skipSave = false) {
     });
 
     // Limpiar arrays y estados
-    panels.length = 0;
-    currentlyHoveredPanel = null;
+    panels.length = 0; 
+    currentlyHoveredPanel = null; 
     panelOrderCounter = 1;
 
     // Limpiar estados de texto si la función existe
@@ -3520,8 +3751,12 @@ function processTerminalCommand(command) {
             showSuccess('Efecto Zeng activado', output);
             break;
         case 'boris':
-            setColorEffect(0x00ff87, parseFloat(intensitySlider.value), parseInt(blendTypePicker.value));
-            showSuccess('Efecto Boris activado', output);
+            setColorEffect(0x00ff00, parseFloat(intensitySlider.value), parseInt(blendTypePicker.value)); // Verde Matrix R0 G255 B0
+            showSuccess('Efecto Matrix activado', output);
+            break;
+        case 'ann':
+            setColorEffect(0x00e1ff, parseFloat(intensitySlider.value), parseInt(blendTypePicker.value)); // R0 G225 B255
+            showSuccess('Efecto Ann activado', output);
             break;
         case 'select':
             selectPanels(args, output);
@@ -3612,7 +3847,8 @@ function showHelp(output) {
         - zoom [número] - Ajusta el nivel de zoom de la cámara
         - center - Centra la vista en el grid
         - zeng - Activa efecto de color azul brillante
-        - boris - Activa efecto de color verde trébol
+        - boris - Activa efecto de color verde Matrix
+        - ann - Activa efecto de color azul claro
         
         <div style="margin-top: 10px;"><b>Estados:</b></div>
         - save [1-10] - Guarda el estado actual en el slot especificado
