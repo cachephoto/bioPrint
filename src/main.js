@@ -1654,25 +1654,21 @@ function createPanelFromSelection(start3D, end3D) {
         group: null,
         minCellIndex: { x: pMinX, y: pMinY },
         maxCellIndex: { x: pMaxX, y: pMaxY },
-        orderNumber: panelOrderCounter++,
-        showOrderNumber: false,
+        orderNumber: panelOrderCounter,
+        showOrderNumber: globalShowNumbers,
         hasText: false,
-        isNewPanel: true // Marcar como panel nuevo
+        isNewPanel: true
     };
 
     // Calcular y asignar geometría/posición inicial
     updatePanelGeometryAndPosition(panelData, currentGridParams);
 
     if(panelData.group) {
-        // Iniciar con escala 0 para la animación de crecimiento
-        if (panelData.isNewPanel) {
-            panelData.group.scale.set(0.01, 0.01, 1);
-            panelData.growthProgress = 0;
-            panelsResizing.add(panelData);
-        }
-
         scene.add(panelData.group);
         panels.push(panelData);
+        
+        // Reindexar después de añadir
+        reindexPanels();
         
         // Seleccionar el nuevo panel
         panelData.selected = true;
@@ -1697,14 +1693,14 @@ function createPanelOrderLabel(panelData) {
         // Crear canvas para la etiqueta
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
-        canvas.width = 64;
-        canvas.height = 64;
+        canvas.width = 256; // Aumentado a 256
+        canvas.height = 256; // Aumentado a 256
         
         // Estilo del número
         context.fillStyle = '#000000';
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.fillStyle = '#ffffff';
-        context.font = 'bold 40px Arial';
+        context.font = 'bold 160px Arial'; // Aumentado a 160px
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillText(panelData.orderNumber.toString(), canvas.width/2, canvas.height/2);
@@ -1715,7 +1711,7 @@ function createPanelOrderLabel(panelData) {
         const sprite = new THREE.Sprite(material);
         
         // Ajustar tamaño y posición
-        sprite.scale.set(0.2, 0.2, 1);
+        sprite.scale.set(0.8, 0.8, 1); // Aumentado a 0.8
         sprite.position.set(0, 0, 0.02); // Ligeramente por encima del panel
         
         // Guardar referencia y añadir al grupo
@@ -3496,8 +3492,10 @@ function clearAllPanels(skipSave = false) {
     // Limpiar arrays y estados
     panels.length = 0; 
     currentlyHoveredPanel = null; 
-    panelOrderCounter = 1;
-
+    
+    // NO resetear el contador de orden aquí
+    // panelOrderCounter = 1; // Esta línea se elimina
+    
     // Limpiar estados de texto si la función existe
     if (typeof cleanupPanelText === 'function') {
         cleanupPanelText();
@@ -3577,13 +3575,23 @@ function applyConfigurationFromData(configData) {
         return false;
     }
     
-    // Restablecer contador de orden global
-    panelOrderCounter = 1;
-    
     // Limpiar los paneles actuales y sus comportamientos
     clearAllPanels();
     gatcIntervals.forEach(interval => clearInterval(interval));
     gatcIntervals.clear();
+    
+    // Encontrar el número de orden más alto en la configuración
+    let maxOrderNumber = 0;
+    configData.panels.forEach(panel => {
+        const orderNum = parseInt(panel.orderNumber);
+        if (!isNaN(orderNum) && orderNum > maxOrderNumber) {
+            maxOrderNumber = orderNum;
+        }
+    });
+    
+    // Actualizar el contador global para empezar desde el siguiente número
+    panelOrderCounter = maxOrderNumber + 1;
+    console.log('Contador de paneles iniciado en:', panelOrderCounter);
     
     // Aplicar configuración de la cuadrícula
     const gridParams = {
@@ -3599,13 +3607,21 @@ function applyConfigurationFromData(configData) {
     
     // Recrear los paneles con sus comportamientos
     for (const panelData of configData.panels) {
+        // Asegurar que el número de orden es un entero válido
+        const orderNumber = parseInt(panelData.orderNumber);
+        if (isNaN(orderNumber)) {
+            console.error('Número de orden inválido:', panelData.orderNumber);
+            continue;
+        }
+
         // Crear panel base
         const panel = {
             group: null,
             minCellIndex: panelData.minCellIndex,
             maxCellIndex: panelData.maxCellIndex,
-            orderNumber: panelData.orderNumber || panelOrderCounter++,
-            showOrderNumber: panelData.showOrderNumber !== undefined ? panelData.showOrderNumber : false
+            orderNumber: orderNumber,
+            showOrderNumber: globalShowNumbers,
+            hasText: false
         };
         
         // Actualizar geometría y posición
@@ -3660,11 +3676,12 @@ function applyConfigurationFromData(configData) {
             }
         }
     }
-    
-    // Actualizar contador para nuevos paneles
-    if (configData.panels.length > 0) {
-        const maxOrder = Math.max(...configData.panels.map(p => p.orderNumber || 0));
-        panelOrderCounter = maxOrder + 1;
+
+    // Verificar y ajustar el contador si es necesario
+    const actualMaxOrder = Math.max(...panels.map(p => parseInt(p.orderNumber) || 0));
+    if (actualMaxOrder >= panelOrderCounter) {
+        panelOrderCounter = actualMaxOrder + 1;
+        console.log('Contador ajustado a:', panelOrderCounter);
     }
     
     return true;
@@ -3705,17 +3722,22 @@ function updateScreenStatesList() {
     });
 }
 
+// Variable global para controlar visibilidad de números
+let globalShowNumbers = false;
+
 // Función para alternar la visibilidad de los números de los paneles
 function togglePanelNumbers() {
-    // Recorrer todos los paneles y cambiar su propiedad showOrderNumber
+    // Cambiar estado global
+    globalShowNumbers = !globalShowNumbers;
+    
+    // Aplicar a todos los paneles existentes
     panels.forEach(panel => {
-        panel.showOrderNumber = !panel.showOrderNumber;
-        // Actualizar la etiqueta (crear o eliminar según corresponda)
+        panel.showOrderNumber = globalShowNumbers;
         createPanelOrderLabel(panel);
     });
     
     // Mensaje de confirmación
-    console.log(`Números de panel ${panels.length > 0 && panels[0].showOrderNumber ? 'mostrados' : 'ocultados'}`);
+    console.log(`Números de panel ${globalShowNumbers ? 'mostrados' : 'ocultados'}`);
 }
 
 // Función para mostrar u ocultar la consola terminal
@@ -3765,7 +3787,7 @@ function processTerminalCommand(command) {
             showPanelNumbers(true, output);
             break;
         case 'hide':
-            showPanelNumbers(false, output);
+            hidePanelNumbers(output);
             break;
         case 'list':
             listPanels(output);
@@ -3808,6 +3830,17 @@ function processTerminalCommand(command) {
             break;
         case 'splice':
             handleSpliceCommand(output);
+            break;
+        case 'index':
+        case 'reindex':
+            const count = reindexPanels();
+            showSuccess(`Paneles reindexados (${count} paneles)`, output);
+            // Mostrar el índice actual
+            const indexDiv = document.createElement('div');
+            indexDiv.innerHTML = panels.map(p => 
+                `Panel #${p.orderNumber}: [${p.minCellIndex.x},${p.minCellIndex.y}] a [${p.maxCellIndex.x},${p.maxCellIndex.y}]`
+            ).join('<br>');
+            output.appendChild(indexDiv);
             break;
         default:
             showError(`Comando desconocido: ${cmd}. Escribe 'help' para ver comandos disponibles.`, output);
@@ -3923,12 +3956,21 @@ function selectPanels(args, output) {
 }
 
 function showPanelNumbers(show, output) {
+    globalShowNumbers = true;
     panels.forEach(panel => {
-        panel.showOrderNumber = show;
+        panel.showOrderNumber = true;
         createPanelOrderLabel(panel);
     });
-    
-    showSuccess(`Números de panel ${show ? 'mostrados' : 'ocultados'}`, output);
+    showSuccess('Números de panel mostrados', output);
+}
+
+function hidePanelNumbers(output) {
+    globalShowNumbers = false;
+    panels.forEach(panel => {
+        panel.showOrderNumber = false;
+        createPanelOrderLabel(panel);
+    });
+    showSuccess('Números de panel ocultados', output);
 }
 
 function listPanels(output) {
@@ -3940,12 +3982,28 @@ function listPanels(output) {
     const listDiv = document.createElement('div');
     listDiv.innerHTML = `<div><b>Paneles (${panels.length}):</b></div>`;
     
-    panels.forEach(panel => {
+    // Ordenar paneles por número
+    const sortedPanels = [...panels].sort((a, b) => {
+        const aNum = parseInt(a.orderNumber) || 0;
+        const bNum = parseInt(b.orderNumber) || 0;
+        return aNum - bNum;
+    });
+
+    sortedPanels.forEach(panel => {
         const panelInfo = document.createElement('div');
-        panelInfo.textContent = `Panel #${panel.orderNumber}: [${panel.minCellIndex.x},${panel.minCellIndex.y}] a [${panel.maxCellIndex.x},${panel.maxCellIndex.y}] - ${panel.selected ? '(Seleccionado)' : ''}`;
+        const size = {
+            width: panel.maxCellIndex.x - panel.minCellIndex.x + 1,
+            height: panel.maxCellIndex.y - panel.minCellIndex.y + 1
+        };
+        panelInfo.textContent = `Panel #${panel.orderNumber}: [${panel.minCellIndex.x},${panel.minCellIndex.y}] a [${panel.maxCellIndex.x},${panel.maxCellIndex.y}] - ${size.width}x${size.height} celdas${panel.selected ? ' (Seleccionado)' : ''}`;
         listDiv.appendChild(panelInfo);
     });
-    
+
+    // Mostrar el próximo número disponible
+    const nextDiv = document.createElement('div');
+    nextDiv.innerHTML = `<br>Próximo número disponible: ${panelOrderCounter}`;
+    listDiv.appendChild(nextDiv);
+
     output.appendChild(listDiv);
 }
 
@@ -3960,7 +4018,6 @@ function deletePanels(args, output) {
     }
     
     if (args[0] === 'all') {
-        // Llamar a la función existente
         clearAllPanels();
         return;
     }
@@ -3973,36 +4030,55 @@ function deletePanels(args, output) {
             showInfo('No hay paneles seleccionados para eliminar', output);
             return;
         }
+
+        // Guardar números que serán eliminados
+        const deletedNumbers = selectedPanels.map(p => parseInt(p.orderNumber)).sort((a, b) => a - b);
         
         // Eliminar los paneles seleccionados
-        const remainingPanels = [];
-        
-        panels.forEach(panel => {
+        panels = panels.filter(panel => {
             if (panel.selected) {
                 if (panel.group) {
                     scene.remove(panel.group);
-                    // Limpiar geometrías
                     while (panel.group.children.length > 0) {
                         const child = panel.group.children[0];
                         panel.group.remove(child);
                         if (child.geometry) child.geometry.dispose();
+                        if (child.material) child.material.dispose();
                     }
                 }
-            } else {
-                remainingPanels.push(panel);
+                return false;
             }
+            return true;
         });
+
+        // Ordenar los paneles restantes por número
+        panels.sort((a, b) => parseInt(a.orderNumber) - parseInt(b.orderNumber));
+
+        // Actualizar números inmediatamente
+        let currentNumber = 1;
+        panels.forEach(panel => {
+            if (parseInt(panel.orderNumber) > currentNumber) {
+                // Este panel necesita un nuevo número
+                panel.orderNumber = currentNumber;
+                if (panel.showOrderNumber) {
+                    if (panel.orderLabel && panel.group) {
+                        panel.group.remove(panel.orderLabel);
+                        panel.orderLabel = null;
+                    }
+                    createPanelOrderLabel(panel);
+                }
+            }
+            currentNumber = parseInt(panel.orderNumber) + 1;
+        });
+
+        // Actualizar el contador global
+        panelOrderCounter = panels.length + 1;
         
-        panels.length = 0;
-        panels.push(...remainingPanels);
-        
-        showSuccess(`${count} paneles eliminados`, output);
+        // Mostrar información detallada
+        const deletedInfo = deletedNumbers.join(', ');
+        showSuccess(`Paneles eliminados: ${deletedInfo}. Numeración reajustada inmediatamente.`, output);
         return;
     }
-    
-    // Si llegamos aquí, args[0] es un número o lista de números
-    // Se podría implementar la eliminación por número específico si se necesita
-    showError('Opción no implementada: ' + args[0], output);
 }
 
 // Funciones para mostrar mensajes en la consola
@@ -5407,4 +5483,35 @@ function drawProgress(progress, pulse = 0) {
     ctx.fillRect(progressWidth - glowWidth, 4, glowWidth * 2, canvas.height - 8);
     
     texture.needsUpdate = true;
+}
+
+// Función para reindexar los paneles
+function reindexPanels() {
+    // Ordenar paneles por su número actual
+    panels.sort((a, b) => parseInt(a.orderNumber) - parseInt(b.orderNumber));
+
+    // Verificar y cerrar huecos en la numeración
+    let currentNumber = 1;
+    let needsUpdate = false;
+
+    panels.forEach(panel => {
+        if (parseInt(panel.orderNumber) > currentNumber) {
+            // Hay un hueco, actualizar este panel
+            panel.orderNumber = currentNumber;
+            if (panel.showOrderNumber) {
+                if (panel.orderLabel && panel.group) {
+                    panel.group.remove(panel.orderLabel);
+                    panel.orderLabel = null;
+                }
+                createPanelOrderLabel(panel);
+            }
+            needsUpdate = true;
+        }
+        currentNumber = parseInt(panel.orderNumber) + 1;
+    });
+
+    // Actualizar el contador global
+    panelOrderCounter = panels.length + 1;
+    
+    return needsUpdate ? panels.length : 0;
 }
