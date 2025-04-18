@@ -2989,19 +2989,18 @@ function animateResizingPanels() {
 function animateFlashingPanels() {
     const panelsToRemove = [];
 
-    // Recorrer todos los paneles en animación
     panelsFlashing.forEach(panelData => {
         if (!panelData.shouldFlash) {
             panelsToRemove.push(panelData);
             return;
         }
 
-        // Incrementar progreso de animación
-        panelData.flashProgress += 0.05;
+        // Incrementar progreso de animación (más rápido)
+        panelData.flashProgress += 0.15; // Aumentado de 0.05 a 0.15
         
         // Crear efecto de flash basado en función senoidal
-        const flashIntensity = Math.sin(panelData.flashProgress * Math.PI * 2);
-        const positiveFlash = Math.max(0, flashIntensity); // Solo valores positivos para flash
+        const flashIntensity = Math.sin(panelData.flashProgress * Math.PI * 3); // Aumentado de 2 a 3 para más rápido
+        const positiveFlash = Math.max(0, flashIntensity);
         
         // Colores para flash (blanco brillante)
         const baseColor = new THREE.Color(
@@ -3014,7 +3013,6 @@ function animateFlashingPanels() {
         if (panelData && panelData.group) {
             panelData.group.children.forEach(child => {
                 if (child instanceof THREE.Line && child.material) {
-                    // Interpolar entre el color original y blanco
                     const color = new THREE.Color().lerpColors(
                         baseColor, 
                         flashColor, 
@@ -3024,7 +3022,6 @@ function animateFlashingPanels() {
                     child.material.color = color;
                 }
                 else if (child === panelData.fillMesh && child.material) {
-                    // Flash también en el relleno (cambiando color y opacidad)
                     const color = new THREE.Color().lerpColors(
                         baseColor, 
                         flashColor, 
@@ -3033,15 +3030,14 @@ function animateFlashingPanels() {
                     child.material = child.material.clone();
                     child.material.color = color;
                     
-                    // Aumentar opacidad ligeramente durante el flash
                     const baseOpacity = panelData.selected ? 0.4 : (panelData.hovered ? 0.3 : 0.2);
                     child.material.opacity = baseOpacity + (positiveFlash * 0.3);
                 }
             });
         }
         
-        // Finalizar animación después de 2 ciclos completos
-        if (panelData.flashProgress >= 2) {
+        // Finalizar animación después de 1 ciclo completo (más rápido)
+        if (panelData.flashProgress >= 1) { // Reducido de 2 a 1
             panelData.shouldFlash = false;
             panelsToRemove.push(panelData);
             

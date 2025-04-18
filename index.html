@@ -142,7 +142,7 @@
         align-items: flex-start;
         z-index: 9999;
         opacity: 1;
-        transition: opacity 0.5s ease-in-out;
+        transition: opacity 0.3s ease-in-out;
         padding: 50px;
         font-family: 'VT323', 'Courier New', monospace;
         color: #fff;
@@ -171,7 +171,7 @@
       }
       .app-container {
         opacity: 0;
-        transition: opacity 0.5s ease-in-out;
+        transition: opacity 0.3s ease-in-out;
       }
       #ui-controls {
         position: absolute;
@@ -412,5 +412,8 @@
     </div>
     
     <script type="module" src="./src/main.js"></script>
+    <script>
+      const DOUBLE_TAP_DELAY = 200; // Reducido de 300ms a 200ms para doble tap más rápido
+    </script>
   </body>
 </html>
