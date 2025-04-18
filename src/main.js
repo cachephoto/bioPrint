@@ -482,35 +482,44 @@ const panels = []; // Almacenar objetos de panel: { mesh, minCellIndex, maxCellI
 // NUEVO: Materiales de LÍNEA para los paneles (Escala de Grises)
 const panelLineMaterialNormal = new THREE.LineBasicMaterial({ 
     color: 0xaaaaaa, // Gris medio
-    linewidth: 1 // Nota: linewidth no funciona en WebGL
+    linewidth: 1, // Nota: linewidth no funciona en WebGL
+    transparent: false // Los bordes no son transparentes
 });
 const panelLineMaterialHover = new THREE.LineBasicMaterial({ 
     color: 0xcccccc, // Gris claro
-    linewidth: 1
+    linewidth: 1,
+    transparent: false
 });
 const panelLineMaterialSelected = new THREE.LineBasicMaterial({ 
     color: 0xffffff, // Blanco
-    linewidth: 2 // Más grueso al seleccionar
+    linewidth: 2, // Más grueso al seleccionar
+    transparent: false
 });
 
-// NUEVO: Materiales de RELLENO para los paneles (Escala de Grises)
+// NUEVO: Materiales de RELLENO para los paneles (Escala de Grises con transparencia)
 const panelFillMaterialNormal = new THREE.MeshBasicMaterial({ 
     color: 0xaaaaaa, // Gris medio
     transparent: true, 
-    opacity: 0.2, // Más transparente que las líneas
-    side: THREE.DoubleSide 
+    opacity: 0.1, // 10% opacidad
+    side: THREE.DoubleSide,
+    depthTest: false, // Desactivar depth testing
+    depthWrite: false // No escribir en el buffer de profundidad
 });
 const panelFillMaterialHover = new THREE.MeshBasicMaterial({ 
     color: 0xcccccc, // Gris claro
     transparent: true, 
-    opacity: 0.3, 
-    side: THREE.DoubleSide 
+    opacity: 0.15, // Ligeramente más visible en hover
+    side: THREE.DoubleSide,
+    depthTest: false,
+    depthWrite: false
 });
 const panelFillMaterialSelected = new THREE.MeshBasicMaterial({ 
     color: 0xffffff, // Blanco
     transparent: true, 
-    opacity: 0.4, 
-    side: THREE.DoubleSide 
+    opacity: 0.2, // Más visible cuando está seleccionado
+    side: THREE.DoubleSide,
+    depthTest: false,
+    depthWrite: false
 });
 
 let pendingBoundingBox = null; // Para almacenar el bbox al cambiar resolución
@@ -1055,7 +1064,7 @@ renderer.domElement.addEventListener('touchmove', (event) => {
         updatePanelColor(currentlyHoveredPanel);
         currentlyHoveredPanel = null;
     }
-
+    
     if (event.touches.length > 1) {
         return false;
     }
@@ -1712,7 +1721,7 @@ function createPanelOrderLabel(panelData) {
         
         // Ajustar tamaño y posición
         sprite.scale.set(0.8, 0.8, 1); // Aumentado a 0.8
-        sprite.position.set(0, 0, 0.02); // Ligeramente por encima del panel
+        sprite.position.set(0, 0, 0.02); // Ahora relativo a la posición del grupo
         
         // Guardar referencia y añadir al grupo
         panelData.orderLabel = sprite;
@@ -3676,7 +3685,7 @@ function applyConfigurationFromData(configData) {
             }
         }
     }
-
+    
     // Verificar y ajustar el contador si es necesario
     const actualMaxOrder = Math.max(...panels.map(p => parseInt(p.orderNumber) || 0));
     if (actualMaxOrder >= panelOrderCounter) {
@@ -4003,7 +4012,7 @@ function listPanels(output) {
     const nextDiv = document.createElement('div');
     nextDiv.innerHTML = `<br>Próximo número disponible: ${panelOrderCounter}`;
     listDiv.appendChild(nextDiv);
-
+    
     output.appendChild(listDiv);
 }
 
@@ -4030,7 +4039,7 @@ function deletePanels(args, output) {
             showInfo('No hay paneles seleccionados para eliminar', output);
             return;
         }
-
+        
         // Guardar números que serán eliminados
         const deletedNumbers = selectedPanels.map(p => parseInt(p.orderNumber)).sort((a, b) => a - b);
         
