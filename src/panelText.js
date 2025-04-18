@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 
 // Estado global del texto
-const panelTextState = new Map();
+export const panelTextState = new Map();
 let currentEditingPanel = null;
 let cursorBlinkInterval = null;
 let cursorVisible = true;

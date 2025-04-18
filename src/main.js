@@ -8,7 +8,9 @@ import {
     stopTextEditing, 
     setPanelText, 
     updatePanelText,
-    cleanupPanelText 
+    cleanupPanelText,
+    getPanelText,
+    panelTextState 
 } from './panelText.js';
 import { initBioFX, setColorEffect, render as renderBioFX, setBloomEffect } from './bioFX.js';
 import { animateModels, loadModelToPanel, cleanupPanelModels, toggleModelRotation, setModelRotationSpeed, preserveModel, restoreModel } from './panelModel.js';
@@ -474,7 +476,7 @@ let isSelecting = false;
 let startPoint = { x: 0, y: 0 };
 let endPoint = { x: 0, y: 0 };
 const selectionBox = document.getElementById('selection-box');
-const panels = []; // Almacenar objetos de panel: { mesh, minCellIndex, maxCellIndex, selected, hovered }
+let panels = []; // Almacenar objetos de panel: { mesh, minCellIndex, maxCellIndex, selected, hovered }
 
 // Materiales para los paneles (Mesh - ahora obsoletos, los dejamos por si acaso)
 /* ... MeshMaterials ... */
@@ -2426,6 +2428,10 @@ function getSerializableConfig() {
     
     // Serializar los paneles con su comportamiento
     const serializedPanels = panels.map((panel, index) => {
+        // Obtener el texto actual del panel si tiene texto habilitado
+        const currentText = panel.hasText ? getPanelText(panel) : '';
+        const textState = panelTextState.get(panel);
+        
         return {
             minCellIndex: { ...panel.minCellIndex },
             maxCellIndex: { ...panel.maxCellIndex },
@@ -2434,9 +2440,9 @@ function getSerializableConfig() {
             selected: panel.selected,
             behavior: {
                 hasText: panel.hasText || false,
-                textContent: panel.textContent || '',
-                messageBuffer: panel.messageBuffer || [],
-                maxLines: panel.maxLines,
+                textContent: currentText,
+                messageBuffer: textState ? textState.lines : [],
+                maxLines: textState ? textState.maxCharsPerLine : 0,
                 isGATCActive: gatcIntervals.has(panel),
                 modelData: panel.modelData ? {
                     modelUrl: panel.modelData.url,
@@ -2607,11 +2613,11 @@ function loadConfiguration() {
         
         // Recrear paneles
         requestAnimationFrame(() => {
-             const currentGridParams = getCurrentGridParams();
-             if (!currentGridParams) {
-                 console.error("No se pudieron obtener los parámetros del grid después de cargar.");
-                 return;
-             }
+            const currentGridParams = getCurrentGridParams();
+            if (!currentGridParams) {
+                console.error("No se pudieron obtener los parámetros del grid después de cargar.");
+                return;
+            }
 
             // Verificar que los parámetros del grid coincidan
             if (config.grid.size) {
@@ -2640,12 +2646,21 @@ function loadConfiguration() {
                     // Restaurar comportamiento del panel
                     if (panelInfo.behavior) {
                         if (panelInfo.behavior.hasText) {
-                            panelData.textContent = panelInfo.behavior.textContent;
-                            panelData.messageBuffer = panelInfo.behavior.messageBuffer;
-                            panelData.maxLines = panelInfo.behavior.maxLines;
-                            if (panelData.textContent) {
-                                setPanelText(panelData, panelData.textContent, currentGridParams.cellSize);
-                            }
+                            panelData.hasText = true;
+                            // Inicializar el estado del texto primero
+                            const textState = {
+                                text: panelInfo.behavior.textContent,
+                                lines: panelInfo.behavior.messageBuffer,
+                                maxCharsPerLine: panelInfo.behavior.maxLines,
+                                cursorPosition: 0,
+                                isEditing: false,
+                                scrollOffset: 0
+                            };
+                            panelTextState.set(panelData, textState);
+                            
+                            // Luego crear y establecer el texto
+                            createPanelText(panelData, currentGridParams.cellSize);
+                            setPanelText(panelData, panelInfo.behavior.textContent, currentGridParams.cellSize);
                         }
 
                         if (panelInfo.behavior.isGATCActive) {
@@ -2703,11 +2718,11 @@ function downloadConfiguration() {
         const jsonData = JSON.stringify(config, null, 2);
 
         // Crear y descargar el archivo
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bioPrint_config_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bioPrint_config_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
         
         // Guardar también en localStorage como backup
         localStorage.setItem('gridConfig', jsonData);
@@ -2724,17 +2739,17 @@ function downloadConfiguration() {
         const parsedSavedConfig = JSON.parse(savedConfig);
         if (!parsedSavedConfig.grid || !parsedSavedConfig.panels) {
             console.error('Error: Los datos guardados en localStorage están incompletos');
-        return;
-    }
+            return;
+        }
     
         // Si todo está correcto, proceder con la descarga
-    document.body.appendChild(a);
-    a.click();
+        document.body.appendChild(a);
+        a.click();
     
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
 
         console.log('Configuración guardada y descargada exitosamente:', {
             divisiones: parsedSavedConfig.grid.divisions,
@@ -3655,6 +3670,9 @@ function applyConfigurationFromData(configData) {
                     panel.messageBuffer = panelData.behavior.messageBuffer;
                     panel.maxLines = panelData.behavior.maxLines;
                     if (panel.textContent) {
+                        // Inicializar el panel con texto
+                        createPanelText(panel, gridParams.cellSize);
+                        // Establecer el texto
                         setPanelText(panel, panel.textContent, gridParams.cellSize);
                     }
                 }
