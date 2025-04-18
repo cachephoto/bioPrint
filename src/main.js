@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { 
     initPanelText, 
     createPanelText, 
@@ -1458,7 +1458,9 @@ document.addEventListener('keydown', (event) => {
         });
         if(deletedSomething) {
             panels.length = 0; 
-            panels.push(...remainingPanels); 
+            panels.push(...remainingPanels);
+            // Reindexar paneles después de borrar
+            reindexPanels();
         }
     }
 
@@ -1658,7 +1660,11 @@ function createPanelFromSelection(start3D, end3D) {
     }
     // *** Fin: Comprobación de conflictos ***
 
-    // Crear el objeto panel (sin mesh ni group inicial)
+    // Asegurar que el número de orden sea el siguiente disponible
+    const maxCurrentNumber = Math.max(...panels.map(p => parseInt(p.orderNumber) || 0), 0);
+    panelOrderCounter = Math.max(panelOrderCounter, maxCurrentNumber + 1);
+
+    // Crear el objeto panel con el siguiente número
     const panelData = {
         group: null,
         minCellIndex: { x: pMinX, y: pMinY },
