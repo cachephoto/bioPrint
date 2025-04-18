@@ -7,7 +7,8 @@ import {
     startTextEditing, 
     stopTextEditing, 
     setPanelText, 
-    updatePanelText 
+    updatePanelText,
+    cleanupPanelText 
 } from './panelText.js';
 import { initBioFX, setColorEffect, render as renderBioFX, setBloomEffect } from './bioFX.js';
 import { animateModels, loadModelToPanel, cleanupPanelModels, toggleModelRotation, setModelRotationSpeed, preserveModel, restoreModel } from './panelModel.js';
@@ -138,13 +139,18 @@ function startGridAnimation24Frames() {
             camera.position.z = finalZoom;
             adjustCameraToGrid();
             
-            // Guardar configuración de cámara
+            // Guardar configuración de cámara inicial
             initialCameraState.position = camera.position.clone();
             initialCameraState.zoom = camera.zoom;
             initialCameraState.distance = camera.position.distanceTo(new THREE.Vector3(0, 0, 0));
             
             // Actualizar estado
             isFirstGridCreation = false;
+
+            // Cargar la configuración guardada después de que termine la animación
+            setTimeout(() => {
+                loadConfiguration();
+            }, 100);
         }
     }, 50); // 50ms por cuadro = 1.2 segundos total
 }
@@ -434,7 +440,7 @@ function hideAllMenus() {
     });
 }
 
-// Mostrar/ocultar panel con la tecla V
+// Mostrar/ocultar paneles con la tecla V
 document.addEventListener('keydown', (event) => {
     if (event.key.toLowerCase() === 'v') {
         toggleControlPanels();
@@ -546,7 +552,7 @@ let controlsVisible = true;
 let terminalVisible = false;
 
 // Variables para almacenar estados de pantalla
-const savedScreenStates = new Array(10).fill(null); // 10 slots para estados (0-9)
+let savedScreenStates = new Array(10).fill(null); // 10 slots para estados (0-9)
 let lastSavedStateIndex = -1; // Último estado guardado
 
 // Función para calcular el tamaño del grid basado en el aspecto del canvas
@@ -1837,21 +1843,42 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
 
 // Función para crear UN panel desde bounding box de índices
 function createPanelFromBoundingBox(bboxIndices, gridParams) {
-     const panelData = {
-        mesh: null,
+    const panelData = {
+        group: null,
         minCellIndex: { x: bboxIndices.minX, y: bboxIndices.minY },
         maxCellIndex: { x: bboxIndices.maxX, y: bboxIndices.maxY },
-        orderNumber: panelOrderCounter++, // Asignar número de orden
-        showOrderNumber: false // Por defecto, ocultar el número
+        orderNumber: panelOrderCounter++,
+        showOrderNumber: false,
+        hasText: false,
+        selected: false,
+        hovered: false,
+        borderLines: []
     };
+
     updatePanelGeometryAndPosition(panelData, gridParams);
-     if(panelData.mesh) {
-        scene.add(panelData.mesh);
-        panels.push(panelData); // Almacenar el nuevo panel único
+
+    if (panelData.group) {
+        scene.add(panelData.group);
+        panels.push(panelData);
         
         // Crear etiqueta con número de orden
         createPanelOrderLabel(panelData);
+
+        // Preparar animación de flash
+        panelData.flashProgress = 0;
+        panelData.shouldFlash = true;
+        panelsFlashing.add(panelData);
+
+        console.log('Panel creado:', {
+            posición: panelData.group.position,
+            índices: { min: panelData.minCellIndex, max: panelData.maxCellIndex },
+            número: panelData.orderNumber
+        });
+    } else {
+        console.error('Error al crear el panel:', bboxIndices);
     }
+
+    return panelData;
 }
 
 // Función helper para actualizar el color del panel (AHORA PARA LÍNEAS Y RELLENO)
@@ -2323,10 +2350,11 @@ function getSerializableConfig() {
     const currentGridParams = getCurrentGridParams();
     if (!currentGridParams) return null;
     
+    const { width, height } = calculateGridSize();
+    
     // Serializar los paneles con su comportamiento
     const serializedPanels = panels.map((panel, index) => {
-        const panelConfig = {
-            id: `0_${panel.orderNumber}`,
+        return {
             minCellIndex: { ...panel.minCellIndex },
             maxCellIndex: { ...panel.maxCellIndex },
             orderNumber: panel.orderNumber,
@@ -2345,15 +2373,21 @@ function getSerializableConfig() {
                 } : null
             }
         };
-        return panelConfig;
     });
     
     return {
-        id: `config_${new Date().getTime()}`,
         grid: {
-            cellSize: currentGridParams.cellSize,
-            cellsX: currentGridParams.cellsX,
-            cellsY: currentGridParams.cellsY
+            divisions: currentDivisions,
+            size: {
+                width: width,
+                height: height,
+                maxSize: 24, // El tamaño base del grid
+                cellSize: currentGridParams.cellSize,
+                cellsX: currentGridParams.cellsX,
+                cellsY: currentGridParams.cellsY,
+                adjustedWidth: currentGridParams.adjustedWidth,
+                adjustedHeight: currentGridParams.adjustedHeight
+            }
         },
         panels: serializedPanels,
         cameraPosition: {
@@ -2368,17 +2402,66 @@ function getSerializableConfig() {
 
 function saveConfiguration() {
     try {
+        // Obtener la configuración actual
         const config = getSerializableConfig();
+        if (!config) {
+            console.error('No se pudo obtener la configuración para guardar');
+            return;
+        }
+        
+        // Guardar la configuración
         const configString = JSON.stringify(config);
         localStorage.setItem('gridConfig', configString);
-        console.log('Configuración guardada en localStorage.');
+        
+        // Guardar backup
+        localStorage.setItem('gridConfig_backup', configString);
+        
+        // Verificar que se guardó correctamente
+        const savedConfig = localStorage.getItem('gridConfig');
+        if (!savedConfig) {
+            console.error('Error: La configuración no se guardó correctamente');
+            return;
+        }
+
+        // Verificar que los datos guardados son correctos
+        const parsedSavedConfig = JSON.parse(savedConfig);
+        if (!parsedSavedConfig.grid || !parsedSavedConfig.panels) {
+            console.error('Error: Los datos guardados están incompletos');
+            return;
+        }
+
+        console.log('Configuración guardada exitosamente:', {
+            divisiones: parsedSavedConfig.grid.divisions,
+            paneles: parsedSavedConfig.panels.length,
+            fecha: parsedSavedConfig.date
+        });
+
+        // NO recargar automáticamente, solo mostrar mensaje de éxito
+        console.log('Estado guardado correctamente. Use el botón de cargar para restaurar si es necesario.');
+
     } catch (error) {
         console.error('Error al guardar configuración:', error);
+        // Intentar restaurar desde backup si hay error
+        try {
+            const backup = localStorage.getItem('gridConfig_backup');
+            if (backup) {
+                localStorage.setItem('gridConfig', backup);
+                console.log('Configuración restaurada desde backup.');
+            }
+        } catch (backupError) {
+            console.error('Error al restaurar desde backup:', backupError);
+        }
     }
 }
 
 function loadConfiguration() {
     try {
+        // No cargar si la animación inicial aún está en progreso
+        if (isFirstGridCreation) {
+            console.log('Esperando a que termine la animación inicial...');
+            return;
+        }
+
         const configString = localStorage.getItem('gridConfig');
         if (!configString) {
             console.log('No hay configuración guardada en localStorage.');
@@ -2386,54 +2469,120 @@ function loadConfiguration() {
         }
 
         const config = JSON.parse(configString);
-
-        // 1. Limpiar paneles actuales
-        panels.forEach(panel => {
-            if(panel.group) scene.remove(panel.group); 
-            // No necesitamos limpiar geometría aquí, se hará al recrear
+        console.log('Cargando configuración:', {
+            divisiones: config.grid.divisions,
+            paneles: config.panels.length,
+            fecha: config.date
         });
-        panels.length = 0;
-        currentlyHoveredPanel = null;
-        console.log('Paneles antiguos limpiados.');
 
-        // 2. Actualizar la división del grid (esto llamará a updateGrid)
-        // updateGrid se encargará de recrear el grid visual
-        if (typeof config.grid.cellSize === 'number' && config.grid.cellSize !== currentDivisions) {
-             console.log(`Cargando división: ${config.grid.cellSize}`);
-             updateGrid(config.grid.cellSize); // Esto actualiza currentDivisions internamente
+        // Limpiar paneles actuales sin guardar la configuración
+        clearAllPanels(true);
+
+        // Actualizar la división del grid solo si es diferente
+        const newDivisions = config.grid.divisions;
+        if (typeof newDivisions === 'number' && newDivisions !== currentDivisions) {
+            console.log(`Actualizando grid de ${currentDivisions} a ${newDivisions} divisiones`);
+            currentDivisions = newDivisions;
+            updateGrid(newDivisions);
+        }
+
+        // Actualizar la división del grid
+        if (config.grid.divisions && typeof config.grid.divisions === 'number') {
+            console.log(`Restaurando grid a ${config.grid.divisions} divisiones`);
+            currentDivisions = config.grid.divisions;
+            updateGrid(config.grid.divisions);
         } else {
-            // Si la división no cambió, necesitamos forzar la actualización visual
-            // de los paneles vacíos sobre el grid actual
+            console.log('No se encontró el número de divisiones en la configuración, usando valor actual');
             updateGrid(currentDivisions);
         }
+
+        // Restaurar posición y zoom de la cámara si existen en la configuración
+        if (config.cameraPosition) {
+            camera.position.set(
+                config.cameraPosition.x,
+                config.cameraPosition.y,
+                config.cameraPosition.z
+            );
+        }
         
-        // 3. Recrear paneles desde los datos cargados
-        // Esperar un frame para asegurar que el grid esté actualizado por updateGrid
+        if (typeof config.cameraZoom === 'number') {
+            camera.zoom = config.cameraZoom;
+            camera.updateProjectionMatrix();
+        }
+        
+        // Recrear paneles
         requestAnimationFrame(() => {
-             const currentGridParams = getCurrentGridParams();
-             if (!currentGridParams) {
-                 console.error("No se pudieron obtener los parámetros del grid después de cargar.");
-                 return;
-             }
-             console.log(`Recreando ${config.panels.length} paneles...`);
-             config.panels.forEach(panelInfo => {
-                 const panelData = {
-                     group: null,
-                     minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
-                     maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y }
-                     // selected/hovered se inicializan en updatePanelGeometryAndPosition
-                 };
-                 updatePanelGeometryAndPosition(panelData, currentGridParams);
-                 if(panelData.group) {
-                     scene.add(panelData.group);
-                     panels.push(panelData);
-                 }
-             });
-             console.log('Paneles recreados.');
+            const currentGridParams = getCurrentGridParams();
+            if (!currentGridParams) {
+                console.error("No se pudieron obtener los parámetros del grid después de cargar.");
+                return;
+            }
+
+            // Verificar que los parámetros del grid coincidan
+            if (config.grid.size) {
+                const loadedSize = config.grid.size;
+                const currentSize = calculateGridSize();
+                console.log('Tamaño del grid cargado:', loadedSize);
+                console.log('Tamaño del grid actual:', currentSize);
+            }
+
+            config.panels.forEach(panelInfo => {
+                const panelData = {
+                    group: null,
+                    minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
+                    maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
+                    orderNumber: panelInfo.orderNumber,
+                    showOrderNumber: panelInfo.showOrderNumber,
+                    hasText: panelInfo.behavior?.hasText || false
+                };
+
+                updatePanelGeometryAndPosition(panelData, currentGridParams);
+                
+                if(panelData.group) {
+                    scene.add(panelData.group);
+                    panels.push(panelData);
+
+                    // Restaurar comportamiento del panel
+                    if (panelInfo.behavior) {
+                        if (panelInfo.behavior.hasText) {
+                            panelData.textContent = panelInfo.behavior.textContent;
+                            panelData.messageBuffer = panelInfo.behavior.messageBuffer;
+                            panelData.maxLines = panelInfo.behavior.maxLines;
+                            if (panelData.textContent) {
+                                setPanelText(panelData, panelData.textContent, currentGridParams.cellSize);
+                            }
+                        }
+
+                        if (panelInfo.behavior.isGATCActive) {
+                            handleGATCCommand({ appendChild: () => {} }, panelData);
+                        }
+
+                        if (panelInfo.behavior.modelData) {
+                            const { modelUrl, isRotating, rotationSpeed } = panelInfo.behavior.modelData;
+                            loadModelToPanel(panelData, modelUrl, currentGridParams.cellSize).then(() => {
+                                if (isRotating) {
+                                    toggleModelRotation(panelData);
+                                    if (rotationSpeed) {
+                                        setModelRotationSpeed(panelData, rotationSpeed);
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    // Restaurar selección
+                    if (panelInfo.selected) {
+                        panelData.selected = true;
+                        updatePanelColor(panelData);
+                    }
+                }
+            });
+
+            // Ajustar la cámara después de recrear todo
+            adjustCameraToGrid();
         });
 
         console.log('Configuración cargada desde localStorage.');
-
     } catch (error) {
         console.error('Error al cargar configuración:', error);
     }
@@ -2444,81 +2593,13 @@ function downloadConfiguration() {
     const configData = getSerializableConfig();
     if (!configData) return;
     
-    // Crear objeto con todos los estados guardados
-    const allStates = {
-        currentState: configData,
-        savedStates: []
-    };
-    
-    // Procesar los 10 slots de estados guardados
-    for (let i = 0; i < 10; i++) {
-        const state = savedScreenStates[i];
-        if (state) {
-            // Si es un string (guardado como JSON), convertirlo a objeto
-            const stateObj = typeof state === 'string' ? JSON.parse(state) : state;
-            
-            // Asegurarse de que los paneles tienen IDs y números de orden
-            if (stateObj.panels) {
-                stateObj.panels = stateObj.panels.map((panel, idx) => {
-                    return {
-                        id: `${i+1}_${panel.orderNumber || idx+1}`, // layout_panel
-                        minCellIndex: panel.minCellIndex,
-                        maxCellIndex: panel.maxCellIndex,
-                        orderNumber: panel.orderNumber || idx + 1,
-                        showOrderNumber: panel.showOrderNumber !== undefined ? panel.showOrderNumber : true,
-                        selected: panel.selected || false
-                    };
-                });
-            }
-            
-            // Añadir ID del estado si no lo tiene
-            stateObj.id = stateObj.id || `state_${i+1}_${new Date().getTime()}`;
-            
-            // Añadir el estado al arreglo
-            allStates.savedStates.push(stateObj);
-        } else {
-            // Si no hay estado guardado, añadir un placeholder vacío
-            allStates.savedStates.push(null);
-        }
-    }
-    
-    const jsonData = JSON.stringify(allStates, null, 2);
+    const jsonData = JSON.stringify(configData, null, 2);
     const blob = new Blob([jsonData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
     const a = document.createElement('a');
     a.href = url;
     a.download = `bioPrint_config_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-    document.body.appendChild(a);
-    a.click();
-    
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
-}
-
-// Función para descargar todos los estados guardados como un solo archivo JSON
-function downloadAllSavedStates() {
-    if (savedScreenStates.length === 0) {
-        alert("No hay estados guardados para descargar");
-        return;
-    }
-    
-    // Crear objeto con todos los estados guardados
-    const allSavedData = {
-        currentState: getSerializableConfig(),
-        savedStates: savedScreenStates.map(state => JSON.parse(state)),
-        exportDate: new Date().toISOString()
-    };
-    
-    const jsonData = JSON.stringify(allSavedData, null, 2);
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bioPrint_all_states_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
     document.body.appendChild(a);
     a.click();
     
@@ -2538,24 +2619,7 @@ function loadConfigurationFromFile(event) {
         try {
             const data = JSON.parse(e.target.result);
             
-            // Comprobar si es un archivo con múltiples estados
-            if (data.savedStates && Array.isArray(data.savedStates)) {
-                // Cargar el estado actual
-                if (data.currentState) {
-                    applyConfigurationFromData(data.currentState);
-                }
-                
-                // Guardar todos los estados en savedScreenStates
-                savedScreenStates = data.savedStates.map(state => JSON.stringify(state));
-                
-                // Actualizar la interfaz de usuario con los estados cargados
-                updateScreenStatesList();
-                
-                console.log(`Cargados ${data.savedStates.length} estados guardados`);
-            } else {
-                // Es un archivo de configuración normal (un solo estado)
-                applyConfigurationFromData(data);
-            }
+            applyConfigurationFromData(data);
         } catch (error) {
             console.error("Error al cargar el archivo:", error);
             alert("El archivo seleccionado no tiene un formato válido");
@@ -2569,7 +2633,6 @@ function loadConfigurationFromFile(event) {
 document.getElementById('save-config-btn').addEventListener('click', saveConfiguration);
 document.getElementById('load-config-btn').addEventListener('click', loadConfiguration);
 document.getElementById('download-config-btn').addEventListener('click', downloadConfiguration);
-document.getElementById('clear-layout-btn').addEventListener('click', clearAllPanels);
 document.getElementById('toggle-numbers-btn').addEventListener('click', togglePanelNumbers);
 
 // --- Carga Inicial --- 
@@ -3187,172 +3250,68 @@ function updateStateButtons() {
     });
 }
 
-// Función para crear la interfaz de usuario de botones
-function createUIControls() {
-    // Crear contenedor principal para controles
-    const controlsContainer = document.createElement('div');
-    controlsContainer.id = 'ui-controls';
-    controlsContainer.style.position = 'absolute';
-    controlsContainer.style.bottom = '20px';
-    controlsContainer.style.left = '50%';
-    controlsContainer.style.transform = 'translateX(-50%)';
-    controlsContainer.style.display = 'flex';
-    controlsContainer.style.flexDirection = 'column';
-    controlsContainer.style.alignItems = 'center';
-    controlsContainer.style.backgroundColor = 'rgba(40, 40, 40, 0.7)';
-    controlsContainer.style.padding = '10px';
-    controlsContainer.style.borderRadius = '8px';
-    controlsContainer.style.zIndex = '1000';
-    controlsContainer.style.fontFamily = 'Arial, sans-serif';
-    
-    // Crear contenedor para botones de estado
-    const stateButtonsContainer = document.createElement('div');
-    stateButtonsContainer.style.display = 'flex';
-    stateButtonsContainer.style.flexWrap = 'wrap';
-    stateButtonsContainer.style.justifyContent = 'center';
-    stateButtonsContainer.style.marginBottom = '10px';
-    stateButtonsContainer.style.gap = '5px';
-    
-    // Crear botones de estado (1-10)
-    for (let i = 0; i < 10; i++) {
-        const stateButton = document.createElement('div');
-        stateButton.classList.add('state-button');
-        stateButton.dataset.index = i;
-        stateButton.textContent = (i + 1).toString(); // Mostrar 1-10 en lugar de 0-9
-        
-        // Estilos para botones de estado
-        stateButton.style.width = '30px';
-        stateButton.style.height = '30px';
-        stateButton.style.backgroundColor = '#444';
-        stateButton.style.color = '#fff';
-        stateButton.style.borderRadius = '4px';
-        stateButton.style.display = 'flex';
-        stateButton.style.justifyContent = 'center';
-        stateButton.style.alignItems = 'center';
-        stateButton.style.cursor = 'pointer';
-        stateButton.style.userSelect = 'none';
-        stateButton.style.fontSize = '14px';
-        stateButton.style.position = 'relative'; // Para el indicador
-        
-        // Eventos para botones de estado
-        stateButton.addEventListener('click', (event) => {
-            const index = parseInt(event.target.dataset.index);
-            
-            if (event.shiftKey) {
-                // Shift + Click: Guardar estado
-                saveScreenState(index);
-            } else {
-                // Click normal: Cargar estado
-                loadScreenState(index);
-            }
-        });
-        
-        stateButton.addEventListener('mouseover', () => {
-            stateButton.style.backgroundColor = '#555';
-        });
-        
-        stateButton.addEventListener('mouseout', () => {
-            stateButton.style.backgroundColor = '#444';
-        });
-        
-        stateButtonsContainer.appendChild(stateButton);
-    }
-    
-    // Añadir leyenda para los botones de estado
-    const stateButtonsLegend = document.createElement('div');
-    stateButtonsLegend.style.fontSize = '12px';
-    stateButtonsLegend.style.color = '#ccc';
-    stateButtonsLegend.style.marginBottom = '10px';
-    stateButtonsLegend.style.textAlign = 'center';
-    stateButtonsLegend.innerHTML = 'Click: Cargar estado | Shift+Click: Guardar estado';
-    
-    // Crear botón de Clear (limpiar paneles)
-    const clearButton = document.createElement('div');
-    clearButton.id = 'clear-button';
-    clearButton.textContent = 'Clear Panels';
-    
-    // Estilos para botón de Clear
-    clearButton.style.padding = '8px 16px';
-    clearButton.style.backgroundColor = '#8B0000'; // Rojo oscuro
-    clearButton.style.color = '#fff';
-    clearButton.style.borderRadius = '4px';
-    clearButton.style.cursor = 'pointer';
-    clearButton.style.userSelect = 'none';
-    clearButton.style.fontSize = '14px';
-    clearButton.style.marginTop = '5px';
-    
-    // Eventos para botón de Clear
-    clearButton.addEventListener('click', clearAllPanels);
-    
-    clearButton.addEventListener('mouseover', () => {
-        clearButton.style.backgroundColor = '#a00000';
-    });
-    
-    clearButton.addEventListener('mouseout', () => {
-        clearButton.style.backgroundColor = '#8B0000';
-    });
-    
-    // Ensamblar el contenedor principal
-    controlsContainer.appendChild(stateButtonsLegend);
-    controlsContainer.appendChild(stateButtonsContainer);
-    controlsContainer.appendChild(clearButton);
-    
-    // Añadir a la página
-    document.body.appendChild(controlsContainer);
-    
-    // Función para actualizar la UI con estados guardados
-    updateStateButtons();
-}
-
 // Función para limpiar todos los paneles
-function clearAllPanels() {
-    // Preguntar confirmación
-    if (!confirm('¿Estás seguro de que quieres eliminar todos los paneles?')) {
-        return;
-    }
-    
-    // Limpiar todos los paneles actuales
+function clearAllPanels(skipSave = false) {
+    // Limpiar paneles de la escena
     panels.forEach(panel => {
-        if(panel.group) {
+        if (panel.group) {
             scene.remove(panel.group);
-            // Limpiar geometrías de los hijos (líneas)
-            while(panel.group.children.length > 0){
-                const child = panel.group.children[0]; 
+            // Limpiar geometrías de los hijos
+            while(panel.group.children.length > 0) {
+                const child = panel.group.children[0];
                 panel.group.remove(child);
                 if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
             }
         }
     });
-    panels.length = 0; 
-    currentlyHoveredPanel = null; 
-    
-    // Reiniciar contador de paneles
+
+    // Limpiar arrays y estados
+    panels.length = 0;
+    currentlyHoveredPanel = null;
     panelOrderCounter = 1;
+
+    // Limpiar estados de texto si la función existe
+    if (typeof cleanupPanelText === 'function') {
+        cleanupPanelText();
+    }
+    
+    // Limpiar estados de modelos
+    if (typeof cleanupPanelModels === 'function') {
+        cleanupPanelModels();
+    }
+    if (typeof cleanupGenomModels === 'function') {
+        cleanupGenomModels();
+    }
+    
+    // Limpiar intervalos GATC
+    gatcIntervals.forEach(interval => clearInterval(interval));
+    gatcIntervals.clear();
+
+    // Guardar estado vacío en localStorage solo si no se especifica lo contrario
+    if (!skipSave) {
+        saveConfiguration();
+    }
     
     // Flash de confirmación visual
     gridAnimationInProgress = true;
-    gridAnimationStep = 2; // Solo paso de flash
+    gridAnimationStep = 2;
     gridAnimationProgress = 0;
     gridFlashCount = 0;
-    
-    console.log('Todos los paneles han sido eliminados');
 }
 
 // Inicializar la interfaz de usuario después de cargar
 window.addEventListener('load', () => {
-    createUIControls();
     initTerminalConsole();
     controlsVisible = false;
-    const controlsElement = document.getElementById('controls');
-    const uiControlsElement = document.getElementById('ui-controls');
-    if (controlsElement) controlsElement.style.display = 'none';
-    if (uiControlsElement) uiControlsElement.style.display = 'none';
+    toggleControlPanels(false);
 });
 
 // Por si el documento ya está cargado
 if (document.readyState === 'complete') {
-    createUIControls();
     initTerminalConsole();
+    controlsVisible = false;
+    toggleControlPanels(false);
 }
 
 // Inicialización de la consola terminal
