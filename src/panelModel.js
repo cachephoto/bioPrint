@@ -7,8 +7,8 @@ const modelCache = new Map();
 const loader = new OBJLoader();
 
 // Constantes para vista isométrica
-const ISO_ANGLE = -Math.atan(1 / Math.sqrt(2)); // -35.264 grados para vista isométrica estándar (invertido)
-const MODEL_FORWARD_OFFSET = 2; // Desplazamiento hacia adelante para evitar intersección con la cámara
+const ISO_ANGLE = -Math.PI / 4; // -45 grados
+const MODEL_FORWARD_OFFSET = -2; // Cambiado a negativo para mover hacia atrás
 
 // Función para cargar y ajustar un modelo a un panel
 export async function loadModelToPanel(panel, modelUrl, gridSize) {
@@ -21,16 +21,24 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
             model = modelCache.get(modelUrl).clone();
         } else {
             try {
+                // Cargar el modelo usando fetch
                 const response = await fetch(modelUrl);
                 if (!response.ok) {
-                    throw new Error(`Error al cargar el modelo: ${response.status} ${response.statusText}`);
+                    throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
                 }
                 const modelText = await response.text();
-                model = loader.parse(modelText);
-                modelCache.set(modelUrl, model.clone());
-            } catch (error) {
-                console.error('Error al cargar el modelo:', error);
-                throw new Error(`No se pudo cargar el modelo desde ${modelUrl}`);
+                
+                // Intentar parsear el modelo
+                try {
+                    model = loader.parse(modelText);
+                    modelCache.set(modelUrl, model.clone());
+                } catch (parseError) {
+                    console.error('Error al parsear el modelo:', parseError);
+                    throw new Error(`No se pudo parsear el modelo. Verifique que el archivo sea un OBJ válido.`);
+                }
+            } catch (fetchError) {
+                console.error('Error al cargar el modelo:', fetchError);
+                throw new Error(`No se pudo cargar el modelo desde ${modelUrl}. Verifique que el archivo exista y sea accesible.`);
             }
         }
 
@@ -139,7 +147,7 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
         const scaleX = panelWidth / modelSize.x;
         const scaleY = panelHeight / modelSize.y;
         const scaleZ = panelHeight / modelSize.z;
-        const scale = Math.min(scaleX, scaleY, scaleZ) * 0.6;
+        const scale = Math.min(scaleX, scaleY, scaleZ) * 0.85; // Aumentado de 0.6 a 0.85 para usar más espacio
 
         model.scale.set(scale, scale, scale);
 

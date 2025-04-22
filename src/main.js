@@ -165,19 +165,19 @@ function createGridSimple(divisions, color = 0x888888, visible = true) {
     // Materiales
     const lineMaterial = new THREE.LineBasicMaterial({
         color: color,
-        opacity: visible ? 0.5 : 0,
+        opacity: visible ? 1.0 : 0,
         transparent: true
     });
     
     const centerLineMaterial = new THREE.LineBasicMaterial({
         color: color,
-        opacity: visible ? 1 : 0,
+        opacity: visible ? 1.0 : 0,
         transparent: true
     });
     
     const borderMaterial = new THREE.LineBasicMaterial({
         color: color,
-        opacity: visible ? 0.5 : 0,
+        opacity: visible ? 1.0 : 0,
         transparent: true,
         linewidth: 2
     });
@@ -502,7 +502,7 @@ const panelLineMaterialSelected = new THREE.LineBasicMaterial({
 const panelFillMaterialNormal = new THREE.MeshBasicMaterial({ 
     color: 0xaaaaaa, // Gris medio
     transparent: true, 
-    opacity: 0.1, // 10% opacidad
+    opacity: 0.25, // 10% opacidad
     side: THREE.DoubleSide,
     depthTest: false, // Desactivar depth testing
     depthWrite: false // No escribir en el buffer de profundidad
@@ -510,7 +510,7 @@ const panelFillMaterialNormal = new THREE.MeshBasicMaterial({
 const panelFillMaterialHover = new THREE.MeshBasicMaterial({ 
     color: 0xcccccc, // Gris claro
     transparent: true, 
-    opacity: 0.15, // Ligeramente más visible en hover
+    opacity: 0.3, // Ligeramente más visible en hover
     side: THREE.DoubleSide,
     depthTest: false,
     depthWrite: false
@@ -518,7 +518,7 @@ const panelFillMaterialHover = new THREE.MeshBasicMaterial({
 const panelFillMaterialSelected = new THREE.MeshBasicMaterial({ 
     color: 0xffffff, // Blanco
     transparent: true, 
-    opacity: 0.2, // Más visible cuando está seleccionado
+    opacity: .35, // Más visible cuando está seleccionado
     side: THREE.DoubleSide,
     depthTest: false,
     depthWrite: false
@@ -2429,8 +2429,9 @@ function getSerializableConfig() {
     // Serializar los paneles con su comportamiento
     const serializedPanels = panels.map((panel, index) => {
         // Obtener el texto actual del panel si tiene texto habilitado
-        const currentText = panel.hasText ? getPanelText(panel) : '';
         const textState = panelTextState.get(panel);
+        const currentText = panel.hasText ? 
+            (textState && textState.isPassword ? textState.realText : getPanelText(panel)) : '';
         
         return {
             minCellIndex: { ...panel.minCellIndex },
@@ -2443,6 +2444,7 @@ function getSerializableConfig() {
                 textContent: currentText,
                 messageBuffer: textState ? textState.lines : [],
                 maxLines: textState ? textState.maxCharsPerLine : 0,
+                isPassword: textState ? textState.isPassword : false,
                 isGATCActive: gatcIntervals.has(panel),
                 modelData: panel.modelData ? {
                     modelUrl: panel.modelData.url,
@@ -2460,8 +2462,8 @@ function getSerializableConfig() {
                 width: width,
                 height: height,
                 maxSize: 24, // El tamaño base del grid
-            cellSize: currentGridParams.cellSize,
-            cellsX: currentGridParams.cellsX,
+                cellSize: currentGridParams.cellSize,
+                cellsX: currentGridParams.cellsX,
                 cellsY: currentGridParams.cellsY,
                 adjustedWidth: currentGridParams.adjustedWidth,
                 adjustedHeight: currentGridParams.adjustedHeight
@@ -2488,7 +2490,7 @@ function getSerializableConfig() {
     };
 }
 
-function saveConfiguration() {
+async function saveConfiguration() {
     try {
         // Obtener la configuración actual
         const config = getSerializableConfig();
@@ -2497,206 +2499,171 @@ function saveConfiguration() {
             return;
         }
         
-        // Guardar la configuración
-        const configString = JSON.stringify(config);
-        localStorage.setItem('gridConfig', configString);
-        
-        // Guardar backup
-        localStorage.setItem('gridConfig_backup', configString);
-        
-        // Verificar que se guardó correctamente
-        const savedConfig = localStorage.getItem('gridConfig');
-        if (!savedConfig) {
-            console.error('Error: La configuración no se guardó correctamente');
-            return;
+        const configString = JSON.stringify(config, null, 2);
+
+        // Encontrar el siguiente número de configuración disponible
+        let configNumber = 1;
+        while (true) {
+            try {
+                const response = await fetch(`./configs/config${configNumber}.json`);
+                if (!response.ok) break;
+                configNumber++;
+            } catch {
+                break;
+            }
         }
 
-        // Verificar que los datos guardados son correctos
-        const parsedSavedConfig = JSON.parse(savedConfig);
-        if (!parsedSavedConfig.grid || !parsedSavedConfig.panels) {
-            console.error('Error: Los datos guardados están incompletos');
-            return;
+        // Crear el comando para guardar el archivo
+        const blob = new Blob([configString], { type: 'application/json' });
+        
+        // Intentar guardar en ambas ubicaciones
+        try {
+            // Guardar en /configs
+            const saveToConfigs = await fetch(`./configs/config${configNumber}.json`, {
+                method: 'PUT',
+                body: blob
+            });
+
+            // Guardar en /dist/configs
+            const saveToDist = await fetch(`./dist/configs/config${configNumber}.json`, {
+                method: 'PUT',
+                body: blob
+            });
+
+            console.log(`Configuración guardada como config${configNumber}.json en /configs y /dist/configs`);
+        } catch (error) {
+            console.error('Error al guardar en alguna ubicación:', error);
+            // Intentar descargar el archivo si falla el guardado en el servidor
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `config${configNumber}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
         }
-
-        console.log('Configuración guardada exitosamente:', {
-            divisiones: parsedSavedConfig.grid.divisions,
-            paneles: parsedSavedConfig.panels.length,
-            fecha: parsedSavedConfig.date
-        });
-
-        // NO recargar automáticamente, solo mostrar mensaje de éxito
-        console.log('Estado guardado correctamente. Use el botón de cargar para restaurar si es necesario.');
 
     } catch (error) {
         console.error('Error al guardar configuración:', error);
-        // Intentar restaurar desde backup si hay error
-        try {
-            const backup = localStorage.getItem('gridConfig_backup');
-            if (backup) {
-                localStorage.setItem('gridConfig', backup);
-                console.log('Configuración restaurada desde backup.');
-            }
-        } catch (backupError) {
-            console.error('Error al restaurar desde backup:', backupError);
-        }
     }
 }
 
-function loadConfiguration() {
+// Función para cargar configuración automáticamente al inicio
+async function loadInitialConfiguration() {
     try {
-        // No cargar si la animación inicial aún está en progreso
-        if (isFirstGridCreation) {
-            console.log('Esperando a que termine la animación inicial...');
-            return;
-        }
-
-        const configString = localStorage.getItem('gridConfig');
-        if (!configString) {
-            console.log('No hay configuración guardada en localStorage.');
-            return;
-        }
-
-        const config = JSON.parse(configString);
-        console.log('Cargando configuración:', {
-            divisiones: config.grid.divisions,
-            paneles: config.panels.length,
-            fecha: config.date
-        });
-
-        // Limpiar paneles actuales sin guardar la configuración
-        clearAllPanels(true);
-
-        // Restaurar configuración de bioFX si existe
-        if (config.bioFX) {
-            // Convertir el color hexadecimal a formato #RRGGBB
-            const colorHex = '#' + config.bioFX.color.toString(16).padStart(6, '0');
-            colorPicker.value = colorHex;
-            blendTypePicker.value = config.bioFX.blendType.toString();
-            intensitySlider.value = config.bioFX.intensity.toString();
-            
-            if (config.bioFX.glow) {
-                glowSlider.value = config.bioFX.glow.intensity.toString();
-                glowRadiusSlider.value = config.bioFX.glow.radius.toString();
-                glowThresholdSlider.value = config.bioFX.glow.threshold.toString();
-            }
-            
-            // Aplicar los efectos
-            updateBioFXEffect();
-            console.log('Efectos visuales restaurados:', {
-                color: colorHex,
-                blendType: config.bioFX.blendType,
-                intensity: config.bioFX.intensity
-            });
-        }
-
-        // Actualizar la división del grid solo si es diferente
-        const newDivisions = config.grid.divisions;
-        if (typeof newDivisions === 'number' && newDivisions !== currentDivisions) {
-            console.log(`Actualizando grid de ${currentDivisions} a ${newDivisions} divisiones`);
-            currentDivisions = newDivisions;
-            updateGrid(newDivisions);
-        }
-
-        // Restaurar posición y zoom de la cámara si existen en la configuración
-        if (config.cameraPosition) {
-            camera.position.set(
-                config.cameraPosition.x,
-                config.cameraPosition.y,
-                config.cameraPosition.z
-            );
-        }
+        // Intentar cargar configuraciones desde ambas ubicaciones
+        const locations = ['./configs', './dist/configs'];
         
-        if (typeof config.cameraZoom === 'number') {
-            camera.zoom = config.cameraZoom;
-            camera.updateProjectionMatrix();
-        }
-        
-        // Recrear paneles
-        requestAnimationFrame(() => {
-            const currentGridParams = getCurrentGridParams();
-            if (!currentGridParams) {
-                console.error("No se pudieron obtener los parámetros del grid después de cargar.");
-                return;
-            }
-
-            // Verificar que los parámetros del grid coincidan
-            if (config.grid.size) {
-                const loadedSize = config.grid.size;
-                const currentSize = calculateGridSize();
-                console.log('Tamaño del grid cargado:', loadedSize);
-                console.log('Tamaño del grid actual:', currentSize);
-            }
-
-             config.panels.forEach(panelInfo => {
-                 const panelData = {
-                     group: null,
-                     minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
-                    maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
-                    orderNumber: panelInfo.orderNumber,
-                    showOrderNumber: panelInfo.showOrderNumber,
-                    hasText: panelInfo.behavior?.hasText || false
-                };
-
-                 updatePanelGeometryAndPosition(panelData, currentGridParams);
-                
-                 if(panelData.group) {
-                     scene.add(panelData.group);
-                     panels.push(panelData);
-
-                    // Restaurar comportamiento del panel
-                    if (panelInfo.behavior) {
-                        if (panelInfo.behavior.hasText) {
-                            panelData.hasText = true;
-                            // Inicializar el estado del texto primero
-                            const textState = {
-                                text: panelInfo.behavior.textContent,
-                                lines: panelInfo.behavior.messageBuffer,
-                                maxCharsPerLine: panelInfo.behavior.maxLines,
-                                cursorPosition: 0,
-                                isEditing: false,
-                                scrollOffset: 0
-                            };
-                            panelTextState.set(panelData, textState);
-                            
-                            // Luego crear y establecer el texto
-                            createPanelText(panelData, currentGridParams.cellSize);
-                            setPanelText(panelData, panelInfo.behavior.textContent, currentGridParams.cellSize);
-                        }
-
-                        if (panelInfo.behavior.isGATCActive) {
-                            handleGATCCommand({ appendChild: () => {} }, panelData);
-                        }
-
-                        if (panelInfo.behavior.modelData) {
-                            const { modelUrl, isRotating, rotationSpeed } = panelInfo.behavior.modelData;
-                            loadModelToPanel(panelData, modelUrl, currentGridParams.cellSize).then(() => {
-                                if (isRotating) {
-                                    toggleModelRotation(panelData);
-                                    if (rotationSpeed) {
-                                        setModelRotationSpeed(panelData, rotationSpeed);
-                                    }
-                                }
-                            });
-                        }
+        for (const location of locations) {
+            for (let i = 1; i <= 10; i++) {
+                try {
+                    const response = await fetch(`${location}/config${i}.json`);
+                    if (response.ok) {
+                        const configData = await response.json();
+                        console.log(`Cargando configuración desde ${location}/config${i}.json`);
+                        applyConfigurationFromData(configData);
+                        return true;
                     }
+                } catch (error) {
+                    continue; // Continuar con el siguiente archivo si este no existe
+                }
+            }
+        }
+        
+        console.log('No se encontraron archivos de configuración en ninguna ubicación');
+        return false;
+    } catch (error) {
+        console.error('Error al cargar la configuración inicial:', error);
+        return false;
+    }
+}
 
-                    // Restaurar selección
-                    if (panelInfo.selected) {
-                        panelData.selected = true;
-                        updatePanelColor(panelData);
+// Función para asegurar que existan las carpetas de configuración
+async function ensureConfigDirectories() {
+    try {
+        // Crear carpeta configs si no existe
+        await run_terminal_cmd({
+            command: 'mkdir -p configs dist/configs',
+            is_background: false,
+            explanation: 'Creando directorios de configuración'
+        });
+    } catch (error) {
+        console.error('Error al crear directorios de configuración:', error);
+    }
+}
+
+// Modificar la función de carga para usar ambas ubicaciones
+function loadConfiguration() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
+    fileInput.style.display = 'none';
+    
+    fileInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const configData = JSON.parse(e.target.result);
+                applyConfigurationFromData(configData);
+                
+                // Encontrar siguiente número disponible
+                let configNumber = 1;
+                while (true) {
+                    try {
+                        const response = await fetch(`./configs/config${configNumber}.json`);
+                        if (!response.ok) break;
+                        configNumber++;
+                    } catch {
+                        break;
                     }
                 }
-            });
 
-            // Ajustar la cámara después de recrear todo
-            adjustCameraToGrid();
-        });
-
-        console.log('Configuración cargada desde localStorage.');
-    } catch (error) {
-        console.error('Error al cargar configuración:', error);
-    }
+                // Guardar en ambas ubicaciones
+                const blob = new Blob([JSON.stringify(configData, null, 2)], { type: 'application/json' });
+                try {
+                    await fetch(`./configs/config${configNumber}.json`, {
+                        method: 'PUT',
+                        body: blob
+                    });
+                    await fetch(`./dist/configs/config${configNumber}.json`, {
+                        method: 'PUT',
+                        body: blob
+                    });
+                    console.log(`Configuración guardada como config${configNumber}.json en ambas ubicaciones`);
+                } catch (error) {
+                    console.error('Error al guardar en alguna ubicación:', error);
+                }
+                
+            } catch (error) {
+                console.error('Error al cargar la configuración:', error);
+            }
+        };
+        reader.readAsText(file);
+    });
+    
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    document.body.removeChild(fileInput);
 }
+
+// Modificar la inicialización para asegurar que existan las carpetas
+window.addEventListener('load', async () => {
+    await ensureConfigDirectories();
+    
+    initTerminalConsole();
+    controlsVisible = false;
+    toggleControlPanels(false);
+    
+    // Cargar la primera configuración disponible
+    loadInitialConfiguration().then(loaded => {
+        if (!loaded) {
+            console.log('No se encontró configuración inicial, iniciando con configuración por defecto');
+        }
+    });
+});
 
 // Función para descargar la configuración actual como archivo JSON
 function downloadConfiguration() {
@@ -2885,7 +2852,7 @@ function animateGrid() {
         currentGrid.scale.set(newScale, newScale, newScale);
         
         // Animar opacidad del borde
-        const borderOpacity = THREE.MathUtils.lerp(0, gridAnimationProps.borderOpacity, gridAnimationProgress);
+        const borderOpacity = THREE.MathUtils.lerp(0, 1.0, gridAnimationProgress);
         borderGroup.children.forEach(line => {
             line.material.opacity = borderOpacity;
         });
@@ -2897,13 +2864,28 @@ function animateGrid() {
             console.log("Paso 1 de animación completado");
         }
     }
-    // Paso 1: Mostrar subdivisiones
+    // Paso 1: Mostrar subdivisiones y bajar opacidad a 0.9
     else if (gridAnimationStep === 1) {
         gridAnimationProgress += 0.03;
         
-        // Aumentar la opacidad de las líneas internas gradualmente
-        const linesOpacity = THREE.MathUtils.lerp(0, 1, gridAnimationProgress);
+        // Aumentar la opacidad de las líneas internas gradualmente y luego bajar a 0.9
+        const progress = Math.min(1, gridAnimationProgress * 1.5); // Acelerar un poco la transición
+        let linesOpacity;
+        
+        if (progress < 0.7) {
+            // Primera fase: subir a 1.0
+            linesOpacity = THREE.MathUtils.lerp(0, 1.0, progress / 0.7);
+        } else {
+            // Segunda fase: bajar a 0.9
+            linesOpacity = THREE.MathUtils.lerp(1.0, 0.9, (progress - 0.7) / 0.3);
+        }
+        
+        // Aplicar opacidad a todas las líneas
         linesGroup.children.forEach(line => {
+            line.material.opacity = linesOpacity;
+        });
+        
+        borderGroup.children.forEach(line => {
             line.material.opacity = linesOpacity;
         });
         
@@ -3875,6 +3857,9 @@ function processTerminalCommand(command) {
             ).join('<br>');
             output.appendChild(indexDiv);
             break;
+        case 'pass':
+            handlePassCommand(output);
+            break;
         default:
             showError(`Comando desconocido: ${cmd}. Escribe 'help' para ver comandos disponibles.`, output);
     }
@@ -3905,6 +3890,7 @@ function showHelp(output) {
         <div style="margin-top: 10px;"><b>Texto y Secuencias:</b></div>
         - txt - Inicia modo de edición de texto en el panel seleccionado
         - txt clear - Limpia el texto del panel seleccionado
+        - pass - Crea un campo de texto seguro (solo muestra asteriscos)
         - gtac - Activa secuencia aleatoria de GATC en el panel seleccionado
         - splice - Inicia proceso de empalme genético con barra de progreso
         
@@ -4204,6 +4190,9 @@ function handleTextCommand(args, output) {
         showError('No se pudo obtener la configuración del grid', output);
         return;
     }
+
+    // Ocultar la consola terminal
+    toggleTerminal(false);
     
     // Marcar el panel como contenedor de texto
     panel.hasText = true;
@@ -4214,23 +4203,56 @@ function handleTextCommand(args, output) {
     // Activar modo de edición
     startTextEditing(panel, currentGridParams.cellSize);
     
-    // Agregar listeners de teclado
-    const handleKeyPress = (event) => {
-        handleTextInput(panel, event, currentGridParams.cellSize);
-    };
+    // Variable para rastrear si estamos en modo de edición
+    let isEditing = true;
     
-    const handleEscape = (event) => {
-        if (event.key === 'Escape') {
-            stopTextEditing(panel);
-            document.removeEventListener('keypress', handleKeyPress);
-            document.removeEventListener('keydown', handleEscape);
+    // Función para manejar las teclas durante la edición
+    const handleKeyPress = (event) => {
+        // Si no estamos en modo edición, ignorar el evento
+        if (!isEditing) return;
+        
+        // Prevenir que las teclas afecten a otros elementos
+        event.stopPropagation();
+        
+        // Solo procesar teclas imprimibles en keypress
+        if (event.type === 'keypress' && event.key.length === 1) {
+            // Manejar la entrada de texto
+            handleTextInput(panel, event, currentGridParams.cellSize);
+        }
+        // Procesar teclas especiales en keydown
+        else if (event.type === 'keydown' && (event.key === 'Backspace' || event.key === 'Delete' || event.key === 'Enter')) {
+            handleTextInput(panel, event, currentGridParams.cellSize);
         }
     };
     
-    document.addEventListener('keypress', handleKeyPress);
-    document.addEventListener('keydown', handleEscape);
+    // Función para manejar la tecla Escape
+    const handleEscape = (event) => {
+        if (event.key === 'Escape' && isEditing) {
+            isEditing = false;
+            
+            // Remover los event listeners
+            document.removeEventListener('keypress', handleKeyPress, true);
+            document.removeEventListener('keydown', handleKeyPress, true);
+            document.removeEventListener('keydown', handleEscape, true);
+            
+            // Detener la edición
+            stopTextEditing(panel);
+            
+            // Mostrar la consola nuevamente
+            toggleTerminal(true);
+            
+            // Mostrar mensaje de confirmación
+            const terminalOutput = document.getElementById('terminal-output');
+            if (terminalOutput) {
+                showSuccess('Edición de texto finalizada', terminalOutput);
+            }
+        }
+    };
     
-    showSuccess('Modo de edición de texto activado. Presione ESC para salir.', output);
+    // Agregar event listeners con captura
+    document.addEventListener('keypress', handleKeyPress, true);
+    document.addEventListener('keydown', handleKeyPress, true); // Solo para teclas especiales
+    document.addEventListener('keydown', handleEscape, true);
 }
 
 // Exportar funciones para controlar los efectos desde la consola
@@ -4625,23 +4647,8 @@ async function handleModelCommand(args, output) {
     const panel = selectedPanels[0];
     const modelName = args[0].toLowerCase();
     
-    // Mapeo de modelos disponibles y sus rutas
-    const modelPaths = {
-        'axolotl': '/models/axolotl.obj',
-        'dna': '/models/dna.obj',
-        'protein': '/models/protein.obj',
-        'cell': '/models/cell.obj',
-        'virus': '/models/virus.obj',
-        'bacteria': '/models/bacteria.obj'
-    };
-
-    // Verificar si el modelo existe
-    if (!modelPaths[modelName]) {
-        showError(`Modelo "${modelName}" no encontrado. Modelos disponibles: ${Object.keys(modelPaths).join(', ')}`, output);
-        return;
-    }
-
-    const modelUrl = modelPaths[modelName];
+    // Construir la ruta relativa correcta desde la raíz del proyecto
+    const modelUrl = `public/models/${modelName}.obj`;
     
     try {
         // Mostrar mensaje de carga
@@ -4649,6 +4656,7 @@ async function handleModelCommand(args, output) {
         loadingMessage.textContent = `Cargando modelo ${modelName}...`;
         output.appendChild(loadingMessage);
 
+        // Intentar cargar el modelo
         const { loadModelToPanel } = await import('./panelModel.js');
         const success = await loadModelToPanel(panel, modelUrl, currentGrid.userData.cellSize);
         
@@ -4676,7 +4684,7 @@ async function handleModelCommand(args, output) {
         } else {
             // Actualizar mensaje de carga a error
             loadingMessage.className = 'terminal-error';
-            loadingMessage.textContent = `Error al cargar el modelo ${modelName}`;
+            loadingMessage.textContent = `Error al cargar el modelo ${modelName}. Verifique que el archivo exista en public/models/`;
         }
     } catch (error) {
         showError(`Error al cargar el modelo: ${error.message}`, output);
@@ -5547,4 +5555,84 @@ function reindexPanels() {
     panelOrderCounter = panels.length + 1;
     
     return needsUpdate ? panels.length : 0;
+}
+
+// Función para manejar el comando pass (campo de contraseña)
+function handlePassCommand(output) {
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para crear el campo de contraseña', output);
+        return;
+    }
+    
+    if (selectedPanels.length > 1) {
+        showError('Seleccione solo un panel para el campo de contraseña', output);
+        return;
+    }
+    
+    const panel = selectedPanels[0];
+    const currentGridParams = getCurrentGridParams();
+    
+    if (!currentGridParams) {
+        showError('No se pudo obtener la configuración del grid', output);
+        return;
+    }
+    
+    // Marcar el panel como contenedor de texto
+    panel.hasText = true;
+    
+    // Crear o actualizar el contenedor de texto
+    createPanelText(panel, currentGridParams.cellSize);
+    
+    // Configurar el estado del texto para modo contraseña
+    const state = panelTextState.get(panel);
+    if (state) {
+        state.isPassword = true; // Marcar como campo de contraseña
+        state.realText = ''; // Almacenar el texto real
+        state.lines = [''];  // Inicializar con una línea vacía
+        state.cursorPosition = 0;
+    }
+    
+    // Activar modo de edición
+    startTextEditing(panel, currentGridParams.cellSize);
+    
+    // Agregar listeners de teclado
+    const handleKeyPress = (event) => {
+        if (!currentEditingPanel) return;
+        
+        // Si la tecla es un carácter imprimible
+        if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+            event.preventDefault();
+            
+            // Guardar el carácter real en el estado
+            const state = panelTextState.get(currentEditingPanel);
+            if (state) {
+                state.realText = (state.realText || '') + event.key;
+            }
+            
+            // Dejar que handleTextInput maneje la visualización del asterisco
+            handleTextInput(currentEditingPanel, event, currentGridParams.cellSize);
+        } else {
+            // Para teclas especiales (Backspace, etc.), actualizar también el texto real
+            if (event.key === 'Backspace' && state && state.realText) {
+                state.realText = state.realText.slice(0, -1);
+            }
+            handleTextInput(currentEditingPanel, event, currentGridParams.cellSize);
+        }
+    };
+    
+    const handleEscape = (event) => {
+        if (event.key === 'Escape' && currentEditingPanel) {
+            document.removeEventListener('keydown', handleKeyPress);
+            document.removeEventListener('keydown', handleEscape);
+            stopTextEditing(currentEditingPanel);
+            currentEditingPanel = null;
+        }
+    };
+    
+    document.addEventListener('keydown', handleKeyPress);
+    document.addEventListener('keydown', handleEscape);
+    
+    showSuccess('Campo de contraseña creado. Presione ESC para finalizar.', output);
 }

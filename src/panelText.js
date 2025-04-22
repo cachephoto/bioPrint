@@ -481,11 +481,19 @@ export function createPanelText(panel, gridSize) {
             isEditing: false,
             maxCharsPerLine: 0,
             scrollOffset: 0,
-            textMeshes: [] // Almacenar referencias a los meshes de texto
+            textMeshes: [], // Almacenar referencias a los meshes de texto
+            isPassword: false // Nuevo flag para modo contraseña
         });
     }
 
     const state = panelTextState.get(panel);
+    
+    // Si es modo contraseña, mostrar asteriscos pero mantener el texto real
+    let displayLines = state.lines;
+    if (state.isPassword) {
+        // Convertir cada carácter a asterisco para mostrar
+        displayLines = state.lines.map(line => '*'.repeat(line.length));
+    }
     
     // Asegurar que panel.gridSize esté definido
     if (!panel.gridSize) {
@@ -1049,25 +1057,21 @@ export function handleTextInput(panel, event, gridSize) {
 
     switch (event.key) {
         case 'Enter':
-            // --- Inicio: Lógica de Auto-Indentación ---
-            // 1. Encontrar la línea actual y la indentación ANTES de insertar el \n
-            const { currentLineIndex: oldLineIndex } = calculateCursorPosition(state);
-            const currentLine = state.lines[oldLineIndex] || '';
-            const leadingWhitespaceMatch = currentLine.match(/^\s*/);
-            const leadingWhitespace = leadingWhitespaceMatch ? leadingWhitespaceMatch[0] : '';
+            if (!state.isPassword) { // No permitir múltiples líneas en modo contraseña
+                // --- Inicio: Lógica de Auto-Indentación ---
+                const { currentLineIndex: oldLineIndex } = calculateCursorPosition(state);
+                const currentLine = state.lines[oldLineIndex] || '';
+                const leadingWhitespaceMatch = currentLine.match(/^\s*/);
+                const leadingWhitespace = leadingWhitespaceMatch ? leadingWhitespaceMatch[0] : '';
 
-            // 2. Insertar salto de línea Y la indentación de la línea anterior
-            const beforeCursor = currentText.substring(0, state.cursorPosition);
-            const afterCursor = currentText.substring(state.cursorPosition);
+                const beforeCursor = currentText.substring(0, state.cursorPosition);
+                const afterCursor = currentText.substring(state.cursorPosition);
 
-            // 3. Asegurarnos de que el texto después del cursor se mantenga en su posición relativa
-            currentText = beforeCursor + '\n' + leadingWhitespace + afterCursor;
-            state.lines = currentText.split('\n');
-
-            // 4. Actualizar posición del cursor para que esté DESPUÉS de la indentación en la nueva línea
-            state.cursorPosition = beforeCursor.length + 1 + leadingWhitespace.length;
-            // --- Fin: Lógica de Auto-Indentación ---
-            textChanged = true;
+                currentText = beforeCursor + '\n' + leadingWhitespace + afterCursor;
+                state.lines = currentText.split('\n');
+                state.cursorPosition = beforeCursor.length + 1 + leadingWhitespace.length;
+                textChanged = true;
+            }
             break;
             
         case 'Backspace':
@@ -1095,85 +1099,86 @@ export function handleTextInput(panel, event, gridSize) {
             break;
             
         case 'ArrowUp':
-            // Navegar hacia arriba
-            let currentLineIndex = 0;
-            let positionInLine = 0;
-            let charsBeforeLine = 0;
-            
-            // Encontrar la línea actual y posición en esa línea
-            for (let i = 0; i < state.lines.length; i++) {
-                if (charsBeforeLine + state.lines[i].length >= state.cursorPosition) {
-                    currentLineIndex = i;
-                    positionInLine = state.cursorPosition - charsBeforeLine;
-                    break;
-                }
-                charsBeforeLine += state.lines[i].length + 1; // +1 por el salto de línea
-            }
-            
-            // Ir a la línea anterior si es posible
-            if (currentLineIndex > 0) {
-                const prevLineLength = state.lines[currentLineIndex - 1].length;
-                const newPosInLine = Math.min(positionInLine, prevLineLength);
-                state.cursorPosition = charsBeforeLine - state.lines[currentLineIndex - 1].length - 1 + newPosInLine;
-                textChanged = true;
+            if (!state.isPassword) { // No navegar entre líneas en modo contraseña
+                // Navegar hacia arriba
+                let currentLineIndex = 0;
+                let positionInLine = 0;
+                let charsBeforeLine = 0;
                 
-                // Ajustar desplazamiento si es necesario
-                if (currentLineIndex - 1 < state.scrollOffset) {
-                    state.scrollOffset = Math.max(0, currentLineIndex - 1);
+                // Encontrar la línea actual y posición en esa línea
+                for (let i = 0; i < state.lines.length; i++) {
+                    if (charsBeforeLine + state.lines[i].length >= state.cursorPosition) {
+                        currentLineIndex = i;
+                        positionInLine = state.cursorPosition - charsBeforeLine;
+                        break;
+                    }
+                    charsBeforeLine += state.lines[i].length + 1; // +1 por el salto de línea
                 }
-            } else if (state.scrollOffset > 0) {
-                // Si estamos en la primera línea visible pero hay líneas arriba, desplazar
-                state.scrollOffset = Math.max(0, state.scrollOffset - 1);
-                textChanged = true;
+                
+                // Ir a la línea anterior si es posible
+                if (currentLineIndex > 0) {
+                    const prevLineLength = state.lines[currentLineIndex - 1].length;
+                    const newPosInLine = Math.min(positionInLine, prevLineLength);
+                    state.cursorPosition = charsBeforeLine - state.lines[currentLineIndex - 1].length - 1 + newPosInLine;
+                    textChanged = true;
+                    
+                    // Ajustar desplazamiento si es necesario
+                    if (currentLineIndex - 1 < state.scrollOffset) {
+                        state.scrollOffset = Math.max(0, currentLineIndex - 1);
+                    }
+                }
             }
             break;
             
         case 'ArrowDown':
-            // Navegar hacia abajo
-            let downLineIndex = 0;
-            let downPositionInLine = 0;
-            let downCharsBeforeLine = 0;
-            
-            // Encontrar la línea actual y posición en esa línea
-            for (let i = 0; i < state.lines.length; i++) {
-                if (downCharsBeforeLine + state.lines[i].length >= state.cursorPosition) {
-                    downLineIndex = i;
-                    downPositionInLine = state.cursorPosition - downCharsBeforeLine;
-                    break;
+            if (!state.isPassword) { // No navegar entre líneas en modo contraseña
+                // Navegar hacia abajo
+                let downLineIndex = 0;
+                let downPositionInLine = 0;
+                let downCharsBeforeLine = 0;
+                
+                // Encontrar la línea actual y posición en esa línea
+                for (let i = 0; i < state.lines.length; i++) {
+                    if (downCharsBeforeLine + state.lines[i].length >= state.cursorPosition) {
+                        downLineIndex = i;
+                        downPositionInLine = state.cursorPosition - downCharsBeforeLine;
+                        break;
+                    }
+                    downCharsBeforeLine += state.lines[i].length + 1; // +1 por el salto de línea
                 }
-                downCharsBeforeLine += state.lines[i].length + 1; // +1 por el salto de línea
-            }
-            
-            // Ir a la línea siguiente si es posible
-            if (downLineIndex < state.lines.length - 1) {
-                const nextLineLength = state.lines[downLineIndex + 1].length;
-                const newPosInLine = Math.min(downPositionInLine, nextLineLength);
                 
-                // Calcular nueva posición del cursor
-                let newCursorPos = downCharsBeforeLine + state.lines[downLineIndex].length + 1 + newPosInLine;
-                state.cursorPosition = newCursorPos;
-                textChanged = true;
-                
-                // Calcular si necesitamos desplazar para ver la línea
-                const panelHeight = (panel.maxCellIndex.y - panel.minCellIndex.y + 1);
-                const textAreaHeight = panelHeight - (2 * TEXT_CONFIG.padding);
-                const maxVisibleLines = Math.floor(textAreaHeight / TEXT_CONFIG.lineHeight);
-                
-                if (downLineIndex + 1 >= state.scrollOffset + maxVisibleLines) {
-                    state.scrollOffset = downLineIndex + 2 - maxVisibleLines;
+                // Ir a la línea siguiente si es posible
+                if (downLineIndex < state.lines.length - 1) {
+                    const nextLineLength = state.lines[downLineIndex + 1].length;
+                    const newPosInLine = Math.min(downPositionInLine, nextLineLength);
+                    
+                    // Calcular nueva posición del cursor
+                    let newCursorPos = downCharsBeforeLine + state.lines[downLineIndex].length + 1 + newPosInLine;
+                    state.cursorPosition = newCursorPos;
+                    textChanged = true;
+                    
+                    // Calcular si necesitamos desplazar para ver la línea
+                    const panelHeight = (panel.maxCellIndex.y - panel.minCellIndex.y + 1);
+                    const textAreaHeight = panelHeight - (2 * TEXT_CONFIG.padding);
+                    const maxVisibleLines = Math.floor(textAreaHeight / TEXT_CONFIG.lineHeight);
+                    
+                    if (downLineIndex + 1 >= state.scrollOffset + maxVisibleLines) {
+                        state.scrollOffset = downLineIndex + 2 - maxVisibleLines;
+                    }
+                } else if (state.scrollOffset + maxVisibleLines < state.lines.length) {
+                    // Si estamos en la última línea visible pero hay más líneas abajo, desplazar
+                    state.scrollOffset += 1;
+                    textChanged = true;
                 }
-            } else if (state.scrollOffset + maxVisibleLines < state.lines.length) {
-                // Si estamos en la última línea visible pero hay más líneas abajo, desplazar
-                state.scrollOffset += 1;
-                textChanged = true;
             }
             break;
             
         default:
             if (event.key.length === 1) {
-                // Insertar el carácter
+                // Si es modo contraseña, siempre insertar asterisco
+                const charToInsert = state.isPassword ? '*' : event.key;
                 currentText = currentText.slice(0, state.cursorPosition) +
-                            event.key +
+                            charToInsert +
                             currentText.slice(state.cursorPosition);
                 state.lines = currentText.split('\n');
                 state.cursorPosition++;
@@ -1291,7 +1296,10 @@ function preventTerminalInput(event) {
 // Obtener texto del panel
 export function getPanelText(panel) {
     const state = panelTextState.get(panel);
-    return state ? state.lines.join('\n') : '';
+    if (!state) return '';
+    
+    // Si es modo contraseña, devolver el texto real
+    return state.lines.join('\n');
 }
 
 // Función para limpiar recursos cuando ya no necesitamos el sistema
