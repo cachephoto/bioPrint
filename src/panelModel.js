@@ -21,24 +21,16 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
             model = modelCache.get(modelUrl).clone();
         } else {
             try {
-                // Cargar el modelo usando fetch
                 const response = await fetch(modelUrl);
                 if (!response.ok) {
-                    throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
+                    throw new Error(`Error al cargar el modelo: ${response.status} ${response.statusText}`);
                 }
                 const modelText = await response.text();
-                
-                // Intentar parsear el modelo
-                try {
-                    model = loader.parse(modelText);
-                    modelCache.set(modelUrl, model.clone());
-                } catch (parseError) {
-                    console.error('Error al parsear el modelo:', parseError);
-                    throw new Error(`No se pudo parsear el modelo. Verifique que el archivo sea un OBJ válido.`);
-                }
-            } catch (fetchError) {
-                console.error('Error al cargar el modelo:', fetchError);
-                throw new Error(`No se pudo cargar el modelo desde ${modelUrl}. Verifique que el archivo exista y sea accesible.`);
+                model = loader.parse(modelText);
+                modelCache.set(modelUrl, model.clone());
+            } catch (error) {
+                console.error('Error al cargar el modelo:', error);
+                throw new Error(`No se pudo cargar el modelo desde ${modelUrl}`);
             }
         }
 
