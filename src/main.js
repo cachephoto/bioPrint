@@ -15,6 +15,7 @@ import {
 import { initBioFX, setColorEffect, render as renderBioFX, setBloomEffect } from './bioFX.js';
 import { animateModels, loadModelToPanel, cleanupPanelModels, toggleModelRotation, setModelRotationSpeed, preserveModel, restoreModel } from './panelModel.js';
 import { loadGenomToPanel, animateGenoms, cleanupGenomModels, loadGTACToPanel } from './genomModel.js';
+import { initBioKeyb, createKeyboard } from './bioKeyb.js';
 
 // Manejar el splash screen
 document.addEventListener('DOMContentLoaded', () => {
@@ -2556,6 +2557,9 @@ function loadConfiguration() {
         const configString = localStorage.getItem('gridConfig');
         if (!configString) {
             console.log('No hay configuración guardada en localStorage.');
+            
+            // Si no hay configuración guardada, cargar el teclado bioKeyb automáticamente
+            loadBioKeyb();
             return;
         }
 
@@ -2706,11 +2710,20 @@ function loadConfiguration() {
 
             // Ajustar la cámara después de recrear todo
             adjustCameraToGrid();
+            
+            // Después de cargar la configuración, verificar si se debe cargar el teclado bioKeyb
+            const shouldLoadKeyboard = !panels.length; // Cargar solo si no hay paneles
+            if (shouldLoadKeyboard) {
+                loadBioKeyb();
+            }
         });
 
         console.log('Configuración cargada desde localStorage.');
     } catch (error) {
         console.error('Error al cargar configuración:', error);
+        
+        // Si hay error al cargar, intentar cargar el teclado de todos modos
+        loadBioKeyb();
     }
 }
 
@@ -5654,4 +5667,52 @@ function handlePassCommand(output) {
     document.addEventListener('keydown', handleEscape);
     
     showSuccess('Campo de contraseña creado. Presione ESC para finalizar.', output);
+}
+
+// Función para cargar el teclado bioKeyb
+function loadBioKeyb() {
+    console.log("Cargando teclado bioKeyb...");
+    const currentGridParams = getCurrentGridParams();
+    if (!currentGridParams) {
+        console.error("No se pudieron obtener los parámetros del grid.");
+        return;
+    }
+    
+    // Obtener los paneles del teclado
+    const keyboardPanels = createKeyboard();
+    
+    // Crear cada panel del teclado
+    keyboardPanels.forEach(panelInfo => {
+        const panelData = {
+            group: null,
+            minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
+            maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
+            orderNumber: panelInfo.orderNumber,
+            showOrderNumber: true,
+            hasText: false
+        };
+
+        updatePanelGeometryAndPosition(panelData, currentGridParams);
+        
+        if(panelData.group) {
+            scene.add(panelData.group);
+            panels.push(panelData);
+            
+            // Mostrar el número de la tecla
+            createPanelOrderLabel(panelData);
+            
+            // Animar aparición
+            panelData.flashProgress = 0;
+            panelData.shouldFlash = true;
+            panelsFlashing.add(panelData);
+        }
+    });
+    
+    console.log(`Teclado bioKeyb cargado: ${keyboardPanels.length} teclas creadas.`);
+    
+    // Centrar el teclado en pantalla
+    centerGridInCamera();
+    
+    // Guardar la configuración actual
+    saveConfiguration();
 }

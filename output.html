@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <script type="module">import { injectIntoGlobalHook } from "/biocorp/@react-refresh"
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;</script>
+
+    <script type="module" src="/biocorp/@vite/client"></script>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta http-equiv="Content-Security-Policy" 
+      content="default-src 'self';
+               script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com;
+               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com;
+               font-src 'self' https://fonts.gstatic.com data:;
+               img-src 'self' data: blob:;
+               connect-src 'self' https://indie.com.mx https://*.githubusercontent.com;
+               frame-src 'none';
+               object-src 'none';">
+    <title>BioPrint - BioCorp Industries</title>
+    <meta name="description" content="Sistema de bioimpresión avanzado por BioCorp Industries">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap">
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #000;
+        position: fixed;
+        touch-action: none;
+      }
+      body {
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: none;
+      }
+      canvas {
+        display: block;
+        touch-action: none;
+      }
+      #selection-box {
+        position: absolute;
+        border: 1px dashed #fff;
+        background-color: rgba(255, 255, 255, 0.2);
+        pointer-events: none; /* Para que no interfiera con los clicks */
+        display: none; /* Oculto por defecto */
+      }
+      #controls {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 100;
+        background-color: rgba(20, 20, 20, 0.9);
+        padding: 15px;
+        border-radius: 8px;
+        display: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        font-family: 'VT323', monospace;
+      }
+      #controls button {
+        display: block;
+        margin-bottom: 5px;
+        padding: 8px 15px;
+        cursor: pointer;
+        background-color: #222;
+        color: #0f0;
+        border: 1px solid #0f0;
+        border-radius: 4px;
+        font-family: inherit;
+        width: 100%;
+        text-align: left;
+      }
+      #controls button.toggled-off {
+        opacity: 0.6;
+        background-color: #222;
+        color: #666;
+        border: 1px solid #666;
+      }
+      #controls button.hidden {
+        display: none;
+      }
+      #terminal-console {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        width: 300px;
+        background-color: rgba(0, 0, 0, 0.8);
+        border: 1px solid #444;
+        border-radius: 5px;
+        color: #fff;
+        font-family: monospace;
+        font-size: 14px;
+        padding: 10px;
+        z-index: 1000;
+        display: none;
+      }
+      #terminal-input {
+        width: 100%;
+        background-color: transparent;
+        border: none;
+        border-top: 1px solid #444;
+        color: #fff;
+        font-family: monospace;
+        font-size: 14px;
+        padding: 5px 0;
+        margin-top: 5px;
+        outline: none;
+      }
+      #terminal-output {
+        max-height: 150px;
+        overflow-y: auto;
+        margin-bottom: 5px;
+      }
+      .terminal-prompt {
+        color: #0f0;
+      }
+      .terminal-error {
+        color: #f00;
+      }
+      .terminal-success {
+        color: #0f0;
+      }
+      #splash-screen {
+        position: fixed;
+        top: 60;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #000;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: flex-start;
+        z-index: 9999;
+        opacity: 1;
+        transition: opacity 0.3s ease-in-out;
+        padding: 50px;
+        font-family: 'VT323', 'Courier New', monospace;
+        color: #fff;
+      }
+      #splash-logo {
+        max-width: 777px;
+        margin-bottom: 10px;
+
+      }
+      #splash-version {
+        margin-top: 0px;
+        font-size: 26px;
+        letter-spacing: 0px;
+        line-height: 1.4;
+        text-align: left;
+        white-space: pre-line;
+        font-family: 'VT323', 'Courier New', monospace;
+        text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.1);
+      }
+      #loading-dots {
+        margin-top: 20px;
+        letter-spacing: 2px;
+        font-family: 'VT323', 'Courier New', monospace;
+        font-weight: bold;
+        font-size: 24px;
+      }
+      .app-container {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+      }
+      #ui-controls {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        background-color: rgba(20, 20, 20, 0.9);
+        padding: 15px;
+        border-radius: 8px;
+        z-index: 100;
+        font-family: 'VT323', monospace;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        min-width: 250px;
+      }
+
+      #ui-controls .state-button {
+        width: 30px;
+        height: 30px;
+        background-color: #222;
+        color: #0f0;
+        border: 1px solid #0f0;
+        border-radius: 4px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+        font-size: 14px;
+        position: relative;
+        transition: background-color 0.2s;
+      }
+
+      #ui-controls .state-button:hover {
+        background-color: #333;
+      }
+
+      #ui-controls .state-indicator {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: #0f0;
+      }
+
+      #ui-controls #clear-button {
+        padding: 8px 16px;
+        background-color: #222;
+        color: #f00;
+        border: 1px solid #f00;
+        border-radius: 4px;
+        cursor: pointer;
+        user-select: none;
+        font-size: 14px;
+        margin-top: 10px;
+        transition: background-color 0.2s;
+      }
+
+      #ui-controls #clear-button:hover {
+        background-color: #333;
+      }
+
+      #ui-controls .state-buttons-legend {
+        color: #aaa;
+        margin-bottom: 10px;
+        text-align: center;
+        font-size: 14px;
+      }
+
+      /* Estilos para el panel de bioFX */
+      #bioFX-panel {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(20, 20, 20, 0.9);
+        padding: 15px;
+        border-radius: 8px;
+        color: white;
+        font-family: 'VT323', monospace;
+        z-index: 100;
+        display: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        min-width: 250px;
+      }
+
+      #bioFX-panel h3 {
+        margin: 0 0 15px 0;
+        font-size: 20px;
+        text-align: center;
+        color: #0f0;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      #bioFX-panel .section-title {
+        color: #0f0;
+        margin: 15px 0 10px 0;
+        font-size: 16px;
+        border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+        padding-bottom: 5px;
+      }
+
+      #bioFX-panel .control-group {
+        margin-bottom: 15px;
+      }
+
+      #bioFX-panel label {
+        display: block;
+        margin-bottom: 5px;
+        color: #aaa;
+      }
+
+      #bioFX-panel select {
+        width: 100%;
+        padding: 5px;
+        background-color: #222;
+        color: #0f0;
+        border: 1px solid #0f0;
+        border-radius: 4px;
+        font-family: inherit;
+        cursor: pointer;
+      }
+
+      #bioFX-panel input[type="color"] {
+        width: 100%;
+        height: 30px;
+        border: none;
+        border-radius: 4px;
+        background-color: #222;
+        cursor: pointer;
+      }
+
+      #bioFX-panel input[type="range"] {
+        width: 100%;
+        margin: 10px 0;
+        cursor: pointer;
+        -webkit-appearance: none;
+        background: #222;
+        height: 5px;
+        border-radius: 2px;
+      }
+
+      #bioFX-panel input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 15px;
+        height: 15px;
+        background: #0f0;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      #bioFX-panel .value-display {
+        color: #0f0;
+        font-size: 14px;
+        text-align: right;
+        margin-top: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Pantalla de inicio -->
+    <div id="splash-screen">
+      <img id="splash-logo" src="/biocorp/img/bioprint_logo.png" alt="biocorp Logo">
+      <div id="splash-version">
+        Versión 2.34.1519, Copyright (C) 2023 Ihtoa Ware Inc.
+        BIOS fecha: 21/11/2025 21:45:16
+        Press F2 para Setup de BioPrint
+        Press F8 para Menú Rápido 
+        Press F6 para Autodestrucción
+        Press F12 para Red Boot 
+        
+        Firmware BioPrint v3.5 (CTL+D en teclado serie)
+        
+        Desarrollado por Dr. Axolojuandalf & Dr. Boris Schmidt
+      </div>
+      <div id="loading-dots">Iniciando</div>
+    </div>
+    
+    <!-- Contenedor principal de la aplicación -->
+    <div class="app-container">
+      <div id="selection-box"></div>
+      <div id="controls" class="hidden">
+          <button id="save-config-btn">Guardar Config</button>
+          <button id="load-config-btn">Cargar Config</button>
+          <button id="clear-layout-btn">Limpiar Diseño</button>
+          <button id="toggle-numbers-btn" class="hidden">Mostrar Números</button>
+          <button id="download-config-btn">Descargar JSON</button>
+          <button id="upload-config-btn">Cargar JSON</button>
+          <input type="file" id="config-file-input" accept=".json" style="display: none;">
+      </div>
+      
+      <div id="terminal-console" class="hidden">
+          <div id="terminal-output"></div>
+          <input id="terminal-input" type="text" placeholder="Ingrese un comando..." />
+      </div>
+      <div id="bioFX-panel">
+        <h3>bioFX Controls</h3>
+        
+        <div class="section-title">Color Blend</div>
+        <div class="control-group">
+          <label for="bioFX-color">Color:</label>
+          <input type="color" id="bioFX-color" value="#0096ff">
+        </div>
+        <div class="control-group">
+          <label for="bioFX-blend-type">Blend Type:</label>
+          <select id="bioFX-blend-type">
+            <option value="0">Normal</option>
+            <option value="1" selected>Multiply</option>
+            <option value="2">Screen</option>
+            <option value="3">Overlay</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="bioFX-intensity">Color Intensity:</label>
+          <input type="range" id="bioFX-intensity" min="0" max="1" step="0.01" value="1.0">
+          <div class="value-display" id="bioFX-intensity-value">1.00</div>
+        </div>
+
+        <div class="section-title">Glow Effect</div>
+        <div class="control-group">
+          <label for="bioFX-glow">Glow Intensity:</label>
+          <input type="range" id="bioFX-glow" min="0" max="3" step="0.01" value="0.71">
+          <div class="value-display" id="bioFX-glow-value">0.71</div>
+        </div>
+        <div class="control-group">
+          <label for="bioFX-glow-radius">Glow Radius:</label>
+          <input type="range" id="bioFX-glow-radius" min="0" max="1" step="0.01" value="0.63">
+          <div class="value-display" id="bioFX-glow-radius-value">0.63</div>
+        </div>
+        <div class="control-group">
+          <label for="bioFX-glow-threshold">Glow Threshold:</label>
+          <input type="range" id="bioFX-glow-threshold" min="0" max="1" step="0.01" value="0.1">
+          <div class="value-display" id="bioFX-glow-threshold-value">0.10</div>
+        </div>
+      </div>
+    </div>
+    
+    <script type="module" src="/biocorp/src/main.js"></script>
+    <script>
+      const DOUBLE_TAP_DELAY = 200; // Reducido de 300ms a 200ms para doble tap más rápido
+    </script>
+  </body>
+</html>

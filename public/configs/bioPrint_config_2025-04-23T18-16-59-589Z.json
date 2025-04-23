@@ -1,0 +1,1092 @@
+{
+  "grid": {
+    "divisions": 50,
+    "size": {
+      "width": 48.35257082896117,
+      "height": 24,
+      "maxSize": 24,
+      "cellSize": 0.48,
+      "cellsX": 101,
+      "cellsY": 50,
+      "adjustedWidth": 48.48,
+      "adjustedHeight": 24
+    }
+  },
+  "panels": [
+    {
+      "minCellIndex": {
+        "x": 7,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 10,
+        "y": 15
+      },
+      "orderNumber": 1,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 12,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 13,
+        "y": 15
+      },
+      "orderNumber": 2,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 15,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 16,
+        "y": 15
+      },
+      "orderNumber": 3,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 18,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 19,
+        "y": 15
+      },
+      "orderNumber": 4,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 21,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 22,
+        "y": 15
+      },
+      "orderNumber": 5,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 24,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 25,
+        "y": 15
+      },
+      "orderNumber": 6,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 27,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 28,
+        "y": 15
+      },
+      "orderNumber": 7,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 30,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 31,
+        "y": 15
+      },
+      "orderNumber": 8,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 33,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 34,
+        "y": 15
+      },
+      "orderNumber": 9,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 36,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 37,
+        "y": 15
+      },
+      "orderNumber": 10,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 39,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 40,
+        "y": 15
+      },
+      "orderNumber": 11,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 42,
+        "y": 14
+      },
+      "maxCellIndex": {
+        "x": 45,
+        "y": 15
+      },
+      "orderNumber": 12,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 7,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 8,
+        "y": 12
+      },
+      "orderNumber": 13,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 10,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 11,
+        "y": 12
+      },
+      "orderNumber": 14,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 13,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 14,
+        "y": 12
+      },
+      "orderNumber": 15,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 16,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 17,
+        "y": 12
+      },
+      "orderNumber": 16,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 19,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 20,
+        "y": 12
+      },
+      "orderNumber": 17,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 22,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 23,
+        "y": 12
+      },
+      "orderNumber": 18,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 25,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 26,
+        "y": 12
+      },
+      "orderNumber": 19,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 28,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 29,
+        "y": 12
+      },
+      "orderNumber": 20,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 31,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 32,
+        "y": 12
+      },
+      "orderNumber": 21,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 34,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 35,
+        "y": 12
+      },
+      "orderNumber": 22,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 37,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 38,
+        "y": 12
+      },
+      "orderNumber": 23,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 40,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 41,
+        "y": 12
+      },
+      "orderNumber": 24,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 43,
+        "y": 11
+      },
+      "maxCellIndex": {
+        "x": 45,
+        "y": 12
+      },
+      "orderNumber": 25,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 7,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 9,
+        "y": 9
+      },
+      "orderNumber": 26,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 11,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 12,
+        "y": 9
+      },
+      "orderNumber": 27,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 14,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 15,
+        "y": 9
+      },
+      "orderNumber": 28,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 17,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 18,
+        "y": 9
+      },
+      "orderNumber": 29,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 20,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 21,
+        "y": 9
+      },
+      "orderNumber": 30,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 23,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 24,
+        "y": 9
+      },
+      "orderNumber": 31,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 26,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 27,
+        "y": 9
+      },
+      "orderNumber": 32,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 29,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 30,
+        "y": 9
+      },
+      "orderNumber": 33,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 32,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 33,
+        "y": 9
+      },
+      "orderNumber": 34,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 35,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 36,
+        "y": 9
+      },
+      "orderNumber": 35,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 38,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 39,
+        "y": 9
+      },
+      "orderNumber": 36,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 41,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 42,
+        "y": 9
+      },
+      "orderNumber": 37,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 44,
+        "y": 8
+      },
+      "maxCellIndex": {
+        "x": 45,
+        "y": 9
+      },
+      "orderNumber": 38,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 7,
+        "y": 5
+      },
+      "maxCellIndex": {
+        "x": 8,
+        "y": 6
+      },
+      "orderNumber": 39,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 10,
+        "y": 5
+      },
+      "maxCellIndex": {
+        "x": 11,
+        "y": 6
+      },
+      "orderNumber": 40,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 13,
+        "y": 5
+      },
+      "maxCellIndex": {
+        "x": 14,
+        "y": 6
+      },
+      "orderNumber": 41,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 16,
+        "y": 5
+      },
+      "maxCellIndex": {
+        "x": 30,
+        "y": 6
+      },
+      "orderNumber": 42,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 32,
+        "y": 5
+      },
+      "maxCellIndex": {
+        "x": 33,
+        "y": 6
+      },
+      "orderNumber": 43,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 35,
+        "y": 5
+      },
+      "maxCellIndex": {
+        "x": 36,
+        "y": 6
+      },
+      "orderNumber": 44,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 38,
+        "y": 5
+      },
+      "maxCellIndex": {
+        "x": 40,
+        "y": 6
+      },
+      "orderNumber": 45,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    },
+    {
+      "minCellIndex": {
+        "x": 42,
+        "y": 5
+      },
+      "maxCellIndex": {
+        "x": 45,
+        "y": 6
+      },
+      "orderNumber": 46,
+      "showOrderNumber": false,
+      "selected": false,
+      "behavior": {
+        "hasText": false,
+        "textContent": "",
+        "messageBuffer": [],
+        "maxLines": 0,
+        "isPassword": false,
+        "isGATCActive": false,
+        "modelData": null,
+        "genomData": null
+      }
+    }
+  ],
+  "cameraPosition": {
+    "x": 0.00005769774073528332,
+    "y": -0.0000667360625105069,
+    "z": 9.799425736645393
+  },
+  "cameraZoom": 1,
+  "date": "2025-04-23T18:16:59.585Z",
+  "bioFX": {
+    "color": 40447,
+    "blendType": 3,
+    "intensity": 0.33,
+    "glow": {
+      "intensity": 0.24,
+      "radius": 0.66,
+      "threshold": 0.18
+    }
+  }
+}
