@@ -30,7 +30,7 @@ const TOUCH_EVENTS = {
 };
 
 // Configuración de estilo
-const TEXT_CONFIG = {
+export const TEXT_CONFIG = {
     color: 0xffffff,
     cursorColor: 0xffffff,
     cursorBlinkRate: 530,
@@ -935,7 +935,7 @@ export function createPanelText(panel, gridSize) {
 }
 
 // Crear un mesh para un carácter individual
-function createCharacterMesh(char, gridSize, forCache = false, customFontSize = null) {
+export function createCharacterMesh(char, gridSize, forCache = false, customFontSize = null) {
     // Para contenedores pequeños, usar un tamaño de fuente adaptado al tamaño del panel
     let fontSize = customFontSize || TEXT_CONFIG.fontSize;
     

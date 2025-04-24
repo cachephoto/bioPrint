@@ -10,12 +10,13 @@ import {
     updatePanelText,
     cleanupPanelText,
     getPanelText,
-    panelTextState 
+    panelTextState,
+    TEXT_CONFIG // <--- Importar TEXT_CONFIG
 } from './panelText.js';
 import { initBioFX, setColorEffect, render as renderBioFX, setBloomEffect } from './bioFX.js';
 import { animateModels, loadModelToPanel, cleanupPanelModels, toggleModelRotation, setModelRotationSpeed, preserveModel, restoreModel } from './panelModel.js';
 import { loadGenomToPanel, animateGenoms, cleanupGenomModels, loadGTACToPanel } from './genomModel.js';
-import { initBioKeyb, createKeyboard } from './bioKeyb.js';
+import { initBioKeyb, createKeyboard, createKeyLabel } from './bioKeyb.js';
 
 // Manejar el splash screen
 document.addEventListener('DOMContentLoaded', () => {
@@ -76,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Variables para la animación de 24 cuadros
 let animationFrame = 0;
-const totalFrames = 24;
+const totalFrames = 18; // Cambiado de 24 a 18 para que 18 * 2 = 36
 let animationInterval = null;
 const initialZoom = 100; // Zoom inicial lejano
 const finalZoom = 10; // Zoom final cercano
@@ -133,10 +134,10 @@ function startGridAnimation24Frames() {
         // Si llegamos al último cuadro, detener animación
         if (animationFrame >= totalFrames) {
             clearInterval(animationInterval);
-            console.log("Animación de 24 cuadros completada - Se mantiene en 48 subdivisiones");
+            console.log("Animación de 18 cuadros completada - Se mantiene en 36 subdivisiones");
             
-            // Establecer a 48 como nivel final después de la animación
-            currentDivisions = 48;
+            // Establecer a 36 como nivel final después de la animación
+            currentDivisions = 36;
             
             // Asegurar posición final correcta
             camera.position.z = finalZoom;
@@ -1940,80 +1941,12 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
     panelsFlashing.add(panelData);
     
     // Crear etiqueta con el texto de la tecla
-    createKeyLabel(panelData);
+    createKeyLabel(panelData, gridParams.cellSize);
     
     // Solo actualizar el texto si el panel ya tenía texto
     if (hasText) {
         createPanelText(panelData, gridParams.cellSize);
     }
-}
-
-// Nueva función para crear la etiqueta con el texto de la tecla
-function createKeyLabel(panelData) {
-    if (!panelData.group) return;
-    
-    // Eliminar etiqueta anterior si existe
-    if (panelData.keyLabel) {
-        panelData.group.remove(panelData.keyLabel);
-    }
-    
-    // Crear canvas para la etiqueta
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = 1024; // Aumentado para mejor resolución
-    canvas.height = 1024;
-    
-    // Limpiar el canvas con transparencia
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Estilo del texto
-    context.fillStyle = '#ffffff';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    
-    // Obtener el texto a mostrar
-    let displayText = panelData.behavior?.textContent || '';
-    
-    // Ajustar tamaño de fuente según el tipo de tecla
-    if (displayText.length > 2) {
-        // Teclas especiales (ENTER, SHIFT, etc.)
-        context.font = '72px "Press Start 2P"'; // Era 36px
-    } else if (displayText.length === 2) {
-        // Símbolos especiales de dos caracteres
-        context.font = '84px "Press Start 2P"'; // Era 42px
-    } else {
-        // Caracteres normales
-        context.font = '96px "Press Start 2P"'; // Era 48px
-    }
-    
-    // Dibujar el texto
-    context.fillText(displayText, canvas.width/2, canvas.height/2);
-    
-    // Crear textura y sprite
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.minFilter = THREE.LinearFilter; // Mejor calidad al escalar
-    texture.magFilter = THREE.LinearFilter;
-    
-    const material = new THREE.SpriteMaterial({ 
-        map: texture,
-        transparent: true,
-        opacity: 0.95 // Aumentado ligeramente para mejor visibilidad
-    });
-    
-    const sprite = new THREE.Sprite(material);
-    
-    // Calcular escala basada en el tamaño del panel
-    const panelWidth = panelData.maxCellIndex.x - panelData.minCellIndex.x + 1;
-    const panelHeight = panelData.maxCellIndex.y - panelData.minCellIndex.y + 1;
-    const scale = Math.min(panelWidth, panelHeight) * 0.85; // Aumentado de 0.6 a 0.85
-    
-    // Ajustar tamaño y posición
-    sprite.scale.set(scale, scale, 1);
-    sprite.position.set(0, 0, 0.02); // Ligeramente por encima del panel
-    
-    // Guardar referencia y añadir al grupo
-    panelData.keyLabel = sprite;
-    panelData.group.add(sprite);
 }
 
 // Función para crear UN panel desde bounding box de índices
@@ -2541,11 +2474,10 @@ function getSerializableConfig() {
     const currentGlowRadius = parseFloat(glowRadiusSlider.value);
     const currentGlowThreshold = parseFloat(glowThresholdSlider.value);
     
-    // Serializar solo los paneles que NO son teclas del bioKeyb
+    // Serializar solo los paneles que NO son teclas del teclado
     const serializedPanels = panels
-        .filter(panel => !panel.behavior?.isKeyboardKey) // Filtrar teclas del bioKeyb
-        .map((panel, index) => {
-            // Obtener el texto actual del panel si tiene texto habilitado
+        .filter(panel => !panel.isKeyboardKey && !panel.behavior?.isKeyboardKey) // Doble verificación
+        .map(panel => {
             const textState = panelTextState.get(panel);
             const currentText = panel.hasText ? 
                 (textState && textState.isPassword ? textState.realText : getPanelText(panel)) : '';
@@ -2673,8 +2605,6 @@ function loadConfiguration() {
         const configString = localStorage.getItem('gridConfig');
         if (!configString) {
             console.log('No hay configuración guardada en localStorage.');
-            
-            // Si no hay configuración guardada, cargar el teclado bioKeyb automáticamente
             loadBioKeyb();
             return;
         }
@@ -2691,7 +2621,6 @@ function loadConfiguration() {
 
         // Restaurar configuración de bioFX si existe
         if (config.bioFX) {
-            // Convertir el color hexadecimal a formato #RRGGBB
             const colorHex = '#' + config.bioFX.color.toString(16).padStart(6, '0');
             colorPicker.value = colorHex;
             blendTypePicker.value = config.bioFX.blendType.toString();
@@ -2703,7 +2632,6 @@ function loadConfiguration() {
                 glowThresholdSlider.value = config.bioFX.glow.threshold.toString();
             }
             
-            // Aplicar los efectos inmediatamente
             updateBioFXEffect();
         }
 
@@ -2728,8 +2656,11 @@ function loadConfiguration() {
             camera.zoom = config.cameraZoom;
             camera.updateProjectionMatrix();
         }
+
+        // Primero cargar el teclado
+        loadBioKeyb();
         
-        // Recrear paneles
+        // Luego recrear los paneles guardados (que no son del teclado)
         requestAnimationFrame(() => {
             const currentGridParams = getCurrentGridParams();
             if (!currentGridParams) {
@@ -2745,79 +2676,74 @@ function loadConfiguration() {
                 console.log('Tamaño del grid actual:', currentSize);
             }
 
-            // Cargar primero el teclado bioKeyb
-            loadBioKeyb();
-
-            // Luego cargar los paneles guardados
+            // Cargar solo los paneles que NO son teclas del teclado
             config.panels.forEach(panelInfo => {
-                const panelData = {
-                    group: null,
-                    minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
-                    maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
-                    orderNumber: panelInfo.orderNumber,
-                    showOrderNumber: panelInfo.showOrderNumber,
-                    hasText: panelInfo.behavior?.hasText || false
-                };
+                // Verificar que no sea una tecla del teclado
+                if (!panelInfo.behavior?.isKeyboardKey) {
+                    const panelData = {
+                        group: null,
+                        minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
+                        maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
+                        orderNumber: panelInfo.orderNumber,
+                        showOrderNumber: panelInfo.showOrderNumber,
+                        hasText: panelInfo.behavior?.hasText || false
+                    };
 
-                updatePanelGeometryAndPosition(panelData, currentGridParams);
-                
-                if(panelData.group) {
-                    scene.add(panelData.group);
-                    panels.push(panelData);
+                    updatePanelGeometryAndPosition(panelData, currentGridParams);
+                    
+                    if(panelData.group) {
+                        scene.add(panelData.group);
+                        panels.push(panelData);
 
-                    // Restaurar comportamiento del panel
-                    if (panelInfo.behavior) {
-                        if (panelInfo.behavior.hasText) {
-                            panelData.hasText = true;
-                            // Inicializar el estado del texto primero
-                            const textState = {
-                                text: panelInfo.behavior.textContent,
-                                lines: panelInfo.behavior.messageBuffer,
-                                maxCharsPerLine: panelInfo.behavior.maxLines,
-                                cursorPosition: 0,
-                                isEditing: false,
-                                scrollOffset: 0,
-                                isPassword: panelInfo.behavior.isPassword || false,
-                                realText: panelInfo.behavior.isPassword ? panelInfo.behavior.textContent : ''
-                            };
-                            panelTextState.set(panelData, textState);
-                            
-                            // Luego crear y establecer el texto
-                            createPanelText(panelData, currentGridParams.cellSize);
-                            if (textState.isPassword) {
-                                // Si es contraseña, mostrar asteriscos
-                                setPanelText(panelData, '*'.repeat(textState.realText.length), currentGridParams.cellSize);
-                            } else {
-                                setPanelText(panelData, panelInfo.behavior.textContent, currentGridParams.cellSize);
+                        // Restaurar comportamiento del panel
+                        if (panelInfo.behavior) {
+                            if (panelInfo.behavior.hasText) {
+                                panelData.hasText = true;
+                                const textState = {
+                                    text: panelInfo.behavior.textContent,
+                                    lines: panelInfo.behavior.messageBuffer,
+                                    maxCharsPerLine: panelInfo.behavior.maxLines,
+                                    cursorPosition: 0,
+                                    isEditing: false,
+                                    scrollOffset: 0,
+                                    isPassword: panelInfo.behavior.isPassword || false,
+                                    realText: panelInfo.behavior.isPassword ? panelInfo.behavior.textContent : ''
+                                };
+                                panelTextState.set(panelData, textState);
+                                
+                                createPanelText(panelData, currentGridParams.cellSize);
+                                if (textState.isPassword) {
+                                    setPanelText(panelData, '*'.repeat(textState.realText.length), currentGridParams.cellSize);
+                                } else {
+                                    setPanelText(panelData, panelInfo.behavior.textContent, currentGridParams.cellSize);
+                                }
+                            }
+
+                            if (panelInfo.behavior.isGATCActive) {
+                                handleGATCCommand({ appendChild: () => {} }, panelData);
+                            }
+
+                            if (panelInfo.behavior.modelData) {
+                                const { modelUrl, isRotating, rotationSpeed } = panelInfo.behavior.modelData;
+                                loadModelToPanel(panelData, modelUrl, currentGridParams.cellSize).then(() => {
+                                    if (isRotating) {
+                                        toggleModelRotation(panelData);
+                                        if (rotationSpeed) {
+                                            setModelRotationSpeed(panelData, rotationSpeed);
+                                        }
+                                    }
+                                });
+                            }
+
+                            if (panelInfo.behavior.genomData) {
+                                panelData.genomData = panelInfo.behavior.genomData;
                             }
                         }
 
-                        if (panelInfo.behavior.isGATCActive) {
-                            handleGATCCommand({ appendChild: () => {} }, panelData);
+                        if (panelInfo.selected) {
+                            panelData.selected = true;
+                            updatePanelColor(panelData);
                         }
-
-                        if (panelInfo.behavior.modelData) {
-                            const { modelUrl, isRotating, rotationSpeed } = panelInfo.behavior.modelData;
-                            loadModelToPanel(panelData, modelUrl, currentGridParams.cellSize).then(() => {
-                                if (isRotating) {
-                                    toggleModelRotation(panelData);
-                                    if (rotationSpeed) {
-                                        setModelRotationSpeed(panelData, rotationSpeed);
-                                    }
-                                }
-                            });
-                        }
-
-                        // Restaurar configuración de genom
-                        if (panelInfo.behavior.genomData) {
-                            panelData.genomData = panelInfo.behavior.genomData;
-                        }
-                    }
-
-                    // Restaurar selección
-                    if (panelInfo.selected) {
-                        panelData.selected = true;
-                        updatePanelColor(panelData);
                     }
                 }
             });
@@ -2829,8 +2755,6 @@ function loadConfiguration() {
         console.log('Configuración cargada desde localStorage.');
     } catch (error) {
         console.error('Error al cargar configuración:', error);
-        
-        // Si hay error al cargar, intentar cargar el teclado de todos modos
         loadBioKeyb();
     }
 }

@@ -2,6 +2,8 @@
 // Copyright (C) 2023 Ihtoa Ware Inc.
 
 import * as THREE from 'three';
+import { TEXT_CONFIG } from './panelText.js'; // <-- Importar TEXT_CONFIG
+import { createCharacterMesh } from './panelText.js'; // Importar la función para crear meshes de caracteres individuales
 
 /**
  * Módulo para crear un teclado virtual basado en la configuración de bioKeyb
@@ -117,7 +119,7 @@ function createKeyboard() {
   console.log("Creando teclado bioKeyb...");
   
   // Ajustar coordenadas para posicionar el teclado
-  const offsetX = -3; // Mantener posición horizontal
+  const offsetX = 13; // Mantener posición horizontal
   const offsetY = 1;  // De 2 a 1 para bajar una hilera
   
   // Definición de las teclas según la configuración del archivo
@@ -134,10 +136,10 @@ function createKeyboard() {
     { minX: 21.5 + offsetX, minY: offsetY + 8, maxX: 22.5 + offsetX, maxY: offsetY + 9, id: 9, text: "8", character: "8", isKeyboardKey: true },
     { minX: 23.5 + offsetX, minY: offsetY + 8, maxX: 24.5 + offsetX, maxY: offsetY + 9, id: 10, text: "9", character: "9", isKeyboardKey: true },
     { minX: 25.5 + offsetX, minY: offsetY + 8, maxX: 26.5 + offsetX, maxY: offsetY + 9, id: 11, text: "0", character: "0", isKeyboardKey: true },
-    { minX: 27.5 + offsetX, minY: offsetY + 8, maxX: 30 + offsetX, maxY: offsetY + 9, id: 12, text: "⌫", character: "BACKSPACE", isKeyboardKey: true },
+    { minX: 27.5 + offsetX, minY: offsetY + 8, maxX: 30 + offsetX, maxY: offsetY + 9, id: 12, text: "BKSP", character: "BACKSPACE", isKeyboardKey: true },
     
     // Segunda fila (13-25)
-    { minX: 4 + offsetX, minY: offsetY + 6, maxX: 5 + offsetX, maxY: offsetY + 7, id: 13, text: "⇥", character: "TAB", isKeyboardKey: true },
+    { minX: 4 + offsetX, minY: offsetY + 6, maxX: 5 + offsetX, maxY: offsetY + 7, id: 13, text: "TAB", character: "TAB", isKeyboardKey: true },
     { minX: 6 + offsetX, minY: offsetY + 6, maxX: 7 + offsetX, maxY: offsetY + 7, id: 14, text: "Q", character: "Q", isKeyboardKey: true },
     { minX: 8 + offsetX, minY: offsetY + 6, maxX: 9 + offsetX, maxY: offsetY + 7, id: 15, text: "W", character: "W", isKeyboardKey: true },
     { minX: 10 + offsetX, minY: offsetY + 6, maxX: 11 + offsetX, maxY: offsetY + 7, id: 16, text: "E", character: "E", isKeyboardKey: true },
@@ -152,7 +154,7 @@ function createKeyboard() {
     { minX: 28 + offsetX, minY: offsetY + 6, maxX: 30 + offsetX, maxY: offsetY + 7, id: 25, text: "/", character: "/", isKeyboardKey: true },
     
     // Tercera fila (26-37)
-    { minX: 4 + offsetX, minY: offsetY + 4, maxX: 6 + offsetX, maxY: offsetY + 5, id: 26, text: "⇪", character: "CAPS", isKeyboardKey: true },
+    { minX: 4 + offsetX, minY: offsetY + 4, maxX: 6 + offsetX, maxY: offsetY + 5, id: 26, text: "CAPS", character: "CAPS", isKeyboardKey: true },
     { minX: 7 + offsetX, minY: offsetY + 4, maxX: 8 + offsetX, maxY: offsetY + 5, id: 27, text: "A", character: "A", isKeyboardKey: true },
     { minX: 9 + offsetX, minY: offsetY + 4, maxX: 10 + offsetX, maxY: offsetY + 5, id: 28, text: "S", character: "S", isKeyboardKey: true },
     { minX: 11 + offsetX, minY: offsetY + 4, maxX: 12 + offsetX, maxY: offsetY + 5, id: 29, text: "D", character: "D", isKeyboardKey: true },
@@ -166,7 +168,7 @@ function createKeyboard() {
     { minX: 27 + offsetX, minY: offsetY + 4, maxX: 30 + offsetX, maxY: offsetY + 5, id: 37, text: "F11", character: "F11", isKeyboardKey: true },
     
     // Cuarta fila (38-48)
-    { minX: 4 + offsetX, minY: offsetY + 2, maxX: 6 + offsetX, maxY: offsetY + 3, id: 38, text: "⇧", character: "SHIFT", isKeyboardKey: true },
+    { minX: 4 + offsetX, minY: offsetY + 2, maxX: 6 + offsetX, maxY: offsetY + 3, id: 38, text: "SHIFT", character: "SHIFT", isKeyboardKey: true },
     { minX: 7 + offsetX, minY: offsetY + 2, maxX: 8 + offsetX, maxY: offsetY + 3, id: 39, text: "Z", character: "Z", isKeyboardKey: true },
     { minX: 9 + offsetX, minY: offsetY + 2, maxX: 10 + offsetX, maxY: offsetY + 3, id: 40, text: "X", character: "X", isKeyboardKey: true },
     { minX: 11 + offsetX, minY: offsetY + 2, maxX: 12 + offsetX, maxY: offsetY + 3, id: 41, text: "C", character: "C", isKeyboardKey: true },
@@ -179,13 +181,13 @@ function createKeyboard() {
     { minX: 25 + offsetX, minY: offsetY + 2, maxX: 30 + offsetX, maxY: offsetY + 3, id: 48, text: "ENTER", character: "ENTER", isKeyboardKey: true },
     
     // Quinta fila (49-56)
-    { minX: 4 + offsetX, minY: offsetY + 0, maxX: 5 + offsetX, maxY: offsetY + 1, id: 49, text: "⌃", character: "CTRL", isKeyboardKey: true },
-    { minX: 6 + offsetX, minY: offsetY + 0, maxX: 7 + offsetX, maxY: offsetY + 1, id: 50, text: "⎇", character: "ALT", isKeyboardKey: true },
+    { minX: 4 + offsetX, minY: offsetY + 0, maxX: 5 + offsetX, maxY: offsetY + 1, id: 49, text: "CTRL", character: "CTRL", isKeyboardKey: true },
+    { minX: 6 + offsetX, minY: offsetY + 0, maxX: 7 + offsetX, maxY: offsetY + 1, id: 50, text: "ALT", character: "ALT", isKeyboardKey: true },
     { minX: 8 + offsetX, minY: offsetY + 0, maxX: 9 + offsetX, maxY: offsetY + 1, id: 51, text: "*", character: "*", isKeyboardKey: true },
-    { minX: 10 + offsetX, minY: offsetY + 0, maxX: 20 + offsetX, maxY: offsetY + 1, id: 52, text: " ", character: "SPACEBAR", isKeyboardKey: true },
+    { minX: 10 + offsetX, minY: offsetY + 0, maxX: 20 + offsetX, maxY: offsetY + 1, id: 52, text: "SPACE", character: "SPACEBAR", isKeyboardKey: true },
     { minX: 21 + offsetX, minY: offsetY + 0, maxX: 22 + offsetX, maxY: offsetY + 1, id: 53, text: "?", character: "?", isKeyboardKey: true },
     { minX: 23 + offsetX, minY: offsetY + 0, maxX: 24 + offsetX, maxY: offsetY + 1, id: 54, text: "!", character: "!", isKeyboardKey: true },
-    { minX: 25 + offsetX, minY: offsetY + 0, maxX: 27 + offsetX, maxY: offsetY + 1, id: 55, text: "⌃", character: "CTRL", isKeyboardKey: true },
+    { minX: 25 + offsetX, minY: offsetY + 0, maxX: 27 + offsetX, maxY: offsetY + 1, id: 55, text: "CTRL", character: "CTRL", isKeyboardKey: true },
     { minX: 28 + offsetX, minY: offsetY + 0, maxX: 30 + offsetX, maxY: offsetY + 1, id: 56, text: "F5", character: "F5", isKeyboardKey: true }
   ];
   
@@ -500,80 +502,116 @@ function processCommand(cmd) {
   return false;
 }
 
-// Nueva función para crear la etiqueta con el texto de la tecla
-function createKeyLabel(panelData) {
+// Función para crear la etiqueta con el texto de la tecla
+function createKeyLabel(panelData, gridSize) { 
     if (!panelData.group) return;
     
-    // Eliminar etiqueta anterior si existe
-    if (panelData.keyLabel) {
-        panelData.group.remove(panelData.keyLabel);
+    // Limpiar meshes de etiquetas anteriores
+    if (panelData.keyLabelMeshes && panelData.keyLabelMeshes.length > 0) {
+        panelData.keyLabelMeshes.forEach(mesh => {
+            panelData.group.remove(mesh);
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                if (mesh.material.map) mesh.material.map.dispose();
+                mesh.material.dispose();
+            }
+        });
     }
-    
-    // Canvas más grande para mejor calidad
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = 4096;  // Duplicado para mejor calidad
-    canvas.height = 4096; // Duplicado para mejor calidad
-    
-    // Limpiar el canvas con transparencia
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Estilo del texto
-    context.fillStyle = '#ffffff';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    
-    // Obtener el texto a mostrar
+    panelData.keyLabelMeshes = [];
+
     let displayText = panelData.behavior?.textContent || '';
+    if (!displayText) return;
+
+    // Usar gridSize por defecto si no se proporciona
+    if (gridSize === undefined || gridSize <= 0) {
+        gridSize = 0.5;
+    }
+
+    // Calcular el espacio disponible en el panel
+    const panelWidth = Math.abs(panelData.maxCellIndex.x - panelData.minCellIndex.x + 1);
+    const panelHeight = Math.abs(panelData.maxCellIndex.y - panelData.minCellIndex.y + 1);
     
-    // Calcular el tamaño base del panel para ajustar la fuente proporcionalmente
-    const panelWidth = panelData.maxCellIndex.x - panelData.minCellIndex.x + 1;
-    const panelHeight = panelData.maxCellIndex.y - panelData.minCellIndex.y + 1;
-    const baseFontSize = Math.min(canvas.width, canvas.height) * 0.95; // 95% del canvas
+    // Calcular tamaño base para cada carácter
+    const baseCharSize = gridSize * 0.8;
+    let charSize, charSpacing;
     
-    // Ajustar tamaño según el tipo de tecla - Aumentado significativamente
-    let fontSize;
-    if (displayText.length > 2) {
-        // Teclas especiales (ENTER, SHIFT, etc.)
-        fontSize = baseFontSize * 0.7; // 70% para texto largo
-    } else if (displayText.length === 2) {
-        // Símbolos especiales de dos caracteres
-        fontSize = baseFontSize * 0.8; // 80% para dos caracteres
+    // Ajustar tamaño según si es un carácter individual o parte de una palabra
+    if (displayText.length === 1) {
+        // Para caracteres individuales, aumentar el tamaño
+        charSize = baseCharSize * 1.2; // 20% más grande para símbolos individuales
+        charSpacing = charSize * 0.7;
     } else {
-        // Caracteres normales
-        fontSize = baseFontSize * 0.9; // 90% para un carácter
+        // Para palabras, mantener el tamaño original
+        charSize = baseCharSize;
+        charSpacing = charSize * 0.7;
     }
     
-    // Aplicar el tamaño de fuente calculado
-    context.font = `${fontSize}px "Press Start 2P"`;
+    // Calcular el espacio total necesario
+    const totalWidth = displayText.length * charSpacing;
     
-    // Dibujar el texto
-    context.fillText(displayText, canvas.width/2, canvas.height/2);
+    // Calcular posición inicial para centrar el texto
+    const startX = -totalWidth / 2 + charSpacing / 2;
     
-    // Configuración de textura optimizada
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.anisotropy = 16; // Aumentado para mejor calidad
-    
-    const material = new THREE.SpriteMaterial({ 
-        map: texture,
-        transparent: true,
-        opacity: 1.0
-    });
-    
-    const sprite = new THREE.Sprite(material);
-    
-    // Aumentar dramáticamente la escala - MUCHO MÁS GRANDE
-    const scale = Math.min(panelWidth, panelHeight) * 12.0; // Aumentado masivamente a 12.0
-    
-    // Ajustar tamaño y posición
-    sprite.scale.set(scale, scale, 1);
-    sprite.position.set(0, 0, 0.1);
-    
-    // Guardar referencia y añadir al grupo
-    panelData.keyLabel = sprite;
-    panelData.group.add(sprite);
+    // Crear cada carácter individualmente
+    for (let i = 0; i < displayText.length; i++) {
+        const char = displayText[i];
+        if (char === ' ') continue; // Saltar espacios
+        
+        // Crear canvas para este carácter
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        const canvasSize = 256;
+        canvas.width = canvasSize;
+        canvas.height = canvasSize;
+        
+        // Limpiar y preparar el canvas
+        context.fillStyle = '#ffffff';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        
+        // Ajustar el tamaño de la fuente según si es carácter individual o parte de palabra
+        const fontSize = displayText.length === 1 ? 
+            canvasSize * 0.8 :  // Más grande para caracteres individuales
+            canvasSize * 0.7;   // Tamaño normal para palabras
+            
+        context.font = `${fontSize}px "Press Start 2P", monospace`;
+        
+        // Dibujar el carácter
+        context.fillText(char, canvasSize/2, canvasSize/2);
+        
+        // Crear textura
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.anisotropy = 4;
+        
+        // Crear material
+        const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 1.0,
+            depthTest: false,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        
+        // Crear geometría cuadrada usando el tamaño ajustado
+        const geometry = new THREE.PlaneGeometry(charSize, charSize);
+        
+        // Crear mesh
+        const charMesh = new THREE.Mesh(geometry, material);
+        
+        // Posicionar el carácter
+        charMesh.position.set(
+            startX + i * charSpacing,
+            0,
+            0.02
+        );
+        
+        // Añadir al grupo y guardar referencia
+        panelData.group.add(charMesh);
+        panelData.keyLabelMeshes.push(charMesh);
+    }
 }
 
 // Modificar la función updatePanelColor para usar los materiales compartidos
@@ -611,5 +649,7 @@ export {
   clearInput,
   setConsoleElement,
   toggleOrderNumbers,
-  processCommand
+  processCommand,
+  createKeyLabel,
+  updatePanelColor
 }; 
