@@ -1400,38 +1400,77 @@ document.addEventListener('keydown', (event) => {
 
     // --- Procesar Cambio de Resolución --- 
     if (resolutionChanged && newDivisions !== currentDivisions) {
-        // NO eliminamos los grupos de paneles de la escena aquí.
-        // updateGrid se encargará de actualizar su contenido y posición.
         updateGrid(newDivisions); 
     }
     
     // --- Procesar Movimiento --- 
     else if (moveDelta.dx !== 0 || moveDelta.dy !== 0) {
-        const selectedPanels = panels.filter(p => p.selected);
-        if (selectedPanels.length > 0) {
+        // Verificar si hay alguna tecla del teclado virtual seleccionada
+        const selectedKeyboardPanels = panels.filter(p => p.selected && p.behavior?.keyboardKey);
+        
+        if (selectedKeyboardPanels.length > 0) {
+            // Si hay teclas del teclado virtual seleccionadas, mover todo el teclado
             const currentGridParams = getCurrentGridParams();
             if (!currentGridParams) return;
 
-            // Comprobar si TODOS los paneles seleccionados pueden moverse
+            // Verificar si el movimiento es válido para todos los paneles
             let canMoveAll = true;
-            for (const panel of selectedPanels) {
-                if (checkPanelMoveConflict(panel, moveDelta.dx, moveDelta.dy, currentGridParams)) {
-                    canMoveAll = false;
-                    break;
-                }
-            }
+            panels.forEach(panel => {
+                const newMinX = panel.minCellIndex.x + moveDelta.dx;
+                const newMaxX = panel.maxCellIndex.x + moveDelta.dx;
+                const newMinY = panel.minCellIndex.y + moveDelta.dy;
+                const newMaxY = panel.maxCellIndex.y + moveDelta.dy;
 
-            // Si todos pueden moverse, actualizar sus índices y geometría/posición
+                // Verificar límites del grid
+                if (newMinX < 0 || newMaxX >= currentGridParams.cellsX ||
+                    newMinY < 0 || newMaxY >= currentGridParams.cellsY) {
+                    canMoveAll = false;
+                }
+            });
+
             if (canMoveAll) {
-                selectedPanels.forEach(panel => {
+                // Mover todos los paneles
+                panels.forEach(panel => {
                     panel.minCellIndex.x += moveDelta.dx;
                     panel.maxCellIndex.x += moveDelta.dx;
                     panel.minCellIndex.y += moveDelta.dy;
                     panel.maxCellIndex.y += moveDelta.dy;
-                    updatePanelGeometryAndPosition(panel, currentGridParams); // Actualizar mesh
+                    updatePanelGeometryAndPosition(panel, currentGridParams);
                 });
-            } else {
-                 console.warn("Movimiento cancelado: Conflicto de límites o colisión.");
+
+                // Animar el movimiento
+                panels.forEach(panel => {
+                    panel.flashProgress = 0;
+                    panel.shouldFlash = true;
+                    panelsFlashing.add(panel);
+                });
+            }
+        } else {
+            // Si no hay teclas del teclado virtual seleccionadas, mantener el comportamiento original
+            const selectedPanels = panels.filter(p => p.selected);
+            if (selectedPanels.length > 0) {
+                const currentGridParams = getCurrentGridParams();
+                if (!currentGridParams) return;
+
+                // Comprobar si TODOS los paneles seleccionados pueden moverse
+                let canMoveAll = true;
+                for (const panel of selectedPanels) {
+                    if (checkPanelMoveConflict(panel, moveDelta.dx, moveDelta.dy, currentGridParams)) {
+                        canMoveAll = false;
+                        break;
+                    }
+                }
+
+                // Si todos pueden moverse, actualizar sus índices y geometría/posición
+                if (canMoveAll) {
+                    selectedPanels.forEach(panel => {
+                        panel.minCellIndex.x += moveDelta.dx;
+                        panel.maxCellIndex.x += moveDelta.dx;
+                        panel.minCellIndex.y += moveDelta.dy;
+                        panel.maxCellIndex.y += moveDelta.dy;
+                        updatePanelGeometryAndPosition(panel, currentGridParams);
+                    });
+                }
             }
         }
     }
@@ -1444,7 +1483,6 @@ document.addEventListener('keydown', (event) => {
             if (panel.selected) {
                 if(panel.group) {
                     scene.remove(panel.group);
-                    // Limpiar geometrías de los hijos (líneas)
                     while(panel.group.children.length > 0){
                          const child = panel.group.children[0]; 
                          panel.group.remove(child);
@@ -1762,6 +1800,7 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
     const orderNumber = panelData.orderNumber;
     const showOrderNumber = panelData.showOrderNumber !== undefined ? panelData.showOrderNumber : false;
     const hasText = panelData.hasText !== undefined ? panelData.hasText : false;
+    const behavior = panelData.behavior; // Preservar el behavior
 
     // Preservar el modelo si existe
     const modelData = preserveModel(panelData);
@@ -1793,18 +1832,21 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
             const child = panelData.group.children[0]; 
             panelData.group.remove(child);
             if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
             if (child === panelData.fillMesh) {
                  delete panelData.fillMesh;
             }
         }
         panelData.borderLines = []; // Resetear array para nuevas líneas
         delete panelData.orderLabel; // Eliminar referencia a la etiqueta eliminada
+        delete panelData.keyLabel; // Eliminar referencia a la etiqueta de tecla
     }
 
-    // Asegurarnos de que se mantenga el número de orden y estado del texto
+    // Asegurarnos de que se mantenga el número de orden, estado del texto y behavior
     panelData.orderNumber = orderNumber;
     panelData.showOrderNumber = showOrderNumber;
     panelData.hasText = hasText;
+    panelData.behavior = behavior;
 
     // --- Crear/Actualizar Mesh de Relleno con Forma Biselada --- 
     const shape = new THREE.Shape();
@@ -1878,6 +1920,7 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
     const borderLine = new THREE.Line(borderGeometry, panelLineMaterialNormal);
     // Mejorar la detección para raycasting
     borderLine.userData.isPanel = true; // Marcador para identificar líneas de panel
+    borderLine.userData.panelDataRef = panelData; // Referencia al panel
     panelData.group.add(borderLine);
     panelData.borderLines.push(borderLine);
     
@@ -1896,15 +1939,81 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
     panelData.shouldFlash = true;
     panelsFlashing.add(panelData);
     
-    // Recrear etiqueta de número de orden si es necesario
-    if (showOrderNumber) {
-        createPanelOrderLabel(panelData);
-    }
+    // Crear etiqueta con el texto de la tecla
+    createKeyLabel(panelData);
     
     // Solo actualizar el texto si el panel ya tenía texto
     if (hasText) {
         createPanelText(panelData, gridParams.cellSize);
     }
+}
+
+// Nueva función para crear la etiqueta con el texto de la tecla
+function createKeyLabel(panelData) {
+    if (!panelData.group) return;
+    
+    // Eliminar etiqueta anterior si existe
+    if (panelData.keyLabel) {
+        panelData.group.remove(panelData.keyLabel);
+    }
+    
+    // Crear canvas para la etiqueta
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 1024; // Aumentado para mejor resolución
+    canvas.height = 1024;
+    
+    // Limpiar el canvas con transparencia
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Estilo del texto
+    context.fillStyle = '#ffffff';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    
+    // Obtener el texto a mostrar
+    let displayText = panelData.behavior?.textContent || '';
+    
+    // Ajustar tamaño de fuente según el tipo de tecla
+    if (displayText.length > 2) {
+        // Teclas especiales (ENTER, SHIFT, etc.)
+        context.font = '72px "Press Start 2P"'; // Era 36px
+    } else if (displayText.length === 2) {
+        // Símbolos especiales de dos caracteres
+        context.font = '84px "Press Start 2P"'; // Era 42px
+    } else {
+        // Caracteres normales
+        context.font = '96px "Press Start 2P"'; // Era 48px
+    }
+    
+    // Dibujar el texto
+    context.fillText(displayText, canvas.width/2, canvas.height/2);
+    
+    // Crear textura y sprite
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter; // Mejor calidad al escalar
+    texture.magFilter = THREE.LinearFilter;
+    
+    const material = new THREE.SpriteMaterial({ 
+        map: texture,
+        transparent: true,
+        opacity: 0.95 // Aumentado ligeramente para mejor visibilidad
+    });
+    
+    const sprite = new THREE.Sprite(material);
+    
+    // Calcular escala basada en el tamaño del panel
+    const panelWidth = panelData.maxCellIndex.x - panelData.minCellIndex.x + 1;
+    const panelHeight = panelData.maxCellIndex.y - panelData.minCellIndex.y + 1;
+    const scale = Math.min(panelWidth, panelHeight) * 0.85; // Aumentado de 0.6 a 0.85
+    
+    // Ajustar tamaño y posición
+    sprite.scale.set(scale, scale, 1);
+    sprite.position.set(0, 0, 0.02); // Ligeramente por encima del panel
+    
+    // Guardar referencia y añadir al grupo
+    panelData.keyLabel = sprite;
+    panelData.group.add(sprite);
 }
 
 // Función para crear UN panel desde bounding box de índices
@@ -1961,6 +2070,11 @@ function updatePanelColor(panelData) {
         // Solo aplicar hover si no es un dispositivo táctil
         targetLineMaterial = panelLineMaterialHover;
         targetFillMaterial = panelFillMaterialHover;
+        
+        // Imprimir el carácter en la consola cuando se hace hover
+        if (panelData.behavior && panelData.behavior.character) {
+            console.log(`Tecla: ${panelData.behavior.character}`);
+        }
     } else {
         targetLineMaterial = panelLineMaterialNormal;
         targetFillMaterial = panelFillMaterialNormal;
@@ -2427,35 +2541,37 @@ function getSerializableConfig() {
     const currentGlowRadius = parseFloat(glowRadiusSlider.value);
     const currentGlowThreshold = parseFloat(glowThresholdSlider.value);
     
-    // Serializar los paneles con su comportamiento
-    const serializedPanels = panels.map((panel, index) => {
-        // Obtener el texto actual del panel si tiene texto habilitado
-        const textState = panelTextState.get(panel);
-        const currentText = panel.hasText ? 
-            (textState && textState.isPassword ? textState.realText : getPanelText(panel)) : '';
-        
-        return {
-            minCellIndex: { ...panel.minCellIndex },
-            maxCellIndex: { ...panel.maxCellIndex },
-            orderNumber: panel.orderNumber,
-            showOrderNumber: panel.showOrderNumber,
-            selected: panel.selected,
-            behavior: {
-                hasText: panel.hasText || false,
-                textContent: currentText,
-                messageBuffer: textState ? textState.lines : [],
-                maxLines: textState ? textState.maxCharsPerLine : 0,
-                isPassword: textState ? textState.isPassword : false,
-                isGATCActive: gatcIntervals.has(panel),
-                modelData: panel.modelData ? {
-                    modelUrl: panel.modelData.url,
-                    isRotating: panel.modelData.isRotating,
-                    rotationSpeed: panel.modelData.rotationSpeed
-                } : null,
-                genomData: panel.genomData || null // Añadir configuración de genom
-            }
-        };
-    });
+    // Serializar solo los paneles que NO son teclas del bioKeyb
+    const serializedPanels = panels
+        .filter(panel => !panel.behavior?.isKeyboardKey) // Filtrar teclas del bioKeyb
+        .map((panel, index) => {
+            // Obtener el texto actual del panel si tiene texto habilitado
+            const textState = panelTextState.get(panel);
+            const currentText = panel.hasText ? 
+                (textState && textState.isPassword ? textState.realText : getPanelText(panel)) : '';
+            
+            return {
+                minCellIndex: { ...panel.minCellIndex },
+                maxCellIndex: { ...panel.maxCellIndex },
+                orderNumber: panel.orderNumber,
+                showOrderNumber: panel.showOrderNumber,
+                selected: panel.selected,
+                behavior: {
+                    hasText: panel.hasText || false,
+                    textContent: currentText,
+                    messageBuffer: textState ? textState.lines : [],
+                    maxLines: textState ? textState.maxCharsPerLine : 0,
+                    isPassword: textState ? textState.isPassword : false,
+                    isGATCActive: gatcIntervals.has(panel),
+                    modelData: panel.modelData ? {
+                        modelUrl: panel.modelData.url,
+                        isRotating: panel.modelData.isRotating,
+                        rotationSpeed: panel.modelData.rotationSpeed
+                    } : null,
+                    genomData: panel.genomData || null
+                }
+            };
+        });
     
     return {
         grid: {
@@ -2463,7 +2579,7 @@ function getSerializableConfig() {
             size: {
                 width: width,
                 height: height,
-                maxSize: 24, // El tamaño base del grid
+                maxSize: 24,
                 cellSize: currentGridParams.cellSize,
                 cellsX: currentGridParams.cellsX,
                 cellsY: currentGridParams.cellsY,
@@ -2589,11 +2705,6 @@ function loadConfiguration() {
             
             // Aplicar los efectos inmediatamente
             updateBioFXEffect();
-            console.log('Efectos visuales restaurados automáticamente:', {
-                color: colorHex,
-                blendType: config.bioFX.blendType,
-                intensity: config.bioFX.intensity
-            });
         }
 
         // Actualizar la división del grid solo si es diferente
@@ -2634,6 +2745,10 @@ function loadConfiguration() {
                 console.log('Tamaño del grid actual:', currentSize);
             }
 
+            // Cargar primero el teclado bioKeyb
+            loadBioKeyb();
+
+            // Luego cargar los paneles guardados
             config.panels.forEach(panelInfo => {
                 const panelData = {
                     group: null,
@@ -2696,7 +2811,6 @@ function loadConfiguration() {
                         // Restaurar configuración de genom
                         if (panelInfo.behavior.genomData) {
                             panelData.genomData = panelInfo.behavior.genomData;
-                            // Aquí puedes añadir lógica para restaurar el estado de genom
                         }
                     }
 
@@ -2710,12 +2824,6 @@ function loadConfiguration() {
 
             // Ajustar la cámara después de recrear todo
             adjustCameraToGrid();
-            
-            // Después de cargar la configuración, verificar si se debe cargar el teclado bioKeyb
-            const shouldLoadKeyboard = !panels.length; // Cargar solo si no hay paneles
-            if (shouldLoadKeyboard) {
-                loadBioKeyb();
-            }
         });
 
         console.log('Configuración cargada desde localStorage.');
@@ -4434,7 +4542,8 @@ function pushOverlappingPanels(movingPanel, gridParams) {
 renderer.domElement.addEventListener('mouseup', (event) => {
     // ... existing code ...
     
-    if (hasCollision) {
+    // Verificar colisiones usando la función checkCollisions en lugar de hasCollision
+    if (draggedPanel && checkCollisions(draggedPanel)) {
         // En lugar de restaurar la posición, intentar empujar los paneles
         const pushed = pushOverlappingPanels(draggedPanel, currentGridParams);
         
@@ -5688,18 +5797,29 @@ function loadBioKeyb() {
             minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
             maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
             orderNumber: panelInfo.orderNumber,
-            showOrderNumber: true,
-            hasText: false
+            showOrderNumber: false,
+            hasText: false,
+            selected: false, // Asegurar que inicie no seleccionado
+            hovered: false, // Asegurar que inicie no hover
+            isKeyboardKey: true, // Marcar como tecla del teclado
+            behavior: panelInfo.behavior, // Copiar el behavior completo
+            onPress: panelInfo.onPress, // Copiar el manejador de eventos
+            materials: panelInfo.materials // Usar los materiales compartidos
         };
 
         updatePanelGeometryAndPosition(panelData, currentGridParams);
         
         if(panelData.group) {
+            // Asignar referencia al panel en los elementos del grupo
+            panelData.group.children.forEach(child => {
+                child.userData.panelDataRef = panelData;
+            });
+            
             scene.add(panelData.group);
             panels.push(panelData);
             
-            // Mostrar el número de la tecla
-            createPanelOrderLabel(panelData);
+            // Mostrar el texto de la tecla
+            createKeyLabel(panelData);
             
             // Animar aparición
             panelData.flashProgress = 0;
@@ -5716,3 +5836,203 @@ function loadBioKeyb() {
     // Guardar la configuración actual
     saveConfiguration();
 }
+
+// Función para detectar colisiones entre paneles
+function detectCollision(panel1, panel2) {
+    return !(panel1.maxCellIndex.x < panel2.minCellIndex.x || 
+             panel1.minCellIndex.x > panel2.maxCellIndex.x ||
+             panel1.maxCellIndex.y < panel2.minCellIndex.y ||
+             panel1.minCellIndex.y > panel2.maxCellIndex.y);
+}
+
+// Función para verificar colisiones con todos los paneles
+function checkCollisions(panelToCheck) {
+    return panels.some(panel => 
+        panel !== panelToCheck && 
+        !panel.isBeingDeleted && 
+        detectCollision(panelToCheck, panel)
+    );
+}
+
+// Agregar un nuevo manejador de eventos mouseup que utilice checkCollisions
+renderer.domElement.addEventListener('mouseup', (event) => {
+    if (!draggedPanel) return;
+    
+    const currentGridParams = getCurrentGridParams();
+    if (!currentGridParams) return;
+    
+    // Verificar colisiones usando la función checkCollisions
+    const hasCollisions = checkCollisions(draggedPanel);
+    
+    if (hasCollisions) {
+        // Intentar empujar los paneles superpuestos
+        const pushed = pushOverlappingPanels(draggedPanel, currentGridParams);
+        
+        if (!pushed && dragStartPanelPosition && dragStartCellIndices) {
+            // Si no se pudo empujar, restaurar posición original
+            draggedPanel.group.position.set(
+                dragStartPanelPosition.x, 
+                dragStartPanelPosition.y, 
+                draggedPanel.group.position.z
+            );
+            draggedPanel.minCellIndex.x = dragStartCellIndices.minX;
+            draggedPanel.minCellIndex.y = dragStartCellIndices.minY;
+            draggedPanel.maxCellIndex.x = dragStartCellIndices.maxX;
+            draggedPanel.maxCellIndex.y = dragStartCellIndices.maxY;
+        }
+    }
+    
+    // Limpiar variables de arrastre
+    draggedPanel = null;
+    dragStartPanelPosition = null;
+    dragStartCellIndices = null;
+});
+
+// Agregar listener para imprimir teclas presionadas
+document.addEventListener('keydown', (event) => {
+    console.log(`Tecla presionada: ${event.key}`);
+});
+
+renderer.domElement.addEventListener('mouseup', (event) => {
+    // Ignorar eventos táctiles
+    if (event.pointerType === 'touch') return;
+
+    // Convertir coordenadas del mouse a coordenadas normalizadas
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Recopilar todos los objetos seleccionables
+    const allSelectable = [];
+    panels.forEach(panel => {
+        if (panel.group) {
+            if (panel.fillMesh) allSelectable.push(panel.fillMesh);
+            if (panel.borderLines) allSelectable.push(...panel.borderLines);
+        }
+    });
+    
+    const intersects = raycaster.intersectObjects(allSelectable, false);
+    
+    if (intersects.length > 0) {
+        const clickedObject = intersects[0].object;
+        let panelData = null;
+
+        // Buscar el panel al que pertenece el objeto clickeado
+        if (clickedObject.userData.panelDataRef) {
+            panelData = clickedObject.userData.panelDataRef;
+        } else {
+            // Buscar en la jerarquía
+            let currentObject = clickedObject;
+            while (currentObject && !panelData) {
+                if (currentObject.userData && currentObject.userData.panelDataRef) {
+                    panelData = currentObject.userData.panelDataRef;
+                    break;
+                }
+                currentObject = currentObject.parent;
+            }
+        }
+
+        if (panelData) {
+            if (panelData.isKeyboardKey && panelData.behavior && panelData.behavior.character) {
+                // Es una tecla del teclado, ejecutar su función onPress
+                if (panelData.onPress) {
+                    panelData.onPress();
+                    console.log(`Tecla bioKeyb presionada: ${panelData.behavior.character}`);
+                    
+                    // Efecto visual de flash al presionar
+                    panelData.flashProgress = 0;
+                    panelData.shouldFlash = true;
+                    panelsFlashing.add(panelData);
+                }
+            } else {
+                // Es un panel normal, manejar la selección
+                if (event.shiftKey) {
+                    panelData.selected = !panelData.selected;
+                } else {
+                    // Deseleccionar otros paneles
+                    panels.forEach(p => {
+                        if (p !== panelData && p.selected) {
+                            p.selected = false;
+                            updatePanelColor(p);
+                        }
+                    });
+                    panelData.selected = true;
+                }
+                updatePanelColor(panelData);
+            }
+        }
+    } else {
+        // Click en el fondo
+        if (!event.shiftKey) {
+            panels.forEach(p => {
+                if (p.selected) {
+                    p.selected = false;
+                    updatePanelColor(p);
+                }
+            });
+        }
+    }
+
+    // Resto del código existente para manejo de selección y arrastre...
+    if (isSelecting) {
+        isSelecting = false;
+        controls.enabled = true;
+        selectionBox.style.display = 'none';
+
+        const start3D = get3DPointOnGrid({clientX: startPoint.x, clientY: startPoint.y});
+        const end3D = get3DPointOnGrid({clientX: endPoint.x, clientY: endPoint.y});
+
+        const dragDistance = Math.sqrt(
+            Math.pow(endPoint.x - startPoint.x, 2) + 
+            Math.pow(endPoint.y - startPoint.y, 2)
+        );
+        
+        if (start3D && end3D && dragDistance > 5) {
+            createPanelFromSelection(start3D, end3D);
+        }
+    }
+    
+    // Limpiar estados de arrastre
+    if (isDraggingPanel) {
+        isDraggingPanel = false;
+        draggedPanel = null;
+        controls.enabled = true;
+        renderer.domElement.style.cursor = 'auto';
+    }
+});
+
+// ... existing code ...
+// Eliminar todas las referencias a localStorage y configuración
+function initializeKeyboard() {
+    const defaultConfig = {
+        divisions: 50,
+        size: {
+            width: 48.35257082896117,
+            height: 24,
+            maxSize: 24,
+            cellSize: 0.48,
+            cellsX: 101,
+            cellsY: 50,
+            adjustedWidth: 48.48,
+            adjustedHeight: 24
+        }
+    };
+    
+    return defaultConfig;
+}
+
+// Usar configuración por defecto siempre
+const keyboardConfig = initializeKeyboard();
+
+// Eliminar todas las referencias a:
+// localStorage.setItem('gridConfig', ...)
+// localStorage.getItem('gridConfig')
+// localStorage.setItem('gridConfig_backup', ...)
+// localStorage.getItem('gridConfig_backup')
+// saveKeyboardConfig
+// loadKeyboardConfig
+// saveBackup
+// restoreFromBackup
+
+// ... existing code ...
