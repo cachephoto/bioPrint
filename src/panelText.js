@@ -3,7 +3,7 @@ import * as THREE from 'three';
 
 // Estado global del texto
 export const panelTextState = new Map();
-let currentEditingPanel = null;
+export let currentEditingPanel = null;
 let cursorBlinkInterval = null;
 let cursorVisible = true;
 let pixelFont = null; // Almacenamos la textura de fuente pixelada
@@ -1192,11 +1192,15 @@ export function handleTextInput(panel, event, gridSize) {
 }
 
 // Activar modo de edición
-export function startTextEditing(panel, gridSize) {
+export function startTextEditing(panel, cellSize) {
+    if (!panel) return;
+    
     const state = panelTextState.get(panel);
     if (!state) return;
 
     state.isEditing = true;
+    panel.isEditing = true; // Añadir estado al panel también
+    
     currentEditingPanel = panel;
     
     // Agregar event listeners para interacción táctil SOLO cuando
@@ -1211,21 +1215,23 @@ export function startTextEditing(panel, gridSize) {
     if (cursorBlinkInterval) clearInterval(cursorBlinkInterval);
     cursorBlinkInterval = setInterval(() => {
         cursorVisible = !cursorVisible;
-        createPanelText(panel, gridSize);
+        createPanelText(panel, cellSize);
     }, TEXT_CONFIG.cursorBlinkRate);
 
-    createPanelText(panel, gridSize);
+    createPanelText(panel, cellSize);
 }
 
 // Desactivar modo de edición
 export function stopTextEditing(panel) {
+    if (!panel) return;
+    
     const state = panelTextState.get(panel);
     if (!state) return;
 
     state.isEditing = false;
-    if (currentEditingPanel === panel) {
+    panel.isEditing = false; // Limpiar estado del panel
+    
         currentEditingPanel = null;
-    }
     
     // Remover event listeners cuando salimos del modo edición
     document.removeEventListener('touchstart', handleTextTouchStart);

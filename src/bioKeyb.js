@@ -48,7 +48,9 @@ const keyboardState = {
   capsLock: false,
   shift: false,
   showOrderNumbers: false,
-  activeElement: null
+  activeElement: null,
+  isWriting: false, // Nueva propiedad para detectar si el usuario está escribiendo
+  disabledKeys: ['A', 'V', 'T', 'C', 'X', 'G'] // Teclas a desactivar durante la escritura
 };
 
 // NUEVO: Materiales compartidos para todas las teclas
@@ -119,7 +121,7 @@ function createKeyboard() {
   console.log("Creando teclado bioKeyb...");
   
   // Ajustar coordenadas para posicionar el teclado
-  const offsetX = 13; // Mantener posición horizontal
+  const offsetX = 18; // Mantener posición horizontal
   const offsetY = 1;  // De 2 a 1 para bajar una hilera
   
   // Definición de las teclas según la configuración del archivo
@@ -254,6 +256,20 @@ function handleKeyPress(keyId, customCallback) {
     console.log(`- Texto mostrado: ${keyInfo.behavior.textContent}`);
     console.log('-------------------');
     
+    // Comprobar si estamos en modo de escritura y si la tecla está en la lista de teclas desactivadas
+    const activeElement = document.activeElement;
+    keyboardState.isWriting = activeElement instanceof HTMLInputElement || 
+                             activeElement instanceof HTMLTextAreaElement ||
+                             (activeElement && activeElement.isContentEditable);
+    
+    // Si estamos escribiendo y la tecla está en la lista de desactivadas, ignorarla
+    if (keyboardState.isWriting && 
+        keyboardState.disabledKeys.includes(character.toUpperCase()) &&
+        character.length === 1) {
+        console.log(`Tecla ${character} desactivada mientras se escribe`);
+        return;
+    }
+    
     // Manejar teclas especiales primero
     switch(character) {
         case 'CAPS':
@@ -263,6 +279,20 @@ function handleKeyPress(keyId, customCallback) {
         case 'SHIFT':
             keyboardState.shift = !keyboardState.shift;
             console.log(`SHIFT ${keyboardState.shift ? 'activado' : 'desactivado'}`);
+            return;
+        case 'ESC':
+            // Enviar evento de Escape
+            const escEvent = new KeyboardEvent('keydown', {
+                key: 'Escape',
+                code: 'Escape',
+                keyCode: 27,
+                which: 27,
+                bubbles: true,
+                cancelable: true
+            });
+            const target = document.activeElement || document;
+            target.dispatchEvent(escEvent);
+            console.log('Tecla ESC presionada: Enviando evento Escape');
             return;
         case 'F5':
             // Recargar la página
@@ -436,6 +466,7 @@ function initBioKeyb(scene, createPanelFunction, consoleEl) {
   keyboardState.showOrderNumbers = false;
   keyboardState.capsLock = false;
   keyboardState.shift = false;
+  keyboardState.isWriting = false;
   
   // Configurar elemento de consola si se proporciona
   if (consoleEl) {
@@ -467,6 +498,26 @@ function initBioKeyb(scene, createPanelFunction, consoleEl) {
   // Agregar listener global para focus
   document.addEventListener('focus', (e) => {
     keyboardState.activeElement = document.activeElement;
+    
+    // Detectar si estamos en un campo de entrada
+    const target = e.target;
+    if (target instanceof HTMLInputElement || 
+        target instanceof HTMLTextAreaElement || 
+        (target && target.isContentEditable)) {
+      keyboardState.isWriting = true;
+      console.log('Modo escritura activado automáticamente');
+    }
+  }, true);
+  
+  // Agregar listener para blur (cuando se pierde el foco)
+  document.addEventListener('blur', (e) => {
+    const target = e.target;
+    if (target instanceof HTMLInputElement || 
+        target instanceof HTMLTextAreaElement || 
+        (target && target.isContentEditable)) {
+      keyboardState.isWriting = false;
+      console.log('Modo escritura desactivado automáticamente');
+    }
   }, true);
   
   console.log("Teclado inicializado con", panels.length, "teclas");
@@ -618,24 +669,58 @@ function createKeyLabel(panelData, gridSize) {
 function updatePanelColor(panelData) {
     if (!panelData || !panelData.group) return;
     
-    let targetMaterials;
+    let targetLineMaterial;
+    let targetFillMaterial;
 
-    if (panelData.selected) {
-        targetMaterials = keyMaterials.selected;
-    } else if (panelData.hovered && !('ontouchstart' in window)) {
-        targetMaterials = keyMaterials.hover;
+    // Si es una tecla del teclado, nunca usar el material "selected"
+    if (panelData.isKeyboardKey) {
+        if (panelData.hovered) {
+            targetLineMaterial = keyMaterials.hover.line;
+            targetFillMaterial = keyMaterials.hover.fill;
+        } else {
+            targetLineMaterial = keyMaterials.normal.line;
+            targetFillMaterial = keyMaterials.normal.fill;
+        }
     } else {
-        targetMaterials = keyMaterials.normal;
+        // Comportamiento normal para paneles regulares
+        if (panelData.selected) {
+            targetLineMaterial = keyMaterials.selected.line;
+            targetFillMaterial = keyMaterials.selected.fill;
+        } else if (panelData.hovered) {
+            targetLineMaterial = keyMaterials.hover.line;
+            targetFillMaterial = keyMaterials.hover.fill;
+        } else {
+            targetLineMaterial = keyMaterials.normal.line;
+            targetFillMaterial = keyMaterials.normal.fill;
+        }
     }
 
     // Aplicar materiales
     panelData.group.children.forEach(child => {
         if (child instanceof THREE.Line) {
-            child.material = targetMaterials.line;
-        } else if (child instanceof THREE.Mesh) {
-            child.material = targetMaterials.fill;
+            child.material = targetLineMaterial;
+        } else if (child === panelData.fillMesh) {
+            child.material = targetFillMaterial;
         }
     });
+
+    // Guardar referencia a materiales actuales para animación de flash
+    panelData.currentLineMaterial = targetLineMaterial;
+    panelData.currentFillMaterial = targetFillMaterial;
+}
+
+// Función para configurar las teclas desactivadas durante la escritura
+function setDisabledKeys(keys) {
+  if (Array.isArray(keys)) {
+    keyboardState.disabledKeys = keys.map(key => key.toUpperCase());
+    console.log(`Teclas desactivadas durante escritura: ${keyboardState.disabledKeys.join(', ')}`);
+  }
+}
+
+// Función para activar/desactivar el modo de escritura manualmente
+function setWritingMode(isWriting) {
+  keyboardState.isWriting = !!isWriting;
+  console.log(`Modo escritura: ${keyboardState.isWriting ? 'ACTIVADO' : 'DESACTIVADO'}`);
 }
 
 // Exportar funciones del módulo
@@ -651,5 +736,7 @@ export {
   toggleOrderNumbers,
   processCommand,
   createKeyLabel,
-  updatePanelColor
+  updatePanelColor,
+  setDisabledKeys,
+  setWritingMode
 }; 

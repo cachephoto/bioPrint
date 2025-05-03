@@ -11,12 +11,28 @@ import {
     cleanupPanelText,
     getPanelText,
     panelTextState,
-    TEXT_CONFIG // <--- Importar TEXT_CONFIG
+    TEXT_CONFIG
 } from './panelText.js';
 import { initBioFX, setColorEffect, render as renderBioFX, setBloomEffect } from './bioFX.js';
-import { animateModels, loadModelToPanel, cleanupPanelModels, toggleModelRotation, setModelRotationSpeed, preserveModel, restoreModel } from './panelModel.js';
+import { 
+    loadModelToPanel, 
+    toggleModelRotation, 
+    setModelRotationSpeed, 
+    animateModels, 
+    cleanupPanelModels, 
+    preserveModel, 
+    restoreModel 
+} from './panelModel.js';
 import { loadGenomToPanel, animateGenoms, cleanupGenomModels, loadGTACToPanel } from './genomModel.js';
 import { initBioKeyb, createKeyboard, createKeyLabel } from './bioKeyb.js';
+import { handleLogoCommand, updateOnPanelMove } from './bioLOGO.js';
+import { loadCodonToPanel, animateCodons, cleanupCodonModels } from './codonModel.js';
+
+// Variables globales para controlar la visibilidad del teclado
+let bioKeybVisible = false; // Controla si el teclado está visible o no
+
+// Mapa para almacenar los intervalos de GATC
+const gatcIntervals = new Map(); // Para gestionar los intervalos de animación GATC
 
 // Manejar el splash screen
 document.addEventListener('DOMContentLoaded', () => {
@@ -77,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Variables para la animación de 24 cuadros
 let animationFrame = 0;
-const totalFrames = 18; // Cambiado de 24 a 18 para que 18 * 2 = 36
+const totalFrames = 24;
 let animationInterval = null;
 const initialZoom = 100; // Zoom inicial lejano
 const finalZoom = 10; // Zoom final cercano
@@ -134,10 +150,10 @@ function startGridAnimation24Frames() {
         // Si llegamos al último cuadro, detener animación
         if (animationFrame >= totalFrames) {
             clearInterval(animationInterval);
-            console.log("Animación de 18 cuadros completada - Se mantiene en 36 subdivisiones");
+            console.log("Animación de 24 cuadros completada - Se mantiene en 48 subdivisiones");
             
-            // Establecer a 36 como nivel final después de la animación
-            currentDivisions = 36;
+            // Establecer a 48 como nivel final después de la animación
+            currentDivisions = 48;
             
             // Asegurar posición final correcta
             camera.position.z = finalZoom;
@@ -812,6 +828,13 @@ document.addEventListener('keydown', (event) => {
         controls.enableRotate = true;
         controls.enableZoom = true;
         renderer.domElement.style.cursor = 'move';
+    } else if (event.key === 'F11') {
+        event.preventDefault();
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
     }
 });
 
@@ -1334,8 +1357,26 @@ function toggleControlsVisibility() {
 
 // Control de teclado
 document.addEventListener('keydown', (event) => {
+    // Si hay un panel en modo de edición de texto, permitir que panelText.js maneje 
+    // todos los eventos de teclado (excepto Escape, que se maneja especialmente)
+    if (typeof currentEditingPanel !== 'undefined' && currentEditingPanel && event.key !== 'Escape') {
+        // Dejar que panelText.js se encargue de procesar el evento de teclado
+        return;
+    }
+    
     // Ignorar atajos de teclado si la terminal está visible, excepto Escape
     if (terminalVisible && event.key !== 'Escape') {
+        return;
+    }
+
+    // Comprobar si hay algún elemento de entrada activo (inputs, textareas)
+    const activeElement = document.activeElement;
+    const isInputActive = activeElement instanceof HTMLInputElement || 
+                         activeElement instanceof HTMLTextAreaElement || 
+                         (activeElement && activeElement.isContentEditable);
+    
+    // Si estamos en un campo de entrada, permitir solo Escape
+    if (isInputActive && event.key !== 'Escape') {
         return;
     }
 
@@ -1374,8 +1415,8 @@ document.addEventListener('keydown', (event) => {
             break;
         case 'c':
         case 'C':
-            // Limpiar TODOS los paneles
-            clearAllPanels();
+            // Limpiar SOLO los paneles normales (nunca los del teclado bioKeyb)
+            clearAllPanels(false, false); // skipSave=false, clearBioKeyb=false
             return;
         case 'a':
         case 'A':
@@ -1394,96 +1435,69 @@ document.addEventListener('keydown', (event) => {
             toggleTerminal(true);
             return;
         case 'Escape':
+            // Si hay un panel en edición, primero intentar cerrar el modo de edición
+            if (typeof currentEditingPanel !== 'undefined' && currentEditingPanel) {
+                // Este caso se maneja en el handler específico de handleEscape
+                return;
+            }
             // Mostrar u ocultar la consola terminal
             toggleTerminal(false);
+            return;
+        case 'k':
+        case 'K':
+            // Mostrar/ocultar el teclado bioKeyb si no está en modo edición
+            if (!bioKeybVisible) {
+                // Si el teclado está oculto, mostrarlo
+                loadBioKeyb(false); // Cargar teclado mostrando su presencia pero sin guardar configuración
+                bioKeybVisible = true;
+                console.log("Teclado bioKeyb mostrado con tecla K");
+            } else {
+                // Si la tecla K se usa mientras el teclado está visible, permitir que actúe como una tecla normal
+                console.log("Tecla K presionada con teclado visible (comportamiento normal)");
+            }
             return;
     }
 
     // --- Procesar Cambio de Resolución --- 
     if (resolutionChanged && newDivisions !== currentDivisions) {
+        // NO eliminamos los grupos de paneles de la escena aquí.
+        // updateGrid se encargará de actualizar su contenido y posición.
         updateGrid(newDivisions); 
     }
     
     // --- Procesar Movimiento --- 
-    else if (moveDelta.dx !== 0 || moveDelta.dy !== 0) {
-        // Verificar si hay alguna tecla del teclado virtual seleccionada
-        const selectedKeyboardPanels = panels.filter(p => p.selected && p.behavior?.keyboardKey);
+    if (moveDelta.dx !== 0 || moveDelta.dy !== 0) {
+        const currentGridParams = getCurrentGridParams();
+        if (!currentGridParams) {
+            console.warn("No se pudo obtener la configuración actual del grid");
+            return;
+        }
         
-        if (selectedKeyboardPanels.length > 0) {
-            // Si hay teclas del teclado virtual seleccionadas, mover todo el teclado
-            const currentGridParams = getCurrentGridParams();
-            if (!currentGridParams) return;
-
-            // Verificar si el movimiento es válido para todos los paneles
-            let canMoveAll = true;
-            panels.forEach(panel => {
-                const newMinX = panel.minCellIndex.x + moveDelta.dx;
-                const newMaxX = panel.maxCellIndex.x + moveDelta.dx;
-                const newMinY = panel.minCellIndex.y + moveDelta.dy;
-                const newMaxY = panel.maxCellIndex.y + moveDelta.dy;
-
-                // Verificar límites del grid
-                if (newMinX < 0 || newMaxX >= currentGridParams.cellsX ||
-                    newMinY < 0 || newMaxY >= currentGridParams.cellsY) {
-                    canMoveAll = false;
-                }
-            });
-
-            if (canMoveAll) {
-                // Mover todos los paneles
-                panels.forEach(panel => {
-                    panel.minCellIndex.x += moveDelta.dx;
-                    panel.maxCellIndex.x += moveDelta.dx;
-                    panel.minCellIndex.y += moveDelta.dy;
-                    panel.maxCellIndex.y += moveDelta.dy;
-                    updatePanelGeometryAndPosition(panel, currentGridParams);
-                });
-
-                // Animar el movimiento
-                panels.forEach(panel => {
-                    panel.flashProgress = 0;
-                    panel.shouldFlash = true;
-                    panelsFlashing.add(panel);
-                });
+        let somethingMoved = false;
+        
+        panels.forEach(panel => {
+            // Solo mover paneles seleccionados y que no sean del teclado bioKeyb
+            if (panel.selected && !panel.isKeyboardKey) {
+                movePanel(panel, moveDelta.dx, moveDelta.dy, currentGridParams);
+                somethingMoved = true;
             }
-        } else {
-            // Si no hay teclas del teclado virtual seleccionadas, mantener el comportamiento original
-            const selectedPanels = panels.filter(p => p.selected);
-            if (selectedPanels.length > 0) {
-                const currentGridParams = getCurrentGridParams();
-                if (!currentGridParams) return;
-
-                // Comprobar si TODOS los paneles seleccionados pueden moverse
-                let canMoveAll = true;
-                for (const panel of selectedPanels) {
-                    if (checkPanelMoveConflict(panel, moveDelta.dx, moveDelta.dy, currentGridParams)) {
-                        canMoveAll = false;
-                        break;
-                    }
-                }
-
-                // Si todos pueden moverse, actualizar sus índices y geometría/posición
-                if (canMoveAll) {
-                    selectedPanels.forEach(panel => {
-                        panel.minCellIndex.x += moveDelta.dx;
-                        panel.maxCellIndex.x += moveDelta.dx;
-                        panel.minCellIndex.y += moveDelta.dy;
-                        panel.maxCellIndex.y += moveDelta.dy;
-                        updatePanelGeometryAndPosition(panel, currentGridParams);
-                    });
-                }
-            }
+        });
+        
+        if (somethingMoved) {
+            // Animar los paneles moviéndose
+            animateResizingPanels();
         }
     }
-
     // --- Procesar Borrado --- 
     else if (deleteTriggered) {
         const remainingPanels = [];
         let deletedSomething = false;
         panels.forEach(panel => {
-            if (panel.selected) {
+            // Solo borrar paneles seleccionados que no sean del teclado bioKeyb
+            if (panel.selected && !panel.isKeyboardKey) {
                 if(panel.group) {
                     scene.remove(panel.group);
+                    // Limpiar geometrías de los hijos (líneas)
                     while(panel.group.children.length > 0){
                          const child = panel.group.children[0]; 
                          panel.group.remove(child);
@@ -1544,6 +1558,9 @@ function animate() {
     // Animar redes de proteínas
     animateGenoms();
     
+    // Animar modelos de codón
+    animateCodons();
+    
     controls.update();
     renderBioFX();
 }
@@ -1564,6 +1581,9 @@ function handleResize() {
 }
 
 window.addEventListener('resize', handleResize);
+
+// Manejar cambios de pantalla completa
+document.addEventListener('fullscreenchange', handleResize);
 
 // Exportar funciones para controlar el grid desde la consola
 window.updateGrid = updateGrid;
@@ -1947,6 +1967,9 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
     if (hasText) {
         createPanelText(panelData, gridParams.cellSize);
     }
+    
+    // Actualizar logo si el panel está asociado
+    updateOnPanelMove(panelData);
 }
 
 // Función para crear UN panel desde bounding box de índices
@@ -2084,6 +2107,8 @@ renderer.domElement.addEventListener('mousedown', (event) => {
             }
             
             if (clickedPanelData) {
+                // No permitir arrastre para teclas del teclado
+                if (!clickedPanelData.isKeyboardKey) {
                 // Guardar la posición inicial del mouse ahora
                 const mouseStartPosition = { 
                     x: event.clientX, 
@@ -2103,23 +2128,6 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                     maxX: clickedPanelData.maxCellIndex.x,
                     maxY: clickedPanelData.maxCellIndex.y
                 };
-                
-                // Procesar la selección de inmediato (no se espera para esto)
-                if (event.shiftKey) {
-                    // --- Shift + Click: Añadir/Quitar de la selección --- 
-                    clickedPanelData.selected = !clickedPanelData.selected; 
-                    updatePanelColor(clickedPanelData);
-                } else {
-                    // --- Click Normal: Deseleccionar todos y seleccionar solo este --- 
-                    panels.forEach(p => {
-                        if (p !== clickedPanelData && p.selected) {
-                            p.selected = false;
-                            updatePanelColor(p);
-                        }
-                    });
-                       clickedPanelData.selected = true; 
-                       updatePanelColor(clickedPanelData);
-                }
                 
                 // Configurar temporizador para iniciar el arrastre después del retraso
                 // Cancelar cualquier temporizador existente primero
@@ -2147,6 +2155,24 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                         renderer.domElement.style.cursor = 'move';
                     }
                 }, dragStartDelay);
+                }
+                
+                // Procesar la selección de inmediato (no se espera para esto)
+                if (event.shiftKey) {
+                    // --- Shift + Click: Añadir/Quitar de la selección --- 
+                    clickedPanelData.selected = !clickedPanelData.selected; 
+                    updatePanelColor(clickedPanelData);
+                } else {
+                    // --- Click Normal: Deseleccionar todos y seleccionar solo este --- 
+                    panels.forEach(p => {
+                        if (p !== clickedPanelData && p.selected) {
+                            p.selected = false;
+                            updatePanelColor(p);
+                        }
+                    });
+                    clickedPanelData.selected = true; 
+                    updatePanelColor(clickedPanelData);
+                }
             }
         } else {
             // --- Se hizo click en el fondo (no en un panel) --- 
@@ -2461,6 +2487,7 @@ renderer.domElement.addEventListener('mouseleave', () => {
 // --- Funciones de Configuración --- 
 
 function getSerializableConfig() {
+    try {
     const currentGridParams = getCurrentGridParams();
     if (!currentGridParams) return null;
     
@@ -2475,35 +2502,58 @@ function getSerializableConfig() {
     const currentGlowThreshold = parseFloat(glowThresholdSlider.value);
     
     // Serializar solo los paneles que NO son teclas del teclado
-    const serializedPanels = panels
-        .filter(panel => !panel.isKeyboardKey && !panel.behavior?.isKeyboardKey) // Doble verificación
-        .map(panel => {
+        const serializedPanels = [];
+        
+        // Filtrar y mapear en pasos separados para evitar problemas con paneles inválidos
+        const regularPanels = panels.filter(panel => !panel.isKeyboardKey);
+        
+        for (const panel of regularPanels) {
+            try {
             const textState = panelTextState.get(panel);
             const currentText = panel.hasText ? 
                 (textState && textState.isPassword ? textState.realText : getPanelText(panel)) : '';
             
-            return {
-                minCellIndex: { ...panel.minCellIndex },
-                maxCellIndex: { ...panel.maxCellIndex },
-                orderNumber: panel.orderNumber,
-                showOrderNumber: panel.showOrderNumber,
-                selected: panel.selected,
+                // Crear un objeto simple serializable
+                const serializedPanel = {
+                    minCellIndex: { 
+                        x: typeof panel.minCellIndex.x === 'number' ? panel.minCellIndex.x : 0,
+                        y: typeof panel.minCellIndex.y === 'number' ? panel.minCellIndex.y : 0
+                    },
+                    maxCellIndex: { 
+                        x: typeof panel.maxCellIndex.x === 'number' ? panel.maxCellIndex.x : 0,
+                        y: typeof panel.maxCellIndex.y === 'number' ? panel.maxCellIndex.y : 0
+                    },
+                    orderNumber: typeof panel.orderNumber === 'number' ? panel.orderNumber : 0,
+                    showOrderNumber: !!panel.showOrderNumber,
+                    selected: !!panel.selected,
                 behavior: {
-                    hasText: panel.hasText || false,
-                    textContent: currentText,
-                    messageBuffer: textState ? textState.lines : [],
-                    maxLines: textState ? textState.maxCharsPerLine : 0,
-                    isPassword: textState ? textState.isPassword : false,
+                        hasText: !!panel.hasText,
+                        textContent: typeof currentText === 'string' ? currentText : '',
+                        messageBuffer: Array.isArray(textState?.lines) ? [...textState.lines] : [],
+                        maxLines: typeof textState?.maxCharsPerLine === 'number' ? textState.maxCharsPerLine : 0,
+                        isPassword: !!textState?.isPassword,
                     isGATCActive: gatcIntervals.has(panel),
                     modelData: panel.modelData ? {
-                        modelUrl: panel.modelData.url,
-                        isRotating: panel.modelData.isRotating,
-                        rotationSpeed: panel.modelData.rotationSpeed
+                            modelUrl: typeof panel.modelData.url === 'string' ? panel.modelData.url : '',
+                            isRotating: !!panel.modelData.isRotating,
+                            rotationSpeed: typeof panel.modelData.rotationSpeed === 'number' ? panel.modelData.rotationSpeed : 0.005
                     } : null,
                     genomData: panel.genomData || null
                 }
             };
-        });
+                
+                // Validar y sanear los datos
+                if (isNaN(serializedPanel.minCellIndex.x)) serializedPanel.minCellIndex.x = 0;
+                if (isNaN(serializedPanel.minCellIndex.y)) serializedPanel.minCellIndex.y = 0;
+                if (isNaN(serializedPanel.maxCellIndex.x)) serializedPanel.maxCellIndex.x = 0;
+                if (isNaN(serializedPanel.maxCellIndex.y)) serializedPanel.maxCellIndex.y = 0;
+                
+                serializedPanels.push(serializedPanel);
+            } catch (error) {
+                console.error("Error al serializar panel:", error);
+                // Continuar con el siguiente panel
+            }
+        }
     
     return {
         grid: {
@@ -2536,8 +2586,14 @@ function getSerializableConfig() {
                 radius: currentGlowRadius,
                 threshold: currentGlowThreshold
             }
-        }
+            },
+            appVersion: '1.1.0', // Agregar versión de la aplicación
+            bioKeybVisible: bioKeybVisible // Guardar estado del teclado
     };
+    } catch (error) {
+        console.error("Error en getSerializableConfig:", error);
+        return null;
+    }
 }
 
 function saveConfiguration() {
@@ -2549,36 +2605,59 @@ function saveConfiguration() {
             return;
         }
         
-        // Guardar la configuración
+        // Guardar la configuración con manejo seguro de errores de serialización
+        try {
         const configString = JSON.stringify(config);
-        localStorage.setItem('gridConfig', configString);
-        
-        // Guardar backup
-        localStorage.setItem('gridConfig_backup', configString);
-        
-        // Verificar que se guardó correctamente
-        const savedConfig = localStorage.getItem('gridConfig');
-        if (!savedConfig) {
-            console.error('Error: La configuración no se guardó correctamente');
-            return;
-        }
-
-        // Verificar que los datos guardados son correctos
-        const parsedSavedConfig = JSON.parse(savedConfig);
-        if (!parsedSavedConfig.grid || !parsedSavedConfig.panels) {
-            console.error('Error: Los datos guardados están incompletos');
-            return;
+            
+            // Dividir en chunks si es demasiado grande
+            const MAX_CHUNK_SIZE = 2000000; // ~2MB por chunk
+            
+            if (configString.length > MAX_CHUNK_SIZE) {
+                // Si es demasiado grande, guardar en chunks
+                const chunks = Math.ceil(configString.length / MAX_CHUNK_SIZE);
+                console.log(`Configuración grande (${configString.length} bytes), dividiendo en ${chunks} partes`);
+                
+                // Limpiar chunks anteriores
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('gridConfig_chunk_')) {
+                        localStorage.removeItem(key);
+                    }
+                }
+                
+                // Guardar metadatos
+                localStorage.setItem('gridConfig_chunks', chunks.toString());
+                
+                // Guardar cada chunk
+                for (let i = 0; i < chunks; i++) {
+                    const start = i * MAX_CHUNK_SIZE;
+                    const end = Math.min(start + MAX_CHUNK_SIZE, configString.length);
+                    const chunk = configString.substring(start, end);
+                    localStorage.setItem(`gridConfig_chunk_${i}`, chunk);
+                }
+                
+                // Guardar flag para indicar modo chunked
+                localStorage.setItem('gridConfig_mode', 'chunked');
+                console.log(`Configuración guardada en ${chunks} chunks`);
+            } else {
+                // Caso normal, guardar directamente
+                localStorage.setItem('gridConfig', configString);
+                localStorage.setItem('gridConfig_backup', configString);
+                localStorage.setItem('gridConfig_mode', 'single');
         }
 
         console.log('Configuración guardada exitosamente:', {
-            divisiones: parsedSavedConfig.grid.divisions,
-            paneles: parsedSavedConfig.panels.length,
-            fecha: parsedSavedConfig.date
-        });
-
-        // NO recargar automáticamente, solo mostrar mensaje de éxito
+                divisiones: config.grid.divisions,
+                paneles: config.panels.length,
+                fecha: config.date,
+                tamaño: configString.length + ' bytes'
+            });
+            
         console.log('Estado guardado correctamente. Use el botón de cargar para restaurar si es necesario.');
-
+        } catch (stringifyError) {
+            console.error('Error al serializar la configuración:', stringifyError);
+            throw stringifyError; // Propagar el error para el catch externo
+        }
     } catch (error) {
         console.error('Error al guardar configuración:', error);
         // Intentar restaurar desde backup si hay error
@@ -2602,22 +2681,67 @@ function loadConfiguration() {
             return;
         }
 
-        const configString = localStorage.getItem('gridConfig');
+        // Verificar si la configuración está en modo chunked
+        const configMode = localStorage.getItem('gridConfig_mode');
+        let configString = '';
+        
+        if (configMode === 'chunked') {
+            // Cargar configuración desde chunks
+            const chunks = parseInt(localStorage.getItem('gridConfig_chunks') || '0');
+            if (chunks <= 0) {
+                console.error('Error en metadatos de chunks');
+                return;
+            }
+            
+            // Reconstruir desde chunks
+            for (let i = 0; i < chunks; i++) {
+                const chunk = localStorage.getItem(`gridConfig_chunk_${i}`);
+                if (!chunk) {
+                    console.error(`Error: No se encontró el chunk ${i}`);
+                    return;
+                }
+                configString += chunk;
+            }
+            
+            console.log(`Configuración cargada desde ${chunks} chunks (${configString.length} bytes)`);
+        } else {
+            // Cargar normalmente
+            configString = localStorage.getItem('gridConfig');
         if (!configString) {
             console.log('No hay configuración guardada en localStorage.');
-            loadBioKeyb();
+                loadBioKeyb(true); // Cargar teclado pero no guardar configuración
             return;
+            }
         }
 
-        const config = JSON.parse(configString);
+        let config;
+        try {
+            config = JSON.parse(configString);
+        } catch (parseError) {
+            console.error('Error al parsear la configuración:', parseError);
+            // Intentar restaurar desde backup
+            const backup = localStorage.getItem('gridConfig_backup');
+            if (backup) {
+                try {
+                    config = JSON.parse(backup);
+                    console.log('Configuración restaurada desde backup.');
+                } catch (backupParseError) {
+                    console.error('Error al parsear el backup:', backupParseError);
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+
         console.log('Cargando configuración:', {
             divisiones: config.grid.divisions,
             paneles: config.panels.length,
             fecha: config.date
         });
 
-        // Limpiar paneles actuales sin guardar la configuración
-        clearAllPanels(true);
+        // Limpiar TODOS los paneles (incluyendo teclado)
+        clearAllPanels(true, true);
 
         // Restaurar configuración de bioFX si existe
         if (config.bioFX) {
@@ -2625,13 +2749,9 @@ function loadConfiguration() {
             colorPicker.value = colorHex;
             blendTypePicker.value = config.bioFX.blendType.toString();
             intensitySlider.value = config.bioFX.intensity.toString();
-            
-            if (config.bioFX.glow) {
                 glowSlider.value = config.bioFX.glow.intensity.toString();
                 glowRadiusSlider.value = config.bioFX.glow.radius.toString();
                 glowThresholdSlider.value = config.bioFX.glow.threshold.toString();
-            }
-            
             updateBioFXEffect();
         }
 
@@ -2657,10 +2777,19 @@ function loadConfiguration() {
             camera.updateProjectionMatrix();
         }
 
-        // Primero cargar el teclado
-        loadBioKeyb();
+        // Restaurar el estado del teclado según la configuración guardada
+        if (config.bioKeybVisible !== undefined) {
+            bioKeybVisible = !!config.bioKeybVisible;
+        } else {
+            bioKeybVisible = false; // Valor por defecto si no está especificado
+        }
+
+        // Cargar el teclado si estaba visible o si no hay información sobre visibilidad
+        if (bioKeybVisible) {
+            loadBioKeyb(true); // Cargar teclado sin guardar configuración
+        }
         
-        // Luego recrear los paneles guardados (que no son del teclado)
+        // Recrear los paneles guardados (que no son del teclado)
         requestAnimationFrame(() => {
             const currentGridParams = getCurrentGridParams();
             if (!currentGridParams) {
@@ -2668,18 +2797,8 @@ function loadConfiguration() {
                 return;
             }
 
-            // Verificar que los parámetros del grid coincidan
-            if (config.grid.size) {
-                const loadedSize = config.grid.size;
-                const currentSize = calculateGridSize();
-                console.log('Tamaño del grid cargado:', loadedSize);
-                console.log('Tamaño del grid actual:', currentSize);
-            }
-
             // Cargar solo los paneles que NO son teclas del teclado
             config.panels.forEach(panelInfo => {
-                // Verificar que no sea una tecla del teclado
-                if (!panelInfo.behavior?.isKeyboardKey) {
                     const panelData = {
                         group: null,
                         minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
@@ -2720,7 +2839,10 @@ function loadConfiguration() {
                             }
 
                             if (panelInfo.behavior.isGATCActive) {
-                                handleGATCCommand({ appendChild: () => {} }, panelData);
+                            handleGATCCommand({ 
+                                appendChild: () => {}, // Mock output para la función
+                                innerHTML: ''
+                            }, panelData);
                             }
 
                             if (panelInfo.behavior.modelData) {
@@ -2743,7 +2865,6 @@ function loadConfiguration() {
                         if (panelInfo.selected) {
                             panelData.selected = true;
                             updatePanelColor(panelData);
-                        }
                     }
                 }
             });
@@ -2755,7 +2876,10 @@ function loadConfiguration() {
         console.log('Configuración cargada desde localStorage.');
     } catch (error) {
         console.error('Error al cargar configuración:', error);
-        loadBioKeyb();
+        // Si hay error, asegurar que el teclado esté cargado
+        if (!panels.some(panel => panel.isKeyboardKey)) {
+            loadBioKeyb(true); // Cargar teclado sin guardar configuración
+        }
     }
 }
 
@@ -3580,9 +3704,13 @@ function updateStateButtons() {
 }
 
 // Función para limpiar todos los paneles
-function clearAllPanels(skipSave = false) {
-    // Limpiar paneles de la escena
+function clearAllPanels(skipSave = false, clearBioKeyb = false) {
+    // Preservar los paneles del teclado por defecto
+    const preservedPanels = panels.filter(panel => panel.isKeyboardKey && !clearBioKeyb);
+    
+    // Limpiar los paneles que no son del teclado o todos si clearBioKeyb=true
     panels.forEach(panel => {
+        if (!panel.isKeyboardKey || clearBioKeyb) {
         if (panel.group) {
             scene.remove(panel.group);
             // Limpiar geometrías de los hijos
@@ -3591,16 +3719,15 @@ function clearAllPanels(skipSave = false) {
                 panel.group.remove(child);
                 if (child.geometry) child.geometry.dispose();
                 if (child.material) child.material.dispose();
+                }
             }
         }
     });
 
-    // Limpiar arrays y estados
-    panels.length = 0; 
-    currentlyHoveredPanel = null; 
+    // Reemplazar el array de paneles con los preservados
+    panels = preservedPanels;
     
-    // NO resetear el contador de orden aquí
-    // panelOrderCounter = 1; // Esta línea se elimina
+    currentlyHoveredPanel = null; 
     
     // Limpiar estados de texto si la función existe
     if (typeof cleanupPanelText === 'function') {
@@ -3629,6 +3756,11 @@ function clearAllPanels(skipSave = false) {
     gridAnimationStep = 2;
     gridAnimationProgress = 0;
     gridFlashCount = 0;
+
+    // Si se especifica limpiar el teclado, actualizar la variable de visibilidad
+    if (clearBioKeyb) {
+        bioKeybVisible = false;
+    }
 }
 
 // Inicializar la interfaz de usuario después de cargar
@@ -3648,30 +3780,45 @@ if (document.readyState === 'complete') {
 // Inicialización de la consola terminal
 function initTerminalConsole() {
     const terminalInput = document.getElementById('terminal-input');
-    if (!terminalInput) return;
+    const output = document.getElementById('terminal-output');
     
-    terminalInput.addEventListener('keydown', (event) => {
+    if (!terminalInput || !output) {
+        console.error('Terminal elements not found');
+        return;
+    }
+    
+    // Limpiar listeners existentes
+    const newTerminalInput = terminalInput.cloneNode(true);
+    terminalInput.parentNode.replaceChild(newTerminalInput, terminalInput);
+    
+    newTerminalInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
-            const command = terminalInput.value.trim();
-            if (command) {
-                processTerminalCommand(command);
-                terminalInput.value = '';
-            }
             event.preventDefault();
+            const command = newTerminalInput.value.trim();
+            if (command) {
+                // Crear div para el comando
+                const cmdDiv = document.createElement('div');
+                cmdDiv.className = 'terminal-command';
+                cmdDiv.textContent = `> ${command}`;
+                output.appendChild(cmdDiv);
+                
+                // Procesar comando
+                processTerminalCommand(command);
+                
+                // Limpiar input y mantener el foco
+                newTerminalInput.value = '';
+                newTerminalInput.focus();
+            }
         } else if (event.key === 'Escape') {
-            // Ocultar la consola con Escape
             toggleTerminal(false);
             event.preventDefault();
         }
     });
     
-    // Iniciar con un mensaje de bienvenida
-    const output = document.getElementById('terminal-output');
-    if (output) {
+    // Mensaje de bienvenida
         const welcomeDiv = document.createElement('div');
         welcomeDiv.innerHTML = 'Consola de bioPrint. Escribe <b>help</b> para ver los comandos disponibles.';
         output.appendChild(welcomeDiv);
-    }
 }
 
 // Función para cargar configuración desde datos
@@ -3854,15 +4001,23 @@ function toggleTerminal(show) {
     const terminal = document.getElementById('terminal-console');
     if (!terminal) return;
     
+    // Verificar si hay algún panel con texto activo
+    const hasActiveText = panels.some(panel => panel.hasText && panel.isEditing);
+    
+    if (hasActiveText) {
+        // Si hay texto activo, no permitir mostrar la terminal
+        terminal.style.display = 'none';
+        terminalVisible = false;
+        return;
+    }
+    
     terminalVisible = show !== undefined ? show : !terminalVisible;
     terminal.style.display = terminalVisible ? 'block' : 'none';
     
     if (terminalVisible) {
-        // Dar foco al input cuando se muestra
         const input = document.getElementById('terminal-input');
         if (input) {
             input.focus();
-            // Limpiar el input al abrir
             input.value = '';
         }
     }
@@ -3872,6 +4027,11 @@ function toggleTerminal(show) {
 function processTerminalCommand(command) {
     const [cmd, ...args] = command.trim().split(' ');
     const output = document.getElementById('terminal-output');
+
+    if (!output) {
+        console.error('Terminal output element not found');
+        return;
+    }
 
     switch (cmd.toLowerCase()) {
         case 'help':
@@ -3922,6 +4082,24 @@ function processTerminalCommand(command) {
                     case 'speed':
                         handleModelSpeed(args.slice(1), output);
                         break;
+                    case 'angle':
+                        if (args.length < 2) {
+                            showError('Especifique el ángulo en grados (0-360)', output);
+                            return;
+                        }
+                        const angle = parseFloat(args[1]);
+                        if (isNaN(angle)) {
+                            showError('El ángulo debe ser un número', output);
+                            return;
+                        }
+                        const panel = panels.find(p => p.selected);
+                        if (!panel) {
+                            showError('Seleccione un panel con modelo 3D', output);
+                            return;
+                        }
+                        setModelRotation(panel, (angle * Math.PI) / 180);
+                        showSuccess(`Rotación ajustada a ${angle}°`, output);
+                        break;
                     default:
                         handleModelCommand(args, output);
                 }
@@ -3933,6 +4111,11 @@ function processTerminalCommand(command) {
             handleGenomCommand(output);
             break;
         case 'gatc':
+            if (handleGATCCommand(output)) {
+                showSuccess('Secuencia GATC activada en el panel seleccionado', output);
+            }
+            break;
+        case 'gtac': // Alias para gatc
             if (handleGATCCommand(output)) {
                 showSuccess('Secuencia GATC activada en el panel seleccionado', output);
             }
@@ -3954,6 +4137,9 @@ function processTerminalCommand(command) {
         case 'pass':
             handlePassCommand(output);
             break;
+        case 'codon':
+            handleCodonCommand(output);
+            break;
         default:
             showError(`Comando desconocido: ${cmd}. Escribe 'help' para ver comandos disponibles.`, output);
     }
@@ -3964,62 +4150,26 @@ function processTerminalCommand(command) {
 
 // Funciones auxiliares para los comandos
 function showHelp(output) {
-    const helpDiv = document.createElement('div');
-    helpDiv.innerHTML = `
-        <div><b>Comandos Disponibles:</b></div>
-        
-        <div style="margin-top: 10px;"><b>Paneles:</b></div>
-        - select [all|number|range] - Selecciona paneles (ej: select 1-3,5,7)
-        - show - Muestra números de panel
-        - hide - Oculta números de panel
-        - list - Lista todos los paneles
-        - delete [all|selected|number] - Elimina paneles
-        - clear - Limpia todos los paneles
-        
-        <div style="margin-top: 10px;"><b>Modelos 3D:</b></div>
-        - model [nombre] - Carga un modelo en el panel seleccionado
-        - model rotate - Alterna la rotación del modelo
-        - model speed [0.001-0.1] - Ajusta la velocidad de rotación
-        
-        <div style="margin-top: 10px;"><b>Texto y Secuencias:</b></div>
-        - txt - Inicia modo de edición de texto en el panel seleccionado
-        - txt clear - Limpia el texto del panel seleccionado
-        - pass - Crea un campo de texto seguro (solo muestra asteriscos)
-        - gtac - Activa secuencia aleatoria de GATC en el panel seleccionado
-        - splice - Inicia proceso de empalme genético con barra de progreso
-        
-        <div style="margin-top: 10px;"><b>Visualización:</b></div>
-        - grid [número] - Ajusta la resolución del grid (2-50)
-        - zoom [número] - Ajusta el nivel de zoom de la cámara
-        - center - Centra la vista en el grid
-        - zeng - Activa efecto de color azul brillante
-        - boris - Activa efecto de color verde Matrix
-        - ann - Activa efecto de color azul claro
-        
-        <div style="margin-top: 10px;"><b>Estados:</b></div>
-        - save [1-10] - Guarda el estado actual en el slot especificado
-        - load [1-10] - Carga un estado guardado
-        - export - Exporta todos los estados a un archivo
-        - import - Importa estados desde un archivo
-        
-        <div style="margin-top: 10px;"><b>Terminal:</b></div>
-        - clear - Limpia la consola
-        - help - Muestra esta ayuda
-        - exit - Cierra la terminal
-        
-        <div style="margin-top: 10px;"><b>Atajos de Teclado:</b></div>
-        - Ctrl - Mantener presionado para rotar vista
-        - V - Mostrar/ocultar paneles de control
-        - T - Abrir/cerrar terminal
-        - ESC - Cerrar terminal
-        - + / - - Ajustar resolución del grid
-        - Flechas - Mover paneles seleccionados
-        - Delete/X - Eliminar paneles seleccionados
-        - C - Limpiar todos los paneles
-        - A - Centrar vista
-    `.replace(/\n\s+/g, '\n');
+    const helpText = `
+Comandos disponibles:
+
+    select <n>     Selecciona el panel número n
+    show           Muestra los números de los paneles
+    hide           Oculta los números de los paneles
+    list           Lista todos los paneles
+    clear          Limpia la terminal
+    delete <n>     Elimina el panel número n
+    logo           Crea un logo en el panel seleccionado
+    txt            Añade texto al panel seleccionado
+    model          Crea un modelo 3D en el panel seleccionado
+    genom          Crea una visualización de ADN en el panel
+    codon          Crea un modelo 3D de transcripción genética
+    gatc           Muestra una secuencia GATC animada
+    splice         Inicia proceso de splicing genético
+    help           Muestra esta ayuda
+`;
     
-    output.appendChild(helpDiv);
+    showSuccess(helpText, output);
 }
 
 function selectPanels(args, output) {
@@ -4234,33 +4384,9 @@ function initializeApp() {
     };
 }
 
+// Reemplazar la función mapLogo existente
 function mapLogo(args, output) {
-    const selectedPanels = scene.children.filter(obj => obj.userData.isPanel && obj.userData.selected);
-    
-    if (selectedPanels.length === 0) {
-        showError("No hay paneles seleccionados. Por favor, selecciona un panel primero.", output);
-        return;
-    }
-
-    if (selectedPanels.length > 1) {
-        showError("Por favor, selecciona solo un panel para mapear el logo.", output);
-        return;
-    }
-
-    const panel = selectedPanels[0];
-    const texture = new THREE.TextureLoader().load('img/bioprint_logo.png', function(texture) {
-        const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            opacity: 0.8
-        });
-        
-        // Guardamos el material original
-        panel.userData.originalMaterial = panel.material;
-        panel.material = material;
-        
-        showSuccess("Logo mapeado exitosamente en el panel seleccionado.", output);
-    });
+    handleLogoCommand(args, output, scene, panels);
 }
 
 // Nueva función para manejar el comando de texto
@@ -4291,6 +4417,9 @@ function handleTextCommand(args, output) {
     // Crear o actualizar el contenedor de texto
     createPanelText(panel, currentGridParams.cellSize);
     
+    // Cerrar la terminal antes de activar el modo de edición
+    toggleTerminal(false);
+    
     // Activar modo de edición
     startTextEditing(panel, currentGridParams.cellSize);
     
@@ -4309,8 +4438,6 @@ function handleTextCommand(args, output) {
     
     document.addEventListener('keypress', handleKeyPress);
     document.addEventListener('keydown', handleEscape);
-    
-    showSuccess('Modo de edición de texto activado. Presione ESC para salir.', output);
 }
 
 // Exportar funciones para controlar los efectos desde la consola
@@ -4628,627 +4755,6 @@ renderer.domElement.addEventListener('touchmove', (event) => {
         event.target.dispatchEvent(mouseEvent);
     }
 }, { passive: false });
-
-renderer.domElement.addEventListener('touchend', (event) => {
-    event.preventDefault();
-    
-    // Limpiar tiempos de inicio para los toques que terminaron
-    Array.from(event.changedTouches).forEach(touch => {
-        touchStartTimes.delete(touch.identifier);
-    });
-    
-    if (isTwoFingerDrag) {
-        // Simular evento de mouseup con botón derecho
-        const mouseEvent = new MouseEvent('mouseup', {
-            clientX: twoFingerStartPosition.x,
-            clientY: twoFingerStartPosition.y,
-            button: 2,
-            buttons: 0,
-            bubbles: true,
-            cancelable: true
-        });
-        event.target.dispatchEvent(mouseEvent);
-        
-        isTwoFingerDrag = false;
-    } else {
-        // Simular evento de mouseup con botón izquierdo
-        const touch = event.changedTouches[0];
-        const mouseEvent = new MouseEvent('mouseup', {
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            button: 0,
-            buttons: 0,
-            bubbles: true,
-            cancelable: true
-        });
-        event.target.dispatchEvent(mouseEvent);
-    }
-}, { passive: false });
-
-// Añadir soporte para click derecho real del mouse
-renderer.domElement.addEventListener('contextmenu', (event) => {
-    event.preventDefault(); // Prevenir menú contextual por defecto
-    
-    // Aquí puedes manejar el click derecho igual que el two-finger drag
-    if (isCtrlPressed) {
-        controls.enabled = true;
-        controls.enableRotate = true;
-        renderer.domElement.style.cursor = 'move';
-        isOrbiting = true;
-        
-        if (orbitReturnTimeout) {
-            clearTimeout(orbitReturnTimeout);
-            orbitReturnTimeout = null;
-        }
-        returnAnimationStartTime = null;
-    }
-});
-
-// Función para manejar el comando model
-async function handleModelCommand(args, output) {
-    const selectedPanels = panels.filter(p => p.selected);
-    
-    if (selectedPanels.length === 0) {
-        showError('Seleccione un panel para agregar el modelo', output);
-        return;
-    }
-    
-    if (selectedPanels.length > 1) {
-        showError('Seleccione solo un panel para agregar el modelo', output);
-        return;
-    }
-    
-    if (args.length === 0) {
-        showError('Especifique el nombre del modelo (ej: axolotl)', output);
-        return;
-    }
-    
-    const panel = selectedPanels[0];
-    const modelName = args[0].toLowerCase();
-    
-    // Verificar si el modelo existe en la carpeta /models/
-    const modelUrl = `./models/${modelName}.obj`; // Cambiado a ruta relativa
-    
-    try {
-        // Intentar cargar el modelo para verificar si existe
-        const response = await fetch(modelUrl);
-        if (!response.ok) {
-            showError(`Modelo "${modelName}" no encontrado en la carpeta models/. Asegúrese de que el archivo ${modelName}.obj existe y el nombre está escrito correctamente.`, output);
-            return;
-        }
-
-        // Mostrar mensaje de carga
-        const loadingMessage = document.createElement('div');
-        loadingMessage.textContent = `Cargando modelo ${modelName}...`;
-        output.appendChild(loadingMessage);
-
-        const { loadModelToPanel } = await import('./panelModel.js');
-        const success = await loadModelToPanel(panel, modelUrl, currentGrid.userData.cellSize);
-        
-        if (success) {
-            // Actualizar mensaje de carga a éxito
-            loadingMessage.className = 'terminal-success';
-            loadingMessage.textContent = `Modelo ${modelName} cargado exitosamente en el panel #${panel.orderNumber}`;
-            
-            // Añadir información sobre controles
-            const infoDiv = document.createElement('div');
-            infoDiv.innerHTML = `
-                <br>Controles disponibles:
-                <br>- model rotate : Alternar rotación
-                <br>- model speed [0.001-0.1] : Ajustar velocidad
-            `;
-            output.appendChild(infoDiv);
-
-            // Guardar referencia del modelo en el panel
-            panel.modelData = {
-                name: modelName,
-                url: modelUrl,
-                isRotating: false,
-                rotationSpeed: 0.01
-            };
-        } else {
-            // Actualizar mensaje de carga a error
-            loadingMessage.className = 'terminal-error';
-            loadingMessage.textContent = `Error al cargar el modelo ${modelName}`;
-        }
-    } catch (error) {
-        showError(`Error al cargar el modelo: ${error.message}`, output);
-        console.error('Error detallado:', error);
-    }
-}
-
-// Función para manejar la rotación del modelo
-function handleModelRotation(output) {
-    const selectedPanels = panels.filter(p => p.selected);
-    
-    if (selectedPanels.length === 0) {
-        showError('Seleccione un panel con modelo para controlar la rotación', output);
-        return;
-    }
-    
-    const { toggleModelRotation } = require('./panelModel.js');
-    const panel = selectedPanels[0];
-    const isRotating = toggleModelRotation(panel);
-    
-    showSuccess(`Rotación ${isRotating ? 'activada' : 'desactivada'} para el panel #${panel.orderNumber}`, output);
-}
-
-// Función para manejar la velocidad de rotación
-function handleModelSpeed(args, output) {
-    const selectedPanels = panels.filter(p => p.selected);
-    
-    if (selectedPanels.length === 0) {
-        showError('Seleccione un panel con modelo para ajustar la velocidad', output);
-        return;
-    }
-    
-    if (args.length === 0) {
-        showError('Especifique la velocidad (entre 0.001 y 0.1)', output);
-        return;
-    }
-    
-    const speed = parseFloat(args[0]);
-    if (isNaN(speed) || speed < 0.001 || speed > 0.1) {
-        showError('La velocidad debe estar entre 0.001 y 0.1', output);
-        return;
-    }
-    
-    const { setModelRotationSpeed } = require('./panelModel.js');
-    const panel = selectedPanels[0];
-    setModelRotationSpeed(panel, speed);
-    
-    showSuccess(`Velocidad de rotación ajustada a ${speed} para el panel #${panel.orderNumber}`, output);
-}
-
-// Función para manejar el comando genom
-async function handleGenomCommand(output) {
-    const selectedPanels = panels.filter(p => p.selected);
-    
-    if (selectedPanels.length === 0) {
-        showError('Seleccione un panel para generar la red de proteínas', output);
-        return;
-    }
-    
-    if (selectedPanels.length > 1) {
-        showError('Seleccione solo un panel para generar la red de proteínas', output);
-        return;
-    }
-    
-    const panel = selectedPanels[0];
-    const success = await loadGenomToPanel(panel, currentGrid.userData.cellSize);
-    
-    if (success) {
-        showSuccess(`Red de proteínas generada exitosamente en el panel #${panel.orderNumber}`, output);
-    } else {
-        showError('Error al generar la red de proteínas', output);
-    }
-}
-
-// Variables para el sistema GATC
-const gatcIntervals = new Map();
-const DNA_BASES = ['G', 'A', 'T', 'C'];
-
-function handleGATCCommand(output) {
-    const selectedPanels = panels.filter(p => p.selected);
-    
-    if (selectedPanels.length === 0) {
-        showError('Seleccione un panel para mostrar la secuencia GATC', output);
-        return false;
-    }
-    
-    const panel = selectedPanels[0];
-    
-    if (gatcIntervals.has(panel)) {
-        clearInterval(gatcIntervals.get(panel));
-    }
-    
-    panel.hasText = true;
-    
-    // Calcular dimensiones una sola vez
-    const width = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
-    const height = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
-    const charsPerLine = Math.max(1, Math.floor(width * 1.8) - 2);
-    const maxLines = Math.floor(height * 1.2);
-    
-    // Inicializar buffer circular
-    panel.lineBuffer = Array(maxLines).fill('');
-    let currentLine = '';
-    let linePos = 0;
-    
-    function writeChar() {
-        // Generar nuevo carácter
-        const char = DNA_BASES[Math.floor(Math.random() * 4)];
-        currentLine += char;
-        
-        // Si la línea está completa, agregarla al buffer
-        if (currentLine.length >= charsPerLine) {
-            // Desplazar líneas hacia arriba
-            panel.lineBuffer.shift();
-            panel.lineBuffer.push(currentLine);
-            currentLine = '';
-            
-            // Actualizar texto visible
-            const visibleText = panel.lineBuffer.join('\n');
-            setPanelText(panel, visibleText, currentGrid.userData.cellSize);
-        }
-    }
-    
-    // Escribir caracteres cada 50ms
-    const interval = setInterval(writeChar, 50);
-    gatcIntervals.set(panel, interval);
-    
-    return true;
-}
-
-// Constantes para el comando splice
-const SPLICE_MESSAGES = [
-    "Iniciando análisis preliminar del genoma...",
-    "Cargando bases de datos genómicas...",
-    "Verificando integridad de secuencias...",
-    "Calibrando enzimas de restricción...",
-    "Analizando sitios de corte potenciales...",
-    "Identificando regiones promotoras...",
-    "Escaneando secuencias reguladoras...",
-    "Verificando marcos de lectura abiertos...",
-    "Analizando estructura secundaria...",
-    "Evaluando estabilidad térmica...",
-    "Calculando energía libre de Gibbs...",
-    "Identificando motivos conservados...",
-    "Verificando compatibilidad de codones...",
-    "Analizando contenido GC...",
-    "Evaluando repeticiones invertidas...",
-    "Identificando elementos transponibles...",
-    "Verificando secuencias palindrómicas...",
-    "Analizando regiones intergénicas...",
-    "Evaluando sitios de splicing...",
-    "Identificando enhancers...",
-    "Verificando silenciadores...",
-    "Analizando islas CpG...",
-    "Evaluando modificaciones epigenéticas...",
-    "Identificando factores de transcripción...",
-    "Verificando elementos reguladores...",
-    "Analizando estructura de la cromatina...",
-    "Evaluando accesibilidad del ADN...",
-    "Identificando regiones hipersensibles...",
-    "Verificando estados de metilación...",
-    "Analizando modificaciones de histonas...",
-    "Evaluando estructura nucleosomal...",
-    "Identificando sitios de unión...",
-    "Verificando elementos de respuesta...",
-    "Analizando dominios proteicos...",
-    "Evaluando interacciones moleculares...",
-    "Identificando motivos estructurales...",
-    "Verificando plegamiento proteico...",
-    "Analizando estabilidad conformacional...",
-    "Evaluando modificaciones post-traduccionales...",
-    "Identificando señales de localización...",
-    "Verificando topología proteica...",
-    "Analizando interfaces de interacción...",
-    "Evaluando especificidad de sustrato...",
-    "Identificando cofactores necesarios...",
-    "Verificando estado redox...",
-    "Analizando balance energético...",
-    "Evaluando homeostasis celular...",
-    "Identificando vías metabólicas...",
-    "Verificando rutas de señalización...",
-    "Analizando cascadas enzimáticas...",
-    "Evaluando retroalimentación...",
-    "Identificando puntos de control...",
-    "Verificando ciclos regulatorios...",
-    "Analizando redes génicas...",
-    "Evaluando expresión diferencial...",
-    "Identificando patrones temporales...",
-    "Verificando sincronización...",
-    "Analizando coordinación celular...",
-    "Evaluando respuesta al estrés...",
-    "Identificando mecanismos adaptativos...",
-    "Verificando plasticidad fenotípica...",
-    "Analizando robustez del sistema...",
-    "Evaluando redundancia funcional...",
-    "Identificando vías alternativas...",
-    "Verificando puntos de bifurcación...",
-    "Analizando estados estables...",
-    "Evaluando transiciones de fase...",
-    "Identificando atractores dinámicos...",
-    "Verificando estados metaestables...",
-    "Analizando paisajes epigenéticos...",
-    "Evaluando barreras energéticas...",
-    "Identificando estados intermedios...",
-    "Verificando rutas de transición...",
-    "Analizando estabilidad estructural...",
-    "Evaluando perturbaciones locales...",
-    "Identificando efectos globales...",
-    "Verificando propagación de señales...",
-    "Analizando sincronización de redes...",
-    "Evaluando coherencia temporal...",
-    "Identificando patrones espaciales...",
-    "Verificando organización tisular...",
-    "Analizando arquitectura celular...",
-    "Evaluando polaridad celular...",
-    "Identificando gradientes morfogénicos...",
-    "Verificando campos morfogenéticos...",
-    "Analizando patrones de desarrollo...",
-    "Evaluando especificación celular...",
-    "Identificando destinos celulares...",
-    "Verificando linajes celulares...",
-    "Analizando diferenciación...",
-    "Evaluando plasticidad celular...",
-    "Identificando estados pluripotentes...",
-    "Verificando reprogramación...",
-    "Analizando memoria epigenética...",
-    "Evaluando herencia transgeneracional...",
-    "Identificando marcas epigenéticas...",
-    "Verificando improntas genómicas...",
-    "Analizando regulación alélica...",
-    "Evaluando dosificación génica...",
-    "Identificando compensación de dosis...",
-    "Verificando inactivación cromosómica...",
-    "Analizando territorios nucleares...",
-    "Evaluando organización 3D...",
-    "Identificando loops cromosómicos...",
-    "Verificando dominios topológicos...",
-    "Analizando compartimentos nucleares...",
-    "Evaluando dinámica cromosómica...",
-    "Identificando sitios de anclaje...",
-    "Verificando matriz nuclear...",
-    "Analizando cuerpos nucleares...",
-    "Evaluando fábricas transcripcionales...",
-    "Identificando territorios cromosómicos...",
-    "Verificando posicionamiento nuclear...",
-    "Analizando migración nuclear...",
-    "Evaluando división celular...",
-    "Identificando checkpoints...",
-    "Verificando segregación cromosómica...",
-    "Analizando citocinesis...",
-    "Evaluando ciclo celular...",
-    "Identificando señales mitóticas...",
-    "Verificando punto de restricción...",
-    "Analizando replicación del ADN...",
-    "Evaluando puntos de origen...",
-    "Identificando horquillas de replicación...",
-    "Verificando licenciamiento...",
-    "Analizando timing de replicación...",
-    "Evaluando coordinación S-fase...",
-    "Identificando cohesión cromosómica...",
-    "Verificando condensación...",
-    "Analizando estructura cromosómica...",
-    "Evaluando compactación del ADN...",
-    "Identificando dominios estructurales...",
-    "Verificando arquitectura genómica...",
-    "Analizando elementos móviles...",
-    "Evaluando estabilidad genómica...",
-    "Identificando elementos repetitivos...",
-    "Verificando transposición...",
-    "Analizando recombinación...",
-    "Evaluando crossing-over...",
-    "Identificando hotspots...",
-    "Verificando sinapsis...",
-    "Analizando conversión génica...",
-    "Evaluando reparación del ADN...",
-    "Identificando lesiones...",
-    "Verificando daño oxidativo...",
-    "Analizando roturas doble cadena...",
-    "Evaluando vías de reparación...",
-    "Identificando checkpoints de daño...",
-    "Verificando respuesta al daño...",
-    "Analizando senescencia...",
-    "Evaluando telómeros...",
-    "Identificando actividad telomerasa...",
-    "Verificando longitud telomérica...",
-    "Analizando caps teloméricos...",
-    "Evaluando protección terminal...",
-    "Identificando ALT...",
-    "Verificando mantenimiento telomérico...",
-    "Analizando envejecimiento celular...",
-    "Evaluando estrés oxidativo...",
-    "Identificando daño mitocondrial...",
-    "Verificando función mitocondrial...",
-    "Analizando biogénesis...",
-    "Evaluando dinámica mitocondrial...",
-    "Identificando fusión/fisión...",
-    "Verificando mitofagia...",
-    "Analizando metabolismo energético...",
-    "Evaluando fosforilación oxidativa...",
-    "Identificando especies reactivas...",
-    "Verificando estado redox celular...",
-    "Analizando señalización redox...",
-    "Evaluando defensas antioxidantes...",
-    "Identificando vías de detoxificación...",
-    "Verificando homeostasis redox...",
-    "Analizando estrés proteotóxico...",
-    "Evaluando plegamiento proteico...",
-    "Identificando chaperonas...",
-    "Verificando control de calidad...",
-    "Analizando agregación proteica...",
-    "Evaluando degradación proteica...",
-    "Identificando ubiquitinación...",
-    "Verificando proteasoma...",
-    "Analizando autofagia...",
-    "Evaluando flujo autofágico...",
-    "Identificando selectividad...",
-    "Verificando formación de autofagosomas...",
-    "Analizando fusión lisosomal...",
-    "Evaluando degradación lisosomal...",
-    "Identificando reciclaje celular...",
-    "Verificando homeostasis celular...",
-    "Analizando muerte celular...",
-    "Evaluando apoptosis...",
-    "Identificando señales de muerte...",
-    "Verificando activación de caspasas...",
-    "Analizando fragmentación nuclear...",
-    "Evaluando exposición de fosfatidilserina...",
-    "Identificando cuerpos apoptóticos...",
-    "Verificando fagocitosis...",
-    "Analizando necrosis...",
-    "Evaluando permeabilidad...",
-    "Identificando DAMPs...",
-    "Verificando inflamación...",
-    "Analizando piroptosis...",
-    "Evaluando inflammasoma...",
-    "Identificando IL-1β...",
-    "Verificando gasdermin...",
-    "Analizando necroptosis...",
-    "Evaluando RIPK1/RIPK3...",
-    "Identificando MLKL...",
-    "Verificando permeabilización...",
-    "Analizando ferroptosis...",
-    "Evaluando peroxidación lipídica...",
-    "Identificando GPX4...",
-    "Verificando metabolismo del hierro...",
-    "Analizando parthanatos...",
-    "Evaluando daño al ADN...",
-    "Identificando PARP...",
-    "Verificando depleción de NAD+...",
-    "Analizando autofagia...",
-    "Evaluando señalización mTOR...",
-    "Identificando ULK1...",
-    "Verificando PI3K clase III...",
-    "Analizando conjugación LC3...",
-    "Evaluando selectividad cargo...",
-    "Identificando receptores autofágicos...",
-    "Verificando adaptadores...",
-    "Analizando fusión vesicular...",
-    "Evaluando acidificación...",
-    "Identificando hidrolasas...",
-    "Verificando reciclaje...",
-    "Analizando senescencia...",
-    "Evaluando SASP...",
-    "Identificando p53/p21...",
-    "Verificando p16/pRB...",
-    "Analizando remodelación cromatina...",
-    "Evaluando SAHF...",
-    "Identificando DNA-SCARS...",
-    "Verificando inflamación estéril...",
-    "Analizando diferenciación terminal...",
-    "Evaluando compromiso celular...",
-    "Identificando factores pioneros...",
-    "Verificando remodelación epigenética...",
-    "Analizando determinación...",
-    "Evaluando plasticidad...",
-    "Identificando transdiferenciación...",
-    "Verificando desdiferenciación...",
-    "Analizando reprogramación...",
-    "Evaluando pluripotencia...",
-    "Identificando factores Yamanaka...",
-    "Verificando redes regulatorias...",
-    "Analizando memoria epigenética...",
-    "Evaluando barrera epigenética...",
-    "Identificando estados metaestables...",
-    "Verificando paisaje de Waddington...",
-    "Analizando desarrollo...",
-    "Evaluando morfogénesis...",
-    "Identificando organizadores...",
-    "Verificando inductores...",
-    "Analizando competencia...",
-    "Evaluando especificación...",
-    "Identificando determinación...",
-    "Verificando diferenciación...",
-    "Analizando migración...",
-    "Evaluando quimiotaxis...",
-    "Identificando adhesión...",
-    "Verificando matriz extracelular...",
-    "Analizando mecanotransducción...",
-    "Evaluando tensegridad...",
-    "Identificando fuerzas mecánicas...",
-    "Verificando señalización mecánica...",
-    "Analizando polaridad...",
-    "Evaluando asimetría...",
-    "Identificando determinantes...",
-    "Verificando segregación...",
-    "Analizando morfogénesis...",
-    "Evaluando forma celular...",
-    "Identificando citoesqueleto...",
-    "Verificando remodelación...",
-    "Analizando organización tisular...",
-    "Evaluando arquitectura...",
-    "Identificando nichos...",
-    "Verificando homeostasis...",
-    "Analizando regeneración...",
-    "Evaluando reparación...",
-    "Identificando células madre...",
-    "Verificando progenitores...",
-    "Analizando renovación...",
-    "Evaluando quiescencia...",
-    "Identificando activación...",
-    "Verificando compromiso...",
-    "Analizando diferenciación terminal...",
-    "Evaluando especialización...",
-    "Identificando función...",
-    "Verificando integración...",
-    "Analizando coordinación...",
-    "Evaluando sincronización...",
-    "Identificando emergencia...",
-    "Verificando propiedades colectivas...",
-    "Analizando autoorganización...",
-    "Evaluando patrones...",
-    "Identificando simetría...",
-    "Verificando escalamiento...",
-    "Analizando robustez...",
-    "Evaluando adaptación...",
-    "Identificando evolución...",
-    "Verificando selección...",
-    "Analizando fitness...",
-    "Evaluando variación...",
-    "Identificando innovación...",
-    "Verificando conservación...",
-    "Analizando divergencia...",
-    "Evaluando convergencia...",
-    "Identificando homología...",
-    "Verificando analogía...",
-    "Analizando modularidad...",
-    "Evaluando pleiotropía...",
-    "Identificando epistasis...",
-    "Verificando dominancia...",
-    "Analizando penetrancia...",
-    "Evaluando expresividad...",
-    "Identificando heredabilidad...",
-    "Verificando transmisión...",
-    "Analizando segregación...",
-    "Evaluando recombinación...",
-    "Identificando ligamiento...",
-    "Verificando interferencia...",
-    "Analizando deriva...",
-    "Evaluando flujo génico...",
-    "Identificando migración...",
-    "Verificando aislamiento...",
-    "Analizando especiación...",
-    "Evaluando adaptación...",
-    "Identificando radiación...",
-    "Verificando extinción...",
-    "Analizando resiliencia...",
-    "Evaluando persistencia...",
-    "Identificando innovación...",
-    "Verificando optimización...",
-    "Analizando complejidad...",
-    "Evaluando emergencia...",
-    "Identificando orden...",
-    "Verificando organización...",
-    "Analizando integración...",
-    "Evaluando coherencia...",
-    "Identificando estabilidad...",
-    "Verificando dinámica...",
-    "Analizando evolución...",
-    "Evaluando adaptación...",
-    "Identificando selección...",
-    "Iniciando secuenciación del ADN...",
-    "Identificando sitios de restricción...",
-    "Preparando enzimas de restricción...",
-    "Analizando secuencias palindrómicas...",
-    "Separando cadenas complementarias...",
-    "Activando ligasa de ADN...",
-    "Verificando extremos cohesivos...",
-    "Insertando fragmento de ADN...",
-    "Reparando enlaces fosfodiéster...",
-    "Completando proceso de empalme..."
-];
-
-// Función para formatear el timestamp de forma más concisa
-function getTimestamp() {
-    const now = new Date();
-    const seconds = now.getSeconds().toString().padStart(2, '0');
-    const millis = now.getMilliseconds().toString().padStart(3, '0');
-    return `[${seconds}.${millis}]`;
-}
 
 // Función para manejar el comando splice
 async function handleSpliceCommand(output) {
@@ -5702,8 +5208,47 @@ function handlePassCommand(output) {
     showSuccess('Campo de contraseña creado. Presione ESC para finalizar.', output);
 }
 
+// Función para eliminar solo los paneles del teclado bioKeyb
+function clearBioKeybOnly() {
+    console.log("Eliminando solo el teclado bioKeyb...");
+    
+    // Filtrar los paneles que no son del teclado
+    const nonKeyboardPanels = panels.filter(panel => !panel.isKeyboardKey);
+    
+    // Eliminar solo los paneles del teclado
+    panels.forEach(panel => {
+        if (panel.isKeyboardKey) {
+            if (panel.group) {
+                scene.remove(panel.group);
+                // Limpiar geometrías de los hijos
+                while(panel.group.children.length > 0) {
+                    const child = panel.group.children[0]; 
+                    panel.group.remove(child);
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                }
+            }
+        }
+    });
+
+    // Reemplazar el array de paneles con los que no son del teclado
+    panels = nonKeyboardPanels;
+    
+    // Actualizar el estado de visibilidad del teclado
+    bioKeybVisible = false;
+    
+    // Flash de confirmación visual
+    gridAnimationInProgress = true;
+    gridAnimationStep = 2;
+    gridAnimationProgress = 0;
+    gridFlashCount = 0;
+    
+    // Guardar configuración
+    saveConfiguration();
+}
+
 // Función para cargar el teclado bioKeyb
-function loadBioKeyb() {
+function loadBioKeyb(skipSave = false) {
     console.log("Cargando teclado bioKeyb...");
     const currentGridParams = getCurrentGridParams();
     if (!currentGridParams) {
@@ -5727,9 +5272,18 @@ function loadBioKeyb() {
             hovered: false, // Asegurar que inicie no hover
             isKeyboardKey: true, // Marcar como tecla del teclado
             behavior: panelInfo.behavior, // Copiar el behavior completo
-            onPress: panelInfo.onPress, // Copiar el manejador de eventos
             materials: panelInfo.materials // Usar los materiales compartidos
         };
+
+        // Personalizar el comportamiento del panel 55 (CTRL antes de F5)
+        if (panelInfo.orderNumber === 55) {
+            panelData.onPress = () => {
+                console.log("Borrando teclado bioKeyb...");
+                clearBioKeybOnly(); // Solo borrar los paneles del teclado
+            };
+        } else {
+            panelData.onPress = panelInfo.onPress; // Mantener el comportamiento original para otras teclas
+        }
 
         updatePanelGeometryAndPosition(panelData, currentGridParams);
         
@@ -5757,8 +5311,13 @@ function loadBioKeyb() {
     // Centrar el teclado en pantalla
     centerGridInCamera();
     
-    // Guardar la configuración actual
+    // Actualizar estado de visibilidad
+    bioKeybVisible = true;
+    
+    // Guardar la configuración actual sólo si no se especifica lo contrario
+    if (!skipSave) {
     saveConfiguration();
+    }
 }
 
 // Función para detectar colisiones entre paneles
@@ -5831,8 +5390,16 @@ renderer.domElement.addEventListener('mouseup', (event) => {
     const allSelectable = [];
     panels.forEach(panel => {
         if (panel.group) {
-            if (panel.fillMesh) allSelectable.push(panel.fillMesh);
-            if (panel.borderLines) allSelectable.push(...panel.borderLines);
+            if (panel.fillMesh && !panel.fillMesh.userData.ignoreRaycast) {
+                allSelectable.push(panel.fillMesh);
+            }
+            if (panel.borderLines) {
+                panel.borderLines.forEach(line => {
+                    if (!line.userData.ignoreRaycast) {
+                        allSelectable.push(line);
+                    }
+                });
+            }
         }
     });
     
@@ -5859,24 +5426,27 @@ renderer.domElement.addEventListener('mouseup', (event) => {
 
         if (panelData) {
             if (panelData.isKeyboardKey && panelData.behavior && panelData.behavior.character) {
-                // Es una tecla del teclado, ejecutar su función onPress
+                // Es una tecla del teclado, solo ejecutar onPress y flash
                 if (panelData.onPress) {
                     panelData.onPress();
                     console.log(`Tecla bioKeyb presionada: ${panelData.behavior.character}`);
                     
-                    // Efecto visual de flash al presionar
+                    // Asegurar que no quede seleccionada
+                    panelData.selected = false;
+                    
+                    // Efecto visual de flash
                     panelData.flashProgress = 0;
                     panelData.shouldFlash = true;
                     panelsFlashing.add(panelData);
                 }
             } else {
-                // Es un panel normal, manejar la selección
+                // Comportamiento normal para paneles regulares
                 if (event.shiftKey) {
                     panelData.selected = !panelData.selected;
                 } else {
-                    // Deseleccionar otros paneles
+                    // Deseleccionar otros paneles (excepto teclas del teclado)
                     panels.forEach(p => {
-                        if (p !== panelData && p.selected) {
+                        if (p !== panelData && !p.isKeyboardKey) {
                             p.selected = false;
                             updatePanelColor(p);
                         }
@@ -5960,3 +5530,294 @@ const keyboardConfig = initializeKeyboard();
 // restoreFromBackup
 
 // ... existing code ...
+
+async function handleModelCommand(args, output) {
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para agregar el modelo', output);
+        return;
+    }
+    
+    if (selectedPanels.length > 1) {
+        showError('Seleccione solo un panel para agregar el modelo', output);
+        return;
+    }
+    
+    if (args.length === 0) {
+        showError('Especifique el nombre del modelo sin extensión (ej: corazon, hueso, dog, axolotl, discus)', output);
+        return;
+    }
+    
+    const panel = selectedPanels[0];
+    const modelName = args[0].toLowerCase();
+    
+    // Construir la ruta del modelo
+    const modelUrl = `./models/${modelName}.obj`;
+    
+    try {
+        // Verificar si ya existe un modelo en el panel
+        const hasExistingModel = panel.group && panel.group.children.some(child => 
+            child.userData && child.userData.isModel);
+        
+        // Mostrar mensaje de carga
+        const loadingMessage = document.createElement('div');
+        loadingMessage.textContent = hasExistingModel 
+            ? `Reemplazando modelo existente con ${modelName}...` 
+            : `Cargando modelo ${modelName}...`;
+        output.appendChild(loadingMessage);
+
+        const success = await loadModelToPanel(panel, modelUrl, currentGrid.userData.cellSize);
+        
+        if (success) {
+            // NO llamar a toggleModelRotation aquí, ya que invierte el estado
+            // y el modelo ya está configurado para rotar en loadModelToPanel
+            
+            // Actualizar mensaje de carga a éxito
+            loadingMessage.className = 'terminal-success';
+            loadingMessage.textContent = hasExistingModel
+                ? `Modelo ${modelName} reemplazado exitosamente en el panel #${panel.orderNumber}`
+                : `Modelo ${modelName} cargado exitosamente en el panel #${panel.orderNumber}`;
+            
+            // Añadir información sobre controles
+            const infoDiv = document.createElement('div');
+            infoDiv.innerHTML = `
+                <br>Controles disponibles:
+                <br>- model rotate : Alternar rotación
+                <br>- model speed [0.001-0.1] : Ajustar velocidad
+            `;
+            output.appendChild(infoDiv);
+
+            // Guardar referencia del modelo en el panel
+            panel.modelData = {
+                name: modelName,
+                url: modelUrl,
+                isRotating: true,
+                rotationSpeed: 0.01
+            };
+        } else {
+            // Actualizar mensaje de carga a error
+            loadingMessage.className = 'terminal-error';
+            loadingMessage.textContent = `Error al cargar el modelo ${modelName}. Asegúrese de que el archivo ${modelName}.obj existe en la carpeta models/`;
+        }
+    } catch (error) {
+        showError(`Error al cargar el modelo: ${error.message}`, output);
+        console.error('Error detallado:', error);
+    }
+}
+
+function handleModelRotation(output) {
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para modificar la rotación del modelo', output);
+        return;
+    }
+    
+    const panel = selectedPanels[0];
+    
+    // Verificar si hay un modelo cargado
+    if (!panel.modelData || !panel.modelData.url) {
+        showError('No hay un modelo cargado en el panel seleccionado', output);
+        return;
+    }
+    
+    const isRotating = toggleModelRotation(panel);
+    
+    // Actualizar el estado en panel.modelData
+    panel.modelData.isRotating = isRotating;
+    
+    if (isRotating) {
+        showSuccess('Rotación de modelo activada', output);
+    } else {
+        showInfo('Rotación de modelo desactivada', output);
+    }
+}
+
+function handleModelSpeed(args, output) {
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para ajustar la velocidad de rotación', output);
+        return;
+    }
+    
+    const panel = selectedPanels[0];
+    
+    // Verificar si hay un modelo cargado
+    if (!panel.modelData || !panel.modelData.url) {
+        showError('No hay un modelo cargado en el panel seleccionado', output);
+        return;
+    }
+    
+    if (args.length === 0) {
+        showError('Especifique la velocidad de rotación (entre 0.001 y 0.1)', output);
+        return;
+    }
+    
+    // Validar y convertir el argumento a número
+    const speed = parseFloat(args[0]);
+    if (isNaN(speed)) {
+        showError('La velocidad debe ser un número entre 0.001 y 0.1', output);
+        return;
+    }
+    
+    // Establecer la velocidad
+    setModelRotationSpeed(panel, speed);
+    
+    // Asegurarse de que la rotación esté activada
+    if (!panel.modelData.isRotating) {
+        toggleModelRotation(panel);
+        panel.modelData.isRotating = true;
+    }
+    
+    // Actualizar el valor en panel.modelData
+    panel.modelData.rotationSpeed = speed;
+    
+    showSuccess(`Velocidad de rotación ajustada a ${speed}`, output);
+}
+
+// Función para manejar el comando genom
+async function handleGenomCommand(output) {
+    try {
+        const selectedPanels = panels.filter(p => p.selected);
+        
+        if (selectedPanels.length === 0) {
+            showError('Seleccione un panel para generar la red de proteínas', output);
+            return;
+        }
+        
+        if (selectedPanels.length > 1) {
+            showError('Seleccione solo un panel para generar la red de proteínas', output);
+            return;
+        }
+        
+        const panel = selectedPanels[0];
+        const currentGridParams = getCurrentGridParams();
+        
+        if (!currentGridParams) {
+            showError('Error: No se pudo obtener la configuración del grid', output);
+            return;
+        }
+        
+        const success = await loadGenomToPanel(panel, currentGridParams.cellSize);
+        
+        if (success) {
+            showSuccess(`Red de proteínas generada exitosamente en el panel #${panel.orderNumber}`, output);
+        } else {
+            showError('Error al generar la red de proteínas', output);
+        }
+    } catch (error) {
+        console.error('Error en handleGenomCommand:', error);
+        showError('Error inesperado al generar la red de proteínas', output);
+    }
+}
+
+// Función para manejar el comando GATC
+function handleGATCCommand(output) {
+    try {
+        const selectedPanels = panels.filter(p => p.selected);
+        
+        if (selectedPanels.length === 0) {
+            showError('Seleccione un panel para mostrar la secuencia GATC', output);
+            return false;
+        }
+        
+        const panel = selectedPanels[0];
+        
+        // Limpiar intervalo existente si lo hay
+        if (gatcIntervals.has(panel)) {
+            clearInterval(gatcIntervals.get(panel));
+        }
+        
+        panel.hasText = true;
+        const currentGridParams = getCurrentGridParams();
+        
+        if (!currentGridParams) {
+            showError('Error: No se pudo obtener la configuración del grid', output);
+            return false;
+        }
+        
+        // Calcular dimensiones
+        const width = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
+        const height = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+        const charsPerLine = Math.max(1, Math.floor(width * 1.8) - 2);
+        const maxLines = Math.floor(height * 1.2);
+        
+        // Inicializar buffer circular
+        panel.lineBuffer = Array(maxLines).fill('');
+        let currentLine = '';
+        
+        function writeChar() {
+            try {
+                // Generar nuevo carácter
+                const char = DNA_BASES[Math.floor(Math.random() * 4)];
+                currentLine += char;
+                
+                // Si la línea está completa, agregarla al buffer
+                if (currentLine.length >= charsPerLine) {
+                    panel.lineBuffer.shift();
+                    panel.lineBuffer.push(currentLine);
+                    currentLine = '';
+                    
+                    // Actualizar texto visible
+                    const visibleText = panel.lineBuffer.join('\n');
+                    setPanelText(panel, visibleText, currentGridParams.cellSize);
+                }
+            } catch (error) {
+                console.error('Error en writeChar:', error);
+                clearInterval(gatcIntervals.get(panel));
+            }
+        }
+        
+        // Escribir caracteres cada 50ms
+        const interval = setInterval(writeChar, 50);
+        gatcIntervals.set(panel, interval);
+        
+        return true;
+    } catch (error) {
+        console.error('Error en handleGATCCommand:', error);
+        showError('Error inesperado al activar la secuencia GATC', output);
+        return false;
+    }
+}
+
+// Función para manejar el comando codon
+async function handleCodonCommand(output) {
+    try {
+        const selectedPanels = panels.filter(p => p.selected);
+        
+        if (selectedPanels.length === 0) {
+            showError('Seleccione un panel para mostrar el modelo de transcripción', output);
+            return;
+        }
+        
+        if (selectedPanels.length > 1) {
+            showError('Seleccione solo un panel para mostrar el modelo de transcripción', output);
+            return;
+        }
+        
+        const panel = selectedPanels[0];
+        const currentGridParams = getCurrentGridParams();
+        
+        if (!currentGridParams) {
+            showError('Error: No se pudo obtener la configuración del grid', output);
+            return;
+        }
+        
+        const success = await loadCodonToPanel(panel, currentGridParams.cellSize);
+        
+        if (success) {
+            showSuccess(`Modelo de transcripción genética generado exitosamente en el panel #${panel.orderNumber}`, output);
+        } else {
+            showError('Error al generar el modelo de transcripción', output);
+        }
+    } catch (error) {
+        console.error('Error en handleCodonCommand:', error);
+        showError('Error inesperado al generar el modelo de transcripción', output);
+    }
+}
+
+// En la función cleanupModels, antes del final:
+    // Limpiar modelos de codón
+    cleanupCodonModels();
