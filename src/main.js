@@ -27,6 +27,7 @@ import { loadGenomToPanel, animateGenoms, cleanupGenomModels, loadGTACToPanel } 
 import { initBioKeyb, createKeyboard, createKeyLabel } from './bioKeyb.js';
 import { handleLogoCommand, updateOnPanelMove } from './bioLOGO.js';
 import { loadCodonToPanel, animateCodons, cleanupCodonModels } from './codonModel.js';
+import { createProgressPanel, cleanupProgressPanel } from './bioLoad.js';
 
 // Variables globales para controlar la visibilidad del teclado
 let bioKeybVisible = false; // Controla si el teclado está visible o no
@@ -1359,8 +1360,16 @@ function toggleControlsVisibility() {
 document.addEventListener('keydown', (event) => {
     // Si hay un panel en modo de edición de texto, permitir que panelText.js maneje 
     // todos los eventos de teclado (excepto Escape, que se maneja especialmente)
-    if (typeof currentEditingPanel !== 'undefined' && currentEditingPanel && event.key !== 'Escape') {
-        // Dejar que panelText.js se encargue de procesar el evento de teclado
+    if (typeof currentEditingPanel !== 'undefined' && currentEditingPanel) {
+        // Si es Escape, permitir que se maneje normalmente
+        if (event.key === 'Escape') {
+            return;
+        }
+        // Para cualquier otra tecla, prevenir el comportamiento por defecto
+        // y detener la propagación del evento
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         return;
     }
     
@@ -1415,9 +1424,13 @@ document.addEventListener('keydown', (event) => {
             break;
         case 'c':
         case 'C':
-            // Limpiar SOLO los paneles normales (nunca los del teclado bioKeyb)
-            clearAllPanels(false, false); // skipSave=false, clearBioKeyb=false
-            return;
+            // Solo limpiar paneles si se presiona Ctrl+C
+            if (event.ctrlKey) {
+                // Limpiar SOLO los paneles normales (nunca los del teclado bioKeyb)
+                clearAllPanels(true, false); // skipSave=true, clearBioKeyb=false
+                return;
+            }
+            break;
         case 'a':
         case 'A':
             // Centrar grid en la cámara
@@ -3511,6 +3524,17 @@ function animateFlashingPanels() {
 
 // Función para centrar el grid en la cámara con una animación suave
 function centerGridInCamera() {
+    // Verificar si hay rotación significativa antes de centrar
+    const currentRotation = new THREE.Euler().setFromQuaternion(camera.quaternion);
+    const isRotated = Math.abs(currentRotation.x) > 0.01 || 
+                     Math.abs(currentRotation.y) > 0.01 || 
+                     Math.abs(currentRotation.z) > 0.01;
+    
+    // Si no hay rotación significativa, no hacer nada
+    if (!isRotated) {
+        return;
+    }
+
     // Guardar la posición inicial de la cámara y los controles
     const startPosition = camera.position.clone();
     const startTarget = controls.target.clone();
@@ -4140,6 +4164,12 @@ function processTerminalCommand(command) {
         case 'codon':
             handleCodonCommand(output);
             break;
+        case 'stack':
+            handleStackCommand(output);
+            break;
+        case 'flash':
+            handleFlashCommand(output);
+            break;
         default:
             showError(`Comando desconocido: ${cmd}. Escribe 'help' para ver comandos disponibles.`, output);
     }
@@ -4166,6 +4196,8 @@ Comandos disponibles:
     codon          Crea un modelo 3D de transcripción genética
     gatc           Muestra una secuencia GATC animada
     splice         Inicia proceso de splicing genético
+    stack          Inicia proceso de stack genético
+    flash          Hace parpadear el panel seleccionado
     help           Muestra esta ayuda
 `;
     
@@ -4758,343 +4790,209 @@ renderer.domElement.addEventListener('touchmove', (event) => {
 
 // Función para manejar el comando splice
 async function handleSpliceCommand(output) {
-    const selectedPanels = panels.filter(p => p.selected);
-    
-    if (selectedPanels.length === 0) {
-        showError('Seleccione un panel para realizar el splice', output);
-        return;
-    }
-    
-    const panel = selectedPanels[0];
-    
-    // 100 mensajes detallados del proceso
-    const SELECTED_MESSAGES = [
-        "Iniciando análisis preliminar del genoma...",
-        "Cargando bases de datos genómicas locales...",
-        "Conectando con servidores de referencia genómica...",
-        "Verificando integridad de secuencias de ADN...",
-        "Analizando estructura primaria del genoma...",
-        "Identificando regiones codificantes...",
-        "Escaneando secuencias reguladoras...",
-        "Detectando elementos transponibles...",
-        "Analizando contenido GC...",
-        "Identificando islas CpG...",
-        "Mapeando sitios de metilación...",
-        "Verificando modificaciones epigenéticas...",
-        "Analizando estructura de la cromatina...",
-        "Identificando regiones hipersensibles a DNasa...",
-        "Detectando fronteras de dominios topológicos...",
-        "Analizando interacciones cromosómicas...",
-        "Verificando organización nuclear...",
-        "Identificando territorios cromosómicos...",
-        "Calibrando enzimas de restricción...",
-        "Optimizando temperatura de reacción...",
-        "Ajustando concentraciones iónicas...",
-        "Verificando pH del buffer...",
-        "Analizando cofactores necesarios...",
-        "Optimizando condiciones de reacción...",
-        "Preparando solución tampón...",
-        "Verificando estabilidad enzimática...",
-        "Analizando sitios de corte potenciales...",
-        "Identificando secuencias palindrómicas...",
-        "Verificando especificidad de corte...",
-        "Analizando productos secundarios...",
-        "Optimizando eficiencia de corte...",
-        "Verificando compatibilidad de extremos...",
-        "Analizando topología del ADN...",
-        "Identificando superenrollamiento...",
-        "Verificando tensión torsional...",
-        "Analizando estructura terciaria...",
-        "Identificando regiones promotoras...",
-        "Analizando elementos reguladores proximales...",
-        "Verificando enhancers distales...",
-        "Identificando silenciadores...",
-        "Analizando elementos de respuesta...",
-        "Verificando cajas TATA...",
-        "Identificando iniciadores...",
-        "Analizando elementos downstream...",
-        "Verificando secuencias consenso...",
-        "Identificando motivos conservados...",
-        "Analizando factores de transcripción...",
-        "Verificando sitios de unión...",
-        "Identificando cofactores reguladores...",
-        "Analizando complejos proteicos...",
-        "Verificando marcos de lectura...",
-        "Identificando codones de inicio...",
-        "Analizando secuencias Kozak...",
-        "Verificando codones de terminación...",
-        "Identificando señales de poliadenilación...",
-        "Analizando sitios de splicing...",
-        "Verificando branch points...",
-        "Identificando secuencias ESE/ESS...",
-        "Analizando estructura secundaria...",
-        "Verificando estabilidad de horquillas...",
-        "Identificando pseudonudos...",
-        "Analizando motivos estructurales...",
-        "Verificando interacciones de base...",
-        "Identificando regiones de apareamiento...",
-        "Analizando estabilidad térmica...",
-        "Verificando temperatura de fusión...",
-        "Identificando regiones de alta estabilidad...",
-        "Analizando contenido energético...",
-        "Verificando energía libre de Gibbs...",
-        "Identificando estados conformacionales...",
-        "Analizando dinámica molecular...",
-        "Verificando flexibilidad estructural...",
-        "Identificando dominios funcionales...",
-        "Analizando interfaces de interacción...",
-        "Verificando sitios alostéricos...",
-        "Identificando bolsillos catalíticos...",
-        "Analizando residuos conservados...",
-        "Verificando puentes de hidrógeno...",
-        "Identificando interacciones hidrofóbicas...",
-        "Analizando redes de contacto...",
-        "Verificando empaquetamiento...",
-        "Identificando centros activos...",
-        "Analizando especificidad de sustrato...",
-        "Verificando mecanismo catalítico...",
-        "Identificando estados de transición...",
-        "Analizando productos intermedios...",
-        "Verificando eficiencia catalítica...",
-        "Identificando inhibidores potenciales...",
-        "Analizando modificaciones post-traduccionales...",
-        "Verificando sitios de fosforilación...",
-        "Identificando señales de localización...",
-        "Analizando topología proteica...",
-        "Verificando plegamiento proteico...",
-        "Identificando dominios transmembrana...",
-        "Analizando péptidos señal...",
-        "Verificando secuencias de retención...",
-        "Identificando motivos de sorting...",
-        "Analizando estabilidad proteica...",
-        "Verificando vida media...",
-        "Identificando degrones...",
-        "Analizando ubiquitinación...",
-        "Verificando degradación...",
-        "Preparando ligasa de ADN...",
-        "Optimizando condiciones de ligación...",
-        "Verificando compatibilidad de extremos...",
-        "Analizando eficiencia de ligación...",
-        "Monitoreando formación de enlaces...",
-        "Verificando integridad del producto...",
-        "Completando proceso de empalme..."
-    ];
+    try {
+        const selectedPanels = panels.filter(p => p.selected);
+        if (selectedPanels.length === 0) {
+            showError("Debes seleccionar al menos un panel para el proceso de splice.", output);
+            return;
+        }
 
-    // Crear panel de progreso
-    const progressPanel = {
-        group: null,
-        minCellIndex: { 
-            x: panel.minCellIndex.x, 
-            y: panel.maxCellIndex.y + 2
-        },
-        maxCellIndex: { 
-            x: panel.maxCellIndex.x, 
-            y: panel.maxCellIndex.y + 2
-        },
-        orderNumber: panelOrderCounter++,
-        hasText: true
-    };
-    
-    const currentGridParams = getCurrentGridParams();
-    updatePanelGeometryAndPosition(progressPanel, currentGridParams);
-    
-    if (progressPanel.group && progressPanel.fillMesh) {
-        scene.add(progressPanel.group);
+        const panel = selectedPanels[0];
+        const currentGridParams = getCurrentGridParams();
+        
+        // Marcar el panel como contenedor de texto
+        panel.isTextContainer = true;
+        createPanelText(panel, currentGridParams.cellSize);
+        
+        // Crear panel de progreso
+        const progressPanel = createProgressPanel(panel, currentGridParams);
         panels.push(progressPanel);
+        updatePanelGeometryAndPosition(progressPanel, currentGridParams);
         
-        // Obtener dimensiones reales del panel
-        const panelWidth = (progressPanel.maxCellIndex.x - progressPanel.minCellIndex.x + 1) * currentGridParams.cellSize;
-        const panelHeight = currentGridParams.cellSize * 0.8; // Altura reducida para aspecto visual
-        
-        // Crear canvas con proporción correcta
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 1024; // Resolución base
-        canvas.height = Math.floor(canvas.width * (panelHeight / panelWidth));
-        
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.encoding = THREE.sRGBEncoding;
-        
-        // Ajustar repetición de textura para que coincida con el panel
-        texture.repeat.set(1, 1);
-        texture.offset.set(0, 0);
-        texture.wrapS = THREE.ClampToEdgeWrapping;
-        texture.wrapT = THREE.ClampToEdgeWrapping;
-        
-        const progressMaterial = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            opacity: 0.8,
-            side: THREE.DoubleSide
-        });
-        
-        progressPanel.fillMesh.material = progressMaterial;
-        
-        function drawProgress(progress, pulse = 0) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Color de fondo semi-transparente
-            ctx.fillStyle = 'rgba(40, 40, 40, 0.3)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Dibujar borde con efecto de brillo
-            ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
-            
-            // Calcular ancho de progreso proporcional al canvas
-            const progressWidth = Math.floor((canvas.width - 8) * (progress / 100));
-            
-            // Crear gradiente para la barra de progreso
-            const gradient = ctx.createLinearGradient(4, 0, progressWidth + 4, 0);
-            const baseOpacity = 0.6 + pulse * 0.2;
-            gradient.addColorStop(0, `rgba(0, 255, 135, ${baseOpacity})`);
-            gradient.addColorStop(1, `rgba(0, 150, 255, ${baseOpacity})`);
-            
-            // Dibujar barra de progreso con gradiente
-            ctx.fillStyle = gradient;
-            ctx.fillRect(4, 4, progressWidth, canvas.height - 8);
-            
-            // Efecto de brillo en el borde de progreso
-            if (progressWidth > 4) {
-                const glowWidth = Math.min(8, progressWidth / 4);
-                const glowGradient = ctx.createLinearGradient(progressWidth - glowWidth, 0, progressWidth + glowWidth, 0);
-                glowGradient.addColorStop(0, 'rgba(0, 255, 255, 0.4)');
-                glowGradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
-                ctx.fillStyle = glowGradient;
-                ctx.fillRect(progressWidth - glowWidth, 4, glowWidth * 2, canvas.height - 8);
-            }
-            
-            texture.needsUpdate = true;
-        }
-        
-        progressPanel.drawProgress = drawProgress;
-    }
-    
-    // Configuración del panel de texto
-    panel.hasText = true;
-    panel.messageBuffer = [];
-    panel.maxLines = Math.floor((panel.maxCellIndex.y - panel.minCellIndex.y + 1) * 1.2);
-    
-    function addFormattedMessage(message, type = 'info') {
-        const timestamp = getTimestamp();
-        const symbol = type === 'success' ? '✓' : 
-                      type === 'error' ? '✗' : 
-                      type === 'warning' ? '!' : 
-                      '▶';
-        
-        const formattedMessage = `${timestamp} ${symbol} ${message}`;
-        panel.messageBuffer.push(formattedMessage);
-        
-        if (panel.messageBuffer.length > panel.maxLines) {
-            panel.messageBuffer.shift();
-        }
-        
-        const visibleText = panel.messageBuffer.join('\n');
-        setPanelText(panel, visibleText, currentGridParams.cellSize);
-    }
-    
-    // Iniciar animación
-    let messageIndex = 0;
-    let progress = 0;
-    let lastUpdateTime = Date.now();
-    const duration = 16000; // mantener 16 segundos
-    const messagesCount = SELECTED_MESSAGES.length;
-    const progressInterval = 16; // 60fps
-    const timePerMessage = duration / messagesCount;
+        // Mensajes detallados sobre ingeniería bioquímica
+        const SELECTED_MESSAGES = [
+            "Iniciando análisis preliminar del genoma...",
+            "Cargando bases de datos genómicas locales...",
+            "Conectando con servidores de referencia genómica...",
+            "Verificando integridad de secuencias de ADN...",
+            "Analizando estructura primaria del genoma...",
+            "Identificando regiones codificantes...",
+            "Escaneando secuencias reguladoras...",
+            "Detectando elementos transponibles...",
+            "Analizando contenido GC...",
+            "Identificando islas CpG...",
+            "Mapeando sitios de metilación...",
+            "Verificando modificaciones epigenéticas...",
+            "Analizando estructura de la cromatina...",
+            "Identificando regiones hipersensibles a DNasa...",
+            "Detectando fronteras de dominios topológicos...",
+            "Analizando interacciones cromosómicas...",
+            "Verificando organización nuclear...",
+            "Identificando territorios cromosómicos...",
+            "Calibrando enzimas de restricción...",
+            "Optimizando temperatura de reacción...",
+            "Ajustando concentraciones iónicas...",
+            "Verificando pH del buffer...",
+            "Analizando cofactores necesarios...",
+            "Optimizando condiciones de reacción...",
+            "Preparando solución tampón...",
+            "Verificando estabilidad enzimática...",
+            "Analizando sitios de corte potenciales...",
+            "Identificando secuencias palindrómicas...",
+            "Verificando especificidad de corte...",
+            "Analizando productos secundarios...",
+            "Optimizando eficiencia de corte...",
+            "Verificando compatibilidad de extremos...",
+            "Analizando topología del ADN...",
+            "Identificando superenrollamiento...",
+            "Verificando tensión torsional...",
+            "Analizando estructura terciaria...",
+            "Identificando regiones promotoras...",
+            "Analizando elementos reguladores proximales...",
+            "Verificando enhancers distales...",
+            "Identificando silenciadores...",
+            "Analizando elementos de respuesta...",
+            "Verificando cajas TATA...",
+            "Identificando iniciadores...",
+            "Analizando elementos downstream...",
+            "Verificando secuencias consenso...",
+            "Identificando motivos conservados...",
+            "Analizando factores de transcripción...",
+            "Verificando sitios de unión...",
+            "Identificando cofactores reguladores...",
+            "Analizando complejos proteicos...",
+            "Verificando marcos de lectura...",
+            "Identificando codones de inicio...",
+            "Analizando secuencias Kozak...",
+            "Verificando codones de terminación...",
+            "Identificando señales de poliadenilación...",
+            "Analizando sitios de splicing...",
+            "Verificando branch points...",
+            "Identificando secuencias ESE/ESS...",
+            "Analizando estructura secundaria...",
+            "Verificando estabilidad de horquillas...",
+            "Identificando pseudonudos...",
+            "Analizando motivos estructurales...",
+            "Verificando interacciones de base...",
+            "Identificando regiones de apareamiento...",
+            "Analizando estabilidad térmica...",
+            "Verificando temperatura de fusión...",
+            "Identificando regiones de alta estabilidad...",
+            "Analizando contenido energético...",
+            "Verificando energía libre de Gibbs...",
+            "Identificando estados conformacionales...",
+            "Analizando dinámica molecular...",
+            "Verificando flexibilidad estructural...",
+            "Identificando dominios funcionales...",
+            "Analizando interfaces de interacción...",
+            "Verificando sitios alostéricos...",
+            "Identificando bolsillos catalíticos...",
+            "Analizando residuos conservados...",
+            "Verificando puentes de hidrógeno...",
+            "Identificando interacciones hidrofóbicas...",
+            "Analizando redes de contacto...",
+            "Verificando empaquetamiento...",
+            "Identificando centros activos...",
+            "Analizando especificidad de sustrato...",
+            "Verificando mecanismo catalítico...",
+            "Identificando estados de transición...",
+            "Analizando productos intermedios...",
+            "Verificando eficiencia catalítica...",
+            "Identificando inhibidores potenciales...",
+            "Analizando modificaciones post-traduccionales...",
+            "Verificando sitios de fosforilación...",
+            "Identificando señales de localización...",
+            "Analizando topología proteica...",
+            "Verificando plegamiento proteico...",
+            "Identificando dominios transmembrana...",
+            "Analizando péptidos señal...",
+            "Verificando secuencias de retención...",
+            "Identificando motivos de sorting...",
+            "Analizando estabilidad proteica...",
+            "Verificando vida media...",
+            "Identificando degrones...",
+            "Analizando ubiquitinación...",
+            "Verificando degradación...",
+            "Preparando ligasa de ADN...",
+            "Optimizando condiciones de ligación...",
+            "Verificando compatibilidad de extremos...",
+            "Analizando eficiencia de ligación...",
+            "Monitoreando formación de enlaces...",
+            "Verificando integridad del producto...",
+            "Completando proceso de empalme..."
+        ];
 
-    addFormattedMessage('Iniciando proceso de splice genético avanzado...', 'info');
+        // Inicializar estado del texto
+        const state = panelTextState.get(panel);
+        state.lines = ["Iniciando proceso de splice genético avanzado..."];
+        setPanelText(panel, state.lines.join('\n'), currentGridParams.cellSize);
 
-    return new Promise((resolve) => {
-        const updateInterval = setInterval(() => {
-            const currentTime = Date.now();
-            const deltaTime = currentTime - lastUpdateTime;
-            lastUpdateTime = currentTime;
-            
-            // Calcular incremento de progreso basado en el tiempo real transcurrido
-            const progressIncrement = (deltaTime / duration) * 100;
-            // Limitar el incremento máximo por frame para evitar saltos
-            const maxIncrementPerFrame = 0.5; // Reducido para más suavidad
-            progress = Math.min(100, progress + Math.min(progressIncrement, maxIncrementPerFrame));
-            
-            // Calcular cuántos mensajes deberían mostrarse
-            const expectedMessages = Math.floor((progress / 100) * messagesCount);
-            
-            // Mostrar mensajes pendientes
-            while (messageIndex < expectedMessages && messageIndex < messagesCount) {
-                addFormattedMessage(SELECTED_MESSAGES[messageIndex], 'info');
-                messageIndex++;
+        let isRunning = true;
+        let currentCycle = 0;
+
+        // Función para manejar la tecla Escape
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                isRunning = false;
+                cleanupProgressPanel(progressPanel, scene, panels);
+                state.lines = ["Proceso de splice interrumpido."];
+                setPanelText(panel, state.lines.join('\n'), currentGridParams.cellSize);
+                document.removeEventListener('keydown', handleEscape);
             }
-            
-            // Actualizar barra de progreso
-            if (progressPanel.drawProgress) {
-                const pulse = Math.sin(currentTime * 0.01) * 0.5 + 0.5;
-                progressPanel.drawProgress(progress, pulse);
-            }
-            
-            // Mostrar porcentaje
-            const progressText = `${Math.floor(progress)}% completado`;
-            setPanelText(progressPanel, progressText, currentGridParams.cellSize);
-            
-            if (progress >= 100) {
-                clearInterval(updateInterval);
+        };
+
+        document.addEventListener('keydown', handleEscape);
+
+        function updateProgress() {
+            if (!isRunning) return;
+
+            const startTime = Date.now();
+            const duration = 25000; // 25 segundos
+            let lastProgress = 0;
+            let lastMessageIndex = 0;
+            let lastPulseTime = 0;
+
+            function animate() {
+                if (!isRunning) return;
+
+                const currentTime = Date.now();
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(100, (elapsed / duration) * 100);
                 
-                // Asegurar que se muestren todos los mensajes
-                while (messageIndex < messagesCount) {
-                    addFormattedMessage(SELECTED_MESSAGES[messageIndex], 'info');
-                    messageIndex++;
+                // Actualizar barra de progreso
+                if (progress !== lastProgress) {
+                    const pulse = Math.sin((currentTime - lastPulseTime) / 200) * 0.2;
+                    progressPanel.drawProgress(progress, pulse);
+                    lastProgress = progress;
                 }
                 
-                addFormattedMessage("Proceso de splice completado exitosamente", 'success');
+                // Actualizar mensajes
+                const messageIndex = Math.floor((progress / 100) * SELECTED_MESSAGES.length);
+                if (messageIndex !== lastMessageIndex) {
+                    state.lines = [SELECTED_MESSAGES[messageIndex]];
+                    setPanelText(panel, state.lines.join('\n'), currentGridParams.cellSize);
+                    lastMessageIndex = messageIndex;
+                }
                 
-                setTimeout(() => {
-                    scene.remove(progressPanel.group);
-                    const index = panels.indexOf(progressPanel);
-                    if (index > -1) {
-                        panels.splice(index, 1);
-                    }
-                    resolve();
-                }, 1000);
+                if (progress < 100) {
+                    requestAnimationFrame(animate);
+                } else {
+                    currentCycle++;
+                    state.lines = [`Ciclo ${currentCycle} completado. Iniciando nuevo ciclo...`];
+                    setPanelText(panel, state.lines.join('\n'), currentGridParams.cellSize);
+                    setTimeout(() => updateProgress(), 1000);
+                }
             }
-        }, progressInterval);
-    });
-}
 
-// Función para dibujar la barra de progreso
-function drawProgress(progress, pulse = 0) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Color de fondo semi-transparente
-    ctx.fillStyle = 'rgba(40, 40, 40, 0.3)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Dibujar borde con efecto de brillo
-    ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
-    
-    // Calcular ancho de la barra de progreso con suavizado
-    const progressWidth = (canvas.width - 8) * (progress / 100);
-    
-    // Crear gradiente para la barra de progreso
-    const gradient = ctx.createLinearGradient(4, 0, progressWidth + 4, 0);
-    const baseOpacity = 0.6 + pulse * 0.2;
-    gradient.addColorStop(0, `rgba(0, 255, 135, ${baseOpacity})`);
-    gradient.addColorStop(1, `rgba(0, 150, 255, ${baseOpacity})`);
-    
-    // Dibujar barra de progreso con gradiente
-    ctx.fillStyle = gradient;
-    ctx.fillRect(4, 4, progressWidth, canvas.height - 8);
-    
-    // Efecto de brillo en el borde de progreso
-    const glowWidth = Math.min(8, progressWidth / 4);
-    const glowGradient = ctx.createLinearGradient(progressWidth - glowWidth, 0, progressWidth + glowWidth, 0);
-    glowGradient.addColorStop(0, 'rgba(0, 255, 255, 0.4)');
-    glowGradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
-    ctx.fillStyle = glowGradient;
-    ctx.fillRect(progressWidth - glowWidth, 4, glowWidth * 2, canvas.height - 8);
-    
-    texture.needsUpdate = true;
+            animate();
+        }
+
+        updateProgress();
+        
+    } catch (error) {
+        console.error("Error en el comando splice:", error);
+        showError("Error durante el proceso de splice: " + error.message, output);
+    }
 }
 
 // Función para reindexar los paneles
@@ -5821,3 +5719,240 @@ async function handleCodonCommand(output) {
 // En la función cleanupModels, antes del final:
     // Limpiar modelos de codón
     cleanupCodonModels();
+
+async function handleStackCommand(output) {
+    try {
+        const selectedPanels = panels.filter(p => p.selected);
+        if (selectedPanels.length === 0) {
+            showError("Debes seleccionar al menos un panel para el proceso de stack.", output);
+            return;
+        }
+
+        const panel = selectedPanels[0];
+        const currentGridParams = getCurrentGridParams();
+        
+        // Marcar el panel como contenedor de texto
+        panel.isTextContainer = true;
+        createPanelText(panel, currentGridParams.cellSize);
+        
+        // Crear panel de progreso
+        const progressPanel = createProgressPanel(panel, currentGridParams);
+        panels.push(progressPanel);
+        updatePanelGeometryAndPosition(progressPanel, currentGridParams);
+        
+        // Mensajes detallados sobre ingeniería bioquímica
+        const SELECTED_MESSAGES = [
+            "Iniciando análisis preliminar del genoma...",
+            "Identificando secuencias de interés...",
+            "Analizando patrones de expresión génica...",
+            "Evaluando posibles sitios de inserción...",
+            "Calculando parámetros de optimización...",
+            "Preparando reactivos de edición...",
+            "Inicializando sistema CRISPR-Cas9...",
+            "Diseñando guías de ARN específicas...",
+            "Sintetizando oligonucleótidos...",
+            "Preparando vectores de expresión...",
+            "Optimizando condiciones de cultivo...",
+            "Iniciando proceso de transformación...",
+            "Monitoreando eficiencia de transfección...",
+            "Analizando integración del transgén...",
+            "Evaluando expresión del gen reportero...",
+            "Realizando PCR de confirmación...",
+            "Secuenciando productos de PCR...",
+            "Analizando alineamientos de secuencias...",
+            "Verificando especificidad de edición...",
+            "Evaluando efectos fuera del objetivo...",
+            "Optimizando protocolo de selección...",
+            "Aplicando presión selectiva...",
+            "Monitoreando crecimiento celular...",
+            "Analizando fenotipos resultantes...",
+            "Evaluando estabilidad genómica...",
+            "Realizando análisis de expresión...",
+            "Cuantificando niveles de proteína...",
+            "Evaluando actividad enzimática...",
+            "Analizando interacciones proteicas...",
+            "Estudiando vías de señalización...",
+            "Evaluando respuesta celular...",
+            "Analizando metabolismo celular...",
+            "Monitoreando producción de metabolitos...",
+            "Optimizando condiciones de fermentación...",
+            "Escalando proceso de producción...",
+            "Validando pureza del producto...",
+            "Evaluando actividad biológica...",
+            "Realizando pruebas de estabilidad...",
+            "Optimizando formulación final...",
+            "Completando documentación técnica...",
+            "Proceso de stack completado exitosamente."
+        ];
+
+        // Inicializar estado del texto
+        const state = panelTextState.get(panel);
+        state.lines = ["Iniciando proceso de stack genético avanzado..."];
+        state.scrollOffset = 0;
+        setPanelText(panel, state.lines.join('\n'), currentGridParams.cellSize);
+
+        // Calcular número máximo de líneas visibles basado en la altura del panel
+        const panelHeight = (panel.maxCellIndex.y - panel.minCellIndex.y + 1) * currentGridParams.cellSize;
+        const lineHeight = currentGridParams.cellSize * 0.8; // Altura aproximada de cada línea
+        const maxVisibleLines = Math.floor(panelHeight / lineHeight) - 1; // -1 para dejar espacio para el borde
+
+        let isRunning = true;
+        let currentCycle = 0;
+
+        // Función para manejar la tecla Escape
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                isRunning = false;
+                cleanupProgressPanel(progressPanel, scene, panels);
+                state.lines.push("Proceso de stack interrumpido.");
+                if (state.lines.length > maxVisibleLines) {
+                    state.scrollOffset = state.lines.length - maxVisibleLines;
+                }
+                const visibleLines = state.lines.slice(state.scrollOffset, state.scrollOffset + maxVisibleLines);
+                setPanelText(panel, visibleLines.join('\n'), currentGridParams.cellSize);
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+
+        function updateProgress() {
+            if (!isRunning) return;
+
+            const startTime = Date.now();
+            const duration = 25000; // 25 segundos
+            let lastProgress = 0;
+            let lastMessageIndex = 0;
+            let lastPulseTime = 0;
+
+            function animate() {
+                if (!isRunning) return;
+
+                const currentTime = Date.now();
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(100, (elapsed / duration) * 100);
+                
+                // Actualizar barra de progreso
+                if (progress !== lastProgress) {
+                    const pulse = Math.sin((currentTime - lastPulseTime) / 200) * 0.2;
+                    progressPanel.drawProgress(progress, pulse);
+                    lastProgress = progress;
+                }
+                
+                // Actualizar mensajes (apilando)
+                const messageIndex = Math.floor((progress / 100) * SELECTED_MESSAGES.length);
+                if (messageIndex !== lastMessageIndex) {
+                    // Mantener los mensajes anteriores y agregar el nuevo
+                    state.lines.push(SELECTED_MESSAGES[messageIndex]);
+                    
+                    // Calcular el desplazamiento necesario para mantener visible la última línea
+                    if (state.lines.length > maxVisibleLines) {
+                        state.scrollOffset = state.lines.length - maxVisibleLines;
+                    }
+                    
+                    // Mostrar solo las líneas visibles
+                    const visibleLines = state.lines.slice(state.scrollOffset, state.scrollOffset + maxVisibleLines);
+                    setPanelText(panel, visibleLines.join('\n'), currentGridParams.cellSize);
+                    
+                    lastMessageIndex = messageIndex;
+                }
+                
+                if (progress < 100) {
+                    requestAnimationFrame(animate);
+                } else {
+                    currentCycle++;
+                    state.lines.push(`Ciclo ${currentCycle} completado. Iniciando nuevo ciclo...`);
+                    if (state.lines.length > maxVisibleLines) {
+                        state.scrollOffset = state.lines.length - maxVisibleLines;
+                    }
+                    const visibleLines = state.lines.slice(state.scrollOffset, state.scrollOffset + maxVisibleLines);
+                    setPanelText(panel, visibleLines.join('\n'), currentGridParams.cellSize);
+                    setTimeout(() => updateProgress(), 1000);
+                }
+            }
+
+            animate();
+        }
+
+        updateProgress();
+        
+    } catch (error) {
+        console.error("Error en el comando stack:", error);
+        showError("Error durante el proceso de stack: " + error.message, output);
+    }
+}
+
+async function handleFlashCommand(output) {
+    try {
+        const selectedPanels = panels.filter(p => p.selected);
+        if (selectedPanels.length === 0) {
+            showError("Debes seleccionar un panel para el efecto flash.", output);
+            return;
+        }
+
+        // Obtener solo el último panel seleccionado
+        const panel = selectedPanels[selectedPanels.length - 1];
+        
+        // Deseleccionar todos los paneles excepto el que vamos a hacer parpadear
+        panels.forEach(p => {
+            if (p !== panel) {
+                p.selected = false;
+            }
+        });
+
+        let isVisible = true;
+        let originalColor = panel.fillMesh.material.color.clone();
+        let originalOpacity = panel.fillMesh.material.opacity;
+        let originalTextColor = null;
+        let originalTextBackground = null;
+
+        // Guardar colores originales del texto si existe
+        if (panel.isTextContainer) {
+            const state = panelTextState.get(panel);
+            if (state) {
+                originalTextColor = state.textColor;
+                originalTextBackground = state.backgroundColor;
+            }
+        }
+
+        function flash() {
+            if (isVisible) {
+                // Ocultar panel
+                panel.fillMesh.material.opacity = 0;
+                
+                if (panel.isTextContainer) {
+                    const state = panelTextState.get(panel);
+                    if (state) {
+                        // Invertir colores del texto
+                        state.textColor = 'rgba(0, 0, 0, 1)';
+                        state.backgroundColor = 'rgba(255, 255, 255, 1)';
+                        setPanelText(panel, state.lines.join('\n'), getCurrentGridParams().cellSize);
+                    }
+                }
+            } else {
+                // Mostrar panel
+                panel.fillMesh.material.color.copy(originalColor);
+                panel.fillMesh.material.opacity = originalOpacity;
+                
+                if (panel.isTextContainer) {
+                    const state = panelTextState.get(panel);
+                    if (state) {
+                        // Restaurar colores originales del texto
+                        state.textColor = originalTextColor;
+                        state.backgroundColor = originalTextBackground;
+                        setPanelText(panel, state.lines.join('\n'), getCurrentGridParams().cellSize);
+                    }
+                }
+            }
+
+            isVisible = !isVisible;
+            setTimeout(flash, 400); // Intervalo de 0.4 segundos
+        }
+
+        flash();
+        
+    } catch (error) {
+        console.error("Error en el comando flash:", error);
+        showError("Error durante el efecto flash: " + error.message, output);
+    }
+}
