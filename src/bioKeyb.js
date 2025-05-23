@@ -281,7 +281,7 @@ function handleKeyPress(keyId, customCallback) {
             console.log(`SHIFT ${keyboardState.shift ? 'activado' : 'desactivado'}`);
             return;
         case 'ESC':
-            // Enviar evento de Escape
+            // Solo deseleccionar paneles y cancelar selección
             const escEvent = new KeyboardEvent('keydown', {
                 key: 'Escape',
                 code: 'Escape',
@@ -292,7 +292,7 @@ function handleKeyPress(keyId, customCallback) {
             });
             const target = document.activeElement || document;
             target.dispatchEvent(escEvent);
-            console.log('Tecla ESC presionada: Enviando evento Escape');
+            console.log('Tecla ESC presionada: Solo deseleccionar paneles');
             return;
         case 'F5':
             // Recargar la página
@@ -459,8 +459,19 @@ function toggleOrderNumbers(show) {
 }
 
 // Función para inicializar el teclado en la aplicación
-function initBioKeyb(scene, createPanelFunction, consoleEl) {
-  console.log("Inicializando bioKeyb");
+async function initBioKeyb(consoleEl) {
+  console.log("Asegurando que la fuente 'Press Start 2P' esté cargada y lista para usarse...");
+  try {
+    // Usar document.fonts.ready que devuelve una Promesa 
+    // que se resuelve cuando el documento está listo para renderizar con las fuentes.
+    await document.fonts.ready; 
+    console.log("Todas las fuentes del documento están listas. 'Press Start 2P' debería estar disponible.");
+
+  } catch (error) {
+    console.error("Error crítico al esperar que las fuentes estén listas. El teclado podría no renderizarse correctamente:", error);
+  }
+
+  console.log("Inicializando estado de bioKeyb (listeners, etc.)...");
   
   // Ocultar los números de etiqueta por defecto
   keyboardState.showOrderNumbers = false;
@@ -473,28 +484,6 @@ function initBioKeyb(scene, createPanelFunction, consoleEl) {
     setConsoleElement(consoleEl);
   }
   
-  // Obtener el layout del teclado
-  const keyboardPanels = createKeyboard();
-  
-  // Crear cada panel usando la función de creación proporcionada y añadir eventos
-  const panels = keyboardPanels.map(panel => {
-    const createdPanel = createPanelFunction ? createPanelFunction(panel) : panel;
-    
-    // Agregar evento de clic al panel si existe
-    if (createdPanel && createdPanel.group) {
-      createdPanel.group.userData.keyId = panel.orderNumber;
-      createdPanel.group.userData.isKeyboardKey = true;
-      
-      // Añadir interactividad al panel
-      if (createdPanel.group.children[0]) {
-        createdPanel.group.children[0].userData.keyId = panel.orderNumber;
-        createdPanel.group.children[0].userData.isKeyboardKey = true;
-      }
-    }
-    
-    return createdPanel;
-  });
-
   // Agregar listener global para focus
   document.addEventListener('focus', (e) => {
     keyboardState.activeElement = document.activeElement;
@@ -505,7 +494,7 @@ function initBioKeyb(scene, createPanelFunction, consoleEl) {
         target instanceof HTMLTextAreaElement || 
         (target && target.isContentEditable)) {
       keyboardState.isWriting = true;
-      console.log('Modo escritura activado automáticamente');
+      // console.log('Modo escritura activado automáticamente por focus'); // Opcional: log
     }
   }, true);
   
@@ -516,12 +505,12 @@ function initBioKeyb(scene, createPanelFunction, consoleEl) {
         target instanceof HTMLTextAreaElement || 
         (target && target.isContentEditable)) {
       keyboardState.isWriting = false;
-      console.log('Modo escritura desactivado automáticamente');
+      // console.log('Modo escritura desactivado automáticamente por blur'); // Opcional: log
     }
   }, true);
   
-  console.log("Teclado inicializado con", panels.length, "teclas");
-  return panels;
+  console.log("Estado de bioKeyb inicializado.");
+  // Ya no llama a createKeyboard() ni devuelve paneles.
 }
 
 // Limpiar el texto de entrada

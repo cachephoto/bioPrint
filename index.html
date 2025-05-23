@@ -333,6 +333,80 @@
         text-align: right;
         margin-top: 2px;
       }
+
+      /* Estilos para el panel de Slots */
+      #slots-panel {
+        position: absolute;
+        top: 10px; /* Ajusta según sea necesario, podría ser 10px o debajo de #controls */
+        left: 200px; /* Ejemplo: al lado de #controls, ajustar si es necesario */
+        background-color: rgba(20, 20, 20, 0.9);
+        padding: 15px;
+        border-radius: 8px;
+        color: white;
+        font-family: 'VT323', monospace;
+        z-index: 100;
+        display: none; /* Oculto inicialmente */
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        min-width: 280px; /* Ancho mínimo para acomodar los botones */
+      }
+
+      #slots-panel h3 {
+        margin: 0 0 15px 0;
+        font-size: 20px;
+        text-align: center;
+        color: #0f0;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      #slots-panel .slot-entry {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        padding: 5px;
+        background-color: rgba(50, 50, 50, 0.5);
+        border-radius: 4px;
+      }
+
+      #slots-panel .slot-label {
+        color: #aaa;
+        font-size: 14px;
+        margin-right: 10px;
+        flex-basis: 60px; /* Para alinear los botones */
+      }
+      
+      #slots-panel .slot-status {
+        font-size: 11px;
+        color: #777;
+        margin-left: 5px;
+        flex-grow: 1;
+        text-align: right;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      #slots-panel .slot-actions button {
+        padding: 5px 8px;
+        font-size: 12px;
+        cursor: pointer;
+        background-color: #222;
+        color: #0f0;
+        border: 1px solid #0f0;
+        border-radius: 3px;
+        font-family: inherit;
+        margin-left: 5px;
+      }
+
+      #slots-panel .slot-actions button.clear-btn {
+        color: #f00;
+        border-color: #f00;
+      }
+      
+      #slots-panel .slot-actions button:hover {
+        background-color: #333;
+      }
     </style>
   </head>
   <body>
@@ -342,12 +416,11 @@
       <div id="splash-version">
         Versión 2.34.1519, Copyright (C) 2023 Ihtoa Ware Inc.
         BIOS fecha: 21/11/2025 21:45:16
-        Press F2 para Setup de BioPrint
-        Press F8 para Menú Rápido 
-        Press F6 para Autodestrucción
-        Press F12 para Red Boot 
+        Press T para terminal
+        Press V para Menú Rápido 
+        Press Cntrl+f4 para Autodestrucción
         
-        Firmware BioPrint v3.5 (CTL+D en teclado serie)
+        Firmware BioPrint v3.5 (K para teclado en pantalla)
         
         Desarrollado por Dr. Axolojuandalf & Dr. Boris Schmidt
       </div>
@@ -411,6 +484,15 @@
           <div class="value-display" id="bioFX-glow-threshold-value">0.10</div>
         </div>
       </div>
+
+      <!-- Panel de Gestión de Slots -->
+      <div id="slots-panel">
+        <h3>Slots de Memoria</h3>
+        <div id="slots-container">
+          <!-- Los slots se generarán dinámicamente aquí por JS -->
+        </div>
+      </div>
+
     </div>
     
     <script type="module" src="./src/main.js"></script>

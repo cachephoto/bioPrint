@@ -1,5 +1,6 @@
 // Módulo para manejar texto editable en paneles
 import * as THREE from 'three';
+import { keyboardState, setWritingMode } from './bioKeyb.js'; // Asegurarse de que setWritingMode esté exportada desde bioKeyb.js
 
 // Estado global del texto
 export const panelTextState = new Map();
@@ -1196,26 +1197,40 @@ export function startTextEditing(panel, cellSize) {
     if (!panel) return;
     
     const state = panelTextState.get(panel);
-    if (!state) return;
+    if (!state) {
+        panelTextState.set(panel, {
+            text: '',
+            cursorPosition: 0,
+            lines: [''],
+            isEditing: false,
+            maxCharsPerLine: 0,
+            scrollOffset: 0,
+            textMeshes: [],
+            isPassword: false
+        });
+    }
+    const freshState = panelTextState.get(panel);
 
-    state.isEditing = true;
-    panel.isEditing = true; // Añadir estado al panel también
+    freshState.isEditing = true;
+    if (panel.isEditing !== undefined) panel.isEditing = true; 
     
     currentEditingPanel = panel;
+    setWritingMode(true); 
+    console.log("panelText: startTextEditing llamó a setWritingMode(true).");
     
-    // Agregar event listeners para interacción táctil SOLO cuando
-    // estamos en modo edición
     document.addEventListener('touchstart', handleTextTouchStart, { passive: false });
     document.addEventListener('touchmove', handleTextTouchMove, { passive: false });
     document.addEventListener('touchend', handleTextTouchEnd);
     
-    // Prevenir entrada en terminal
-    document.addEventListener('keydown', preventTerminalInput);
+    document.addEventListener('keydown', preventTerminalInput, { capture: true });
 
     if (cursorBlinkInterval) clearInterval(cursorBlinkInterval);
+    cursorVisible = true;
     cursorBlinkInterval = setInterval(() => {
-        cursorVisible = !cursorVisible;
-        createPanelText(panel, cellSize);
+        if (currentEditingPanel === panel) {
+            cursorVisible = !cursorVisible;
+            createPanelText(panel, cellSize);
+        }
     }, TEXT_CONFIG.cursorBlinkRate);
 
     createPanelText(panel, cellSize);
@@ -1223,32 +1238,48 @@ export function startTextEditing(panel, cellSize) {
 
 // Desactivar modo de edición
 export function stopTextEditing(panel) {
-    if (!panel) return;
-    
-    const state = panelTextState.get(panel);
-    if (!state) return;
+    let panelToStop = panel;
+    if (!panelToStop && currentEditingPanel) { 
+        panelToStop = currentEditingPanel;
+    }
 
-    state.isEditing = false;
-    panel.isEditing = false; // Limpiar estado del panel
-    
+    if (panelToStop) {
+        const state = panelTextState.get(panelToStop);
+        if (state && state.isEditing) {
+            state.isEditing = false;
+            if (panelToStop.isEditing !== undefined) panelToStop.isEditing = false;
+        }
+        if (currentEditingPanel === panelToStop) {
+            currentEditingPanel = null;
+            setWritingMode(false);
+            console.log(`panelText: stopTextEditing para el panel actual (${panelToStop.orderNumber || 'N/A'}) llamó a setWritingMode(false). keyboardState.isWriting: ${keyboardState.isWriting}`);
+        }
+    } else if (!panelToStop && keyboardState.isWriting) {
         currentEditingPanel = null;
-    
-    // Remover event listeners cuando salimos del modo edición
+        setWritingMode(false);
+        console.log(`panelText: stopTextEditing (sin panel específico) llamó a setWritingMode(false) porque keyboardState.isWriting era true. keyboardState.isWriting: ${keyboardState.isWriting}`);
+    }
+
     document.removeEventListener('touchstart', handleTextTouchStart);
     document.removeEventListener('touchmove', handleTextTouchMove);
     document.removeEventListener('touchend', handleTextTouchEnd);
-    
-    // Restaurar entrada en terminal
-    document.removeEventListener('keydown', preventTerminalInput);
+    document.removeEventListener('keydown', preventTerminalInput, { capture: true });
 
     if (cursorBlinkInterval) {
         clearInterval(cursorBlinkInterval);
         cursorBlinkInterval = null;
     }
+    cursorVisible = true;
 
-    // Es crucial renderizar una última vez el texto sin el cursor
-    // para que permanezca visible después de salir del modo edición
-    createPanelText(panel, panel.lastGridSize || panel.gridSize);
+    if (panelToStop) {
+        const state = panelTextState.get(panelToStop);
+        if (state) { 
+            const gridSizeToUse = panelToStop.gridSize || (lastGridSize || 0.5);
+            cursorVisible = false; 
+            createPanelText(panelToStop, gridSizeToUse);
+            cursorVisible = true;
+        }
+    }
 }
 
 // Este método debe ser llamado cuando un panel es creado o actualizado
@@ -1289,13 +1320,23 @@ export function setPanelText(panel, text, gridSize) {
 // Función para prevenir entrada en terminal
 function preventTerminalInput(event) {
     if (currentEditingPanel) {
-        // Prevenir comportamiento por defecto para evitar entrada en terminal
-        event.preventDefault();
-        event.stopPropagation();
+        if (event.key === 'Escape') {
+            // console.log("panelText.js: Escape detectado en preventTerminalInput. Llamando a stopTextEditing."); // DEBUG
+            stopTextEditing(currentEditingPanel); // Llama a la función de este mismo módulo
+            event.preventDefault();
+            event.stopPropagation(); // Consumir el evento Escape aquí mismo.
+            return false; 
+        }
         
-        // Manejar la entrada de texto en el panel
-        handleTextInput(currentEditingPanel, event, currentEditingPanel.gridSize);
-        return false;
+        // Para otras teclas, continuar con el manejo normal de entrada de texto
+        // Solo prevenir default y propagación si realmente vamos a manejar la tecla en handleTextInput.
+        // handleTextInput internamente no maneja todas las teclas (ej. modificadores solos).
+        // Sin embargo, para un campo de texto dedicado, usualmente queremos capturar la mayoría de las entradas.
+        event.preventDefault(); 
+        event.stopPropagation(); 
+        
+        handleTextInput(currentEditingPanel, event, currentEditingPanel.gridSize || lastGridSize || 0.5);
+        return false; 
     }
 }
 

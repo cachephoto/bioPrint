@@ -1,5 +1,50 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+// Materiales base para paneles con textura
+const createPanelMaterials = (texture) => ({
+    normal: new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide
+    }),
+    hover: new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide
+    }),
+    selected: new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide
+    })
+});
+
+// Utilidad compartida para cargar texturas
+const textureLoader = new THREE.TextureLoader();
+
+function loadTexture(path, onLoad, onError) {
+    console.log('Intentando cargar textura desde:', path);
+    textureLoader.load(
+        path,
+        (texture) => {
+            console.log('Textura cargada exitosamente:', path);
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            onLoad(texture);
+        },
+        (xhr) => {
+            console.log(`${path}: ${(xhr.loaded / xhr.total * 100)}% loaded`);
+        },
+        (error) => {
+            console.error('Error cargando textura:', path, error);
+            if (onError) onError(error);
+        }
+    );
+}
 import { 
     initPanelText, 
     createPanelText, 
@@ -24,13 +69,20 @@ import {
     restoreModel 
 } from './panelModel.js';
 import { loadGenomToPanel, animateGenoms, cleanupGenomModels, loadGTACToPanel } from './genomModel.js';
-import { initBioKeyb, createKeyboard, createKeyLabel } from './bioKeyb.js';
+import { 
+    initBioKeyb, 
+    createKeyboard, 
+    createKeyLabel,
+    keyboardState // AÑADIR keyboardState
+} from './bioKeyb.js';
 import { handleLogoCommand, updateOnPanelMove } from './bioLOGO.js';
 import { loadCodonToPanel, animateCodons, cleanupCodonModels } from './codonModel.js';
 import { createProgressPanel, cleanupProgressPanel } from './bioLoad.js';
+import { createAppGrid } from './bioApps.js';
 
 // Variables globales para controlar la visibilidad del teclado
 let bioKeybVisible = false; // Controla si el teclado está visible o no
+let bioKeybModuleInitialized = false; // NUEVA variable para rastrear la inicialización del módulo
 
 // Mapa para almacenar los intervalos de GATC
 const gatcIntervals = new Map(); // Para gestionar los intervalos de animación GATC
@@ -168,8 +220,10 @@ function startGridAnimation24Frames() {
             // Actualizar estado
             isFirstGridCreation = false;
 
-            // Cargar la configuración guardada después de que termine la animación
-            setTimeout(() => {
+            // Cargar el bioKeyb y luego la configuración guardada
+            setTimeout(async () => {
+                await loadBioKeyb(true); // Cargar teclado sin guardar configuración
+                bioKeybVisible = true; // Asegurar que el teclado esté marcado como visible
                 loadConfiguration();
             }, 100);
         }
@@ -454,7 +508,8 @@ function hideAllMenus() {
     const menus = [
         document.getElementById('controls'),
         document.getElementById('terminal-console'),
-        bioFXPanel
+        bioFXPanel,
+        document.getElementById('slots-panel') // Añadir el panel de slots
     ];
     menus.forEach(menu => {
         if (menu) menu.style.display = 'none';
@@ -562,6 +617,39 @@ let gridAnimationProps = {
 // Variables para la animación de paneles
 const panelsFlashing = new Set(); // Conjunto de paneles actualmente en animación flash
 const panelsResizing = new Set(); // Conjunto de paneles en animación de cambio de forma
+let doubleFlashPending = new Map(); // Map para controlar el doble flash
+
+// Función para iniciar un doble flash en un panel
+function startDoubleFlash(panelData) {
+    panelData.flashProgress = 0;
+    panelData.shouldFlash = true;
+    doubleFlashPending.set(panelData, 1); // Indica que queda 1 flash adicional después del primero
+    panelsFlashing.add(panelData);
+}
+
+// Función para manejar doble click/tap en un panel
+function handlePanelDoubleClick(panelData) {
+    if (panelData) {
+        // Si el panel está vacío y bioKeyb está visible, iniciar modo texto
+        const isPanelTrulyEmpty = !panelData.hasText && 
+                                 !panelData.modelData && 
+                                 !panelData.genomData && 
+                                 !panelData.codonData;
+        
+        if (isPanelTrulyEmpty && bioKeybVisible) {
+            console.log(`Doble click en panel vacío #${panelData.orderNumber} con bioKeyb visible. Iniciando modo texto.`);
+            const currentGridParams = getCurrentGridParams();
+            if (currentGridParams && currentGridParams.cellSize) {
+                panelData.hasText = true; 
+                createPanelText(panelData, currentGridParams.cellSize); 
+                startTextEditing(panelData, currentGridParams.cellSize); 
+            }
+        } else {
+            // Si no es un panel vacío o bioKeyb no está visible, hacer doble flash
+            startDoubleFlash(panelData);
+        }
+    }
+}
 
 // Variables para drag & drop de paneles
 let isDraggingPanel = false;
@@ -584,6 +672,166 @@ let terminalVisible = false;
 // Variables para almacenar estados de pantalla
 let savedScreenStates = new Array(10).fill(null); // 10 slots para estados (0-9)
 let lastSavedStateIndex = -1; // Último estado guardado
+
+// NUEVAS variables y funciones para el sistema de SLOTS (Ctrl+Shift+Num y Ctrl+Num)
+const MAX_SLOTS = 10;
+let slots; // Declarar la variable de slots. Será inicializada por loadSlotsFromLocalStorage.
+
+// Función para guardar el array de slots completo en localStorage
+function persistSlotsToLocalStorage() {
+    try {
+        console.log('Intentando persistir slots. Contenido actual de slots antes de stringify:', slots);
+        const slotsJSON = JSON.stringify(slots);
+        console.log('Slots convertidos a JSON para localStorage:', slotsJSON);
+        localStorage.setItem('bioPrint_slots_data', slotsJSON);
+        console.log('Slots persistidos en localStorage.');
+    } catch (error) {
+        console.error('Error al persistir slots en localStorage:', error);
+        // Considerar informar al usuario si el guardado falla (ej. localStorage lleno)
+    }
+}
+
+// Función para cargar el array de slots desde localStorage al iniciar
+function loadSlotsFromLocalStorage() {
+    const storedSlotsData = localStorage.getItem('bioPrint_slots_data');
+    console.log('Datos crudos de slots leídos desde localStorage al iniciar:', storedSlotsData);
+    if (storedSlotsData) {
+        try {
+            const parsedSlots = JSON.parse(storedSlotsData);
+            // Validar que lo cargado es un array y tiene la longitud esperada
+            if (Array.isArray(parsedSlots) && parsedSlots.length === MAX_SLOTS) {
+                slots = parsedSlots;
+                console.log(`Slots cargados desde localStorage (${slots.filter(s => s !== null).length} slots con datos).`);
+            } else {
+                console.warn('Los datos de slots en localStorage son inválidos o tienen una longitud incorrecta. Se usarán slots vacíos por defecto.');
+                slots = new Array(MAX_SLOTS).fill(null);
+            }
+        } catch (error) {
+            console.error('Error al parsear slots desde localStorage. Se usarán slots vacíos por defecto:', error);
+            slots = new Array(MAX_SLOTS).fill(null);
+        }
+    } else {
+        // No hay datos guardados, inicializar con slots vacíos
+        console.log('No se encontraron slots persistidos en localStorage. Inicializando slots vacíos.');
+        slots = new Array(MAX_SLOTS).fill(null);
+    }
+}
+
+// Cargar slots persistentes al iniciar la aplicación
+loadSlotsFromLocalStorage();
+
+// Función para guardar el estado en un slot (Ctrl+Shift+Numero)
+async function saveToSlot(slotIndex) {
+    if (slotIndex < 0 || slotIndex >= MAX_SLOTS) {
+        console.error(`Slot ${slotIndex} inválido.`);
+        return;
+    }
+    const config = getSerializableConfig();
+    if (!config) {
+        console.error('Error Crítico: getSerializableConfig() devolvió null. No se guardará nada en el slot.');
+        const slotEntry = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
+        if (slotEntry) {
+            slotEntry.textContent = 'Error al Guardar';
+            slotEntry.title = 'No se pudieron obtener los datos de la escena para guardar.';
+        }
+        return;
+    }
+    
+    console.log(`Intentando guardar en Slot ${slotIndex}. Configuración obtenida:`, JSON.parse(JSON.stringify(config)));
+
+    slots[slotIndex] = JSON.stringify(config); 
+    
+    persistSlotsToLocalStorage(); 
+
+    // Flash de confirmación visual
+    gridAnimationInProgress = true;
+    gridAnimationStep = 2; 
+    gridAnimationProgress = 0;
+    gridFlashCount = 0;
+
+    updateSlotsPanelUI(); // Actualizar la UI después de todas las operaciones
+}
+
+// Función para cargar el estado desde un slot (Ctrl+Numero)
+async function loadFromSlot(slotIndex) {
+    if (slotIndex < 0 || slotIndex >= MAX_SLOTS) {
+        console.error(`Slot ${slotIndex} inválido.`);
+        return;
+    }
+    const slotDataString = slots[slotIndex];
+    if (!slotDataString) {
+        console.warn(`Slot ${slotIndex} está vacío.`);
+        // Podríamos añadir una indicación visual en el panel de slots si se intenta cargar uno vacío.
+        const slotEntry = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
+        if (slotEntry) {
+            const originalText = slotEntry.textContent;
+            slotEntry.textContent = 'Vacío (No se puede cargar)';
+            slotEntry.style.color = '#ff8800'; // Naranja para advertencia
+            setTimeout(() => {
+                slotEntry.textContent = originalText;
+                slotEntry.style.color = ''; // Restaurar color original
+                 updateSlotsPanelUI(); // Re-actualizar para asegurar estado correcto
+            }, 2000);
+        }
+        return;
+    }
+    try {
+        const config = JSON.parse(slotDataString);
+        console.log(`Cargando configuración desde Slot ${slotIndex}:`, JSON.parse(JSON.stringify(config)));
+        
+        // Limpiar la escena y aplicar la nueva configuración
+        // La función applyConfigurationFromData se encargará de limpiar paneles, etc.
+        const success = await applyConfigurationFromData(config); 
+
+        if (success) {
+            console.log(`Ctrl+${slotIndex}: Estado cargado y aplicado desde Slot ${slotIndex}.`);
+            // Flash de confirmación visual
+            gridAnimationInProgress = true;
+            gridAnimationStep = 2; // Solo paso de flash
+            gridAnimationProgress = 0;
+            gridFlashCount = 0;
+            updateSlotsPanelUI(); // Asegurar que la UI refleje el estado cargado (por si hay fechas, etc)
+        } else {
+            console.error(`Error al aplicar la configuración del Slot ${slotIndex}.`);
+            // Considerar mostrar un error en la UI del slot
+             const slotEntryStatus = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
+            if (slotEntryStatus) {
+                slotEntryStatus.textContent = 'Error al Aplicar';
+                slotEntryStatus.title = 'Hubo un problema al aplicar los datos de este slot.';
+            }
+        }
+
+    } catch (error) {
+        console.error(`Error al cargar datos del Slot ${slotIndex}:`, error);
+        // Considerar mostrar un error en la UI del slot
+        const slotEntryStatus = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
+        if (slotEntryStatus) {
+            slotEntryStatus.textContent = 'Error de Carga';
+            slotEntryStatus.title = `Error: ${error.message}`;
+        }
+    }
+}
+
+// Función para asignar un panel para navegar a un slot (Shift+Numero en panel seleccionado)
+function assignPanelToSlotNavigation(panelData, slotIndex) {
+    if (!panelData) {
+        console.warn('Panel no válido para asignar navegación.');
+        return;
+    }
+    if (slotIndex < 0 || slotIndex >= MAX_SLOTS) {
+        console.warn(`Slot ${slotIndex} inválido para navegación.`);
+        return;
+    }
+
+    panelData.navigateToSlot = slotIndex;
+    console.log(`Shift+${slotIndex}: Panel P${panelData.orderNumber} asignado para navegar al Slot ${slotIndex} al hacer click.`);
+    // Podrías añadir una indicación visual al panel (ej. un pequeño ícono o cambio de color sutil)
+    // Por ahora, solo un log.
+    // Efecto flash para confirmar
+    panelData.flashProgress = 0;
+    panelData.shouldFlash = true;
+    panelsFlashing.add(panelData);
+}
 
 // Función para calcular el tamaño del grid basado en el aspecto del canvas
 function calculateGridSize() {
@@ -716,7 +964,6 @@ function createGrid(divisions, color = 0x888888, animate = true) {
     // Crear una segunda línea para el borde para simular grosor
     const borderLine2 = borderLine.clone();
     borderLine2.scale.set(1.03, 1.03, 1.03);
-    
     borderGroup.add(borderLine);
     borderGroup.add(borderLine2);
     
@@ -829,12 +1076,16 @@ document.addEventListener('keydown', (event) => {
         controls.enableRotate = true;
         controls.enableZoom = true;
         renderer.domElement.style.cursor = 'move';
-    } else if (event.key === 'F11') {
+    }
+    // Cambiado de 'else if' a 'if' para intentar resolver el problema del linter
+    if (event.key === 'F11') { 
         event.preventDefault();
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen();
         } else {
-            document.exitFullscreen();
+            if (document.exitFullscreen) {
+                 document.exitFullscreen();
+            }
         }
     }
 });
@@ -967,17 +1218,16 @@ renderer.domElement.addEventListener('touchstart', (event) => {
     
     // Detectar doble tap
     const timeSinceLastTap = currentTime - lastTapTime;
-    if (timeSinceLastTap < DOUBLE_TAP_DELAY) {
-        // Es un doble tap
+    if (timeSinceLastTap < DOUBLE_TAP_DELAY && event.touches.length === 1) {
+        // Es un doble tap con un solo dedo
         const touch = event.touches[0];
-        const mouse = new THREE.Vector2(
+        const mouseForRaycast = new THREE.Vector2( 
             (touch.clientX / window.innerWidth) * 2 - 1,
             -(touch.clientY / window.innerHeight) * 2 + 1
         );
         
-        raycaster.setFromCamera(mouse, camera);
+        raycaster.setFromCamera(mouseForRaycast, camera);
         
-        // Recopilar todos los objetos seleccionables
         const allSelectable = [];
         const allFillMeshes = panels.map(p => p.fillMesh).filter(Boolean);
         const allBorderLines = panels.flatMap(p => p.borderLines || []).filter(Boolean);
@@ -986,11 +1236,8 @@ renderer.domElement.addEventListener('touchstart', (event) => {
         const intersects = raycaster.intersectObjects(allSelectable, false);
         
         if (intersects.length > 0) {
-            // Encontrar el panel correspondiente
-            let currentObject = intersects[0].object;
             let panelData = null;
-            
-            // Buscar el panel en la jerarquía
+            let currentObject = intersects[0].object;
             while (currentObject && !panelData) {
                 if (currentObject.userData && currentObject.userData.panelDataRef) {
                     panelData = currentObject.userData.panelDataRef;
@@ -1000,36 +1247,16 @@ renderer.domElement.addEventListener('touchstart', (event) => {
             }
             
             if (panelData) {
-                // Iniciar animación de flash
-                panelData.flashProgress = 0;
-                panelData.shouldFlash = true;
-                panelsFlashing.add(panelData);
-                
-                // Seleccionar el panel
-                if (!event.shiftKey) {
-                    // --- Shift + Click: Añadir/Quitar de la selección --- 
-                    clickedPanelData.selected = !clickedPanelData.selected; 
-                    updatePanelColor(clickedPanelData);
-                } else {
-                    // --- Click Normal: Deseleccionar todos y seleccionar solo este --- 
-                    panels.forEach(p => {
-                        if (p !== clickedPanelData && p.selected) {
-                            p.selected = false;
-                            updatePanelColor(p);
-                        }
-                    });
-                    clickedPanelData.selected = true;
-                    updatePanelColor(clickedPanelData);
-                }
+                handlePanelDoubleClick(panelData);
             }
         }
-        
-        // Resetear el tiempo del último tap
-        lastTapTime = 0;
-    } else {
-        // Guardar el tiempo del tap para detectar el siguiente
+        lastTapTime = 0; // Resetear para evitar triple tap
+        return;
+    } else if (event.touches.length === 1) { // Es un solo tap, NO un doble tap
         lastTapTime = currentTime;
+        // ... (resto de la lógica de single tap: iniciar selección de área o drag de panel)
     }
+    // ... (resto del código de touchstart para múltiples toques o interacciones con controles de UI)
     
     // Resto del código existente para touchstart...
     touchStartPosition = {
@@ -1336,6 +1563,25 @@ function checkPanelMoveConflict(panelToMove, dx, dy, gridParams) {
     return false; // No hay conflictos
 }
 
+// Función para mover un panel
+function movePanel(panel, dx, dy, gridParams) {
+    if (checkPanelMoveConflict(panel, dx, dy, gridParams)) {
+        console.warn("Movimiento cancelado: Conflicto de límites o colisión.");
+        return false;
+    }
+
+    // Actualizar índices
+    panel.minCellIndex.x += dx;
+    panel.maxCellIndex.x += dx;
+    panel.minCellIndex.y += dy;
+    panel.maxCellIndex.y += dy;
+
+    // Actualizar geometría y posición
+    updatePanelGeometryAndPosition(panel, gridParams);
+
+    return true;
+}
+
 // Función para alternar la visibilidad de todos los controles
 function toggleControlsVisibility() {
     controlsVisible = !controlsVisible;
@@ -1358,50 +1604,59 @@ function toggleControlsVisibility() {
 
 // Control de teclado
 document.addEventListener('keydown', (event) => {
-    // Si hay un panel en modo de edición de texto, permitir que panelText.js maneje 
-    // todos los eventos de teclado (excepto Escape, que se maneja especialmente)
-    if (typeof currentEditingPanel !== 'undefined' && currentEditingPanel) {
-        // Si es Escape, permitir que se maneje normalmente
-        if (event.key === 'Escape') {
-            return;
+    const key = event.key;
+    const activelyWritingText = keyboardState.isWriting; // Cachear para consistencia en esta ejecución
+
+    // DEBUG: console.log(`Keydown: '${key}', activelyWritingText: ${activelyWritingText}, Ctrl: ${event.ctrlKey}, Shift: ${event.shiftKey}, Target:`, event.target);
+
+    if (activelyWritingText) {
+        // Si estamos en modo escritura:
+        // 1. panelText.js (a través de preventTerminalInput) ahora maneja Escape para llamar a stopTextEditing
+        //    y también llama a event.stopPropagation() para el Escape.
+        // 2. Para otras teclas que NO son Escape Y NO tienen modificadores Ctrl/Alt/Meta Y NO son F-keys,
+        //    hacemos un return aquí para asegurar que se deleguen al input de texto y no activen atajos globales.
+        if (key !== 'Escape' && !event.ctrlKey && !event.altKey && !event.metaKey && !key.startsWith("F")) {
+            // DEBUG: console.log(`Modo Escritura (main.js): Tecla '${key}' delegada. Atajo global prevenido.`);
+        return;
         }
-        // Para cualquier otra tecla, prevenir el comportamiento por defecto
-        // y detener la propagación del evento
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        return;
-    }
-    
-    // Ignorar atajos de teclado si la terminal está visible, excepto Escape
-    if (terminalVisible && event.key !== 'Escape') {
-        return;
+        // Si es Escape, panelText.js lo manejará y detendrá la propagación.
+        // Si es una tecla con modificador (ej. Ctrl+C) o una F-key, permitimos que continúe,
+        // por si es un atajo del navegador/SO o un atajo global que *queremos* que funcione.
     }
 
-    // Comprobar si hay algún elemento de entrada activo (inputs, textareas)
-    const activeElement = document.activeElement;
-    const isInputActive = activeElement instanceof HTMLInputElement || 
-                         activeElement instanceof HTMLTextAreaElement || 
-                         (activeElement && activeElement.isContentEditable);
-    
-    // Si estamos en un campo de entrada, permitir solo Escape
-    if (isInputActive && event.key !== 'Escape') {
-        return;
-    }
+    // Si llegamos aquí, activelyWritingText es false, o fue una tecla con modificador/F-key/Escape en modo texto
+    // (y Escape ya fue manejado y detenido por panelText.js si activelyWritingText era true).
 
+    const terminalInputElement = document.getElementById('terminal-input');
+    const terminalIsEffectivelyActive = document.activeElement === terminalInputElement && terminalVisible;
+
+    if (terminalIsEffectivelyActive) {
+        if (key === 'Escape') {
+            toggleTerminal(false); 
+            event.preventDefault(); 
+            // DEBUG: console.log("Terminal activa: Escape presionado, cerrando terminal.");
+            return; 
+        }
+        // DEBUG: console.log(`Terminal Activa: Tecla '${key}' delegada a la terminal.`);
+        return; 
+    }
+    
+    // DEBUG: console.log(`Procesando Atajo Global para Tecla: '${key}' (activelyWritingText: ${activelyWritingText}, terminalIsEffectivelyActive: ${terminalIsEffectivelyActive})`);
+
+    // Atajos Globales
     let newDivisions = currentDivisions;
     let resolutionChanged = false;
     let moveDelta = { dx: 0, dy: 0 };
     let deleteTriggered = false;
 
-    switch (event.key) {
+    switch (key) {
         case '+':
-        case '=': // Tecla '+' a menudo comparte con '='
+        case '=':
             newDivisions = Math.min(currentDivisions + 1, 50);
             resolutionChanged = true;
             break;
         case '-':
-        case '_': // Tecla '-' a menudo comparte con '_'
+        case '_':
             newDivisions = Math.max(currentDivisions - 1, 2);
             resolutionChanged = true;
             break;
@@ -1419,102 +1674,89 @@ document.addEventListener('keydown', (event) => {
             break;
         case 'x':
         case 'X':
-        case 'Delete': // Añadir tecla Supr
+            deleteTriggered = true;
+            break;
+        case 'Delete':
             deleteTriggered = true;
             break;
         case 'c':
         case 'C':
-            // Solo limpiar paneles si se presiona Ctrl+C
-            if (event.ctrlKey) {
-                // Limpiar SOLO los paneles normales (nunca los del teclado bioKeyb)
-                clearAllPanels(true, false); // skipSave=true, clearBioKeyb=false
-                return;
+            if (event.ctrlKey) { 
+                clearAllPanels(true, false);
             }
-            break;
+            return;
         case 'a':
         case 'A':
-            // Centrar grid en la cámara
             centerGridInCamera();
             return;
         case 'v':
         case 'V':
-            // Alternar visibilidad de controles
             toggleControlsVisibility();
             return;
         case 't':
         case 'T':
-            // Mostrar u ocultar la consola terminal
-            event.preventDefault(); // Prevenir el comportamiento por defecto
+            event.preventDefault(); 
             toggleTerminal(true);
-            return;
-        case 'Escape':
-            // Si hay un panel en edición, primero intentar cerrar el modo de edición
-            if (typeof currentEditingPanel !== 'undefined' && currentEditingPanel) {
-                // Este caso se maneja en el handler específico de handleEscape
-                return;
-            }
-            // Mostrar u ocultar la consola terminal
-            toggleTerminal(false);
             return;
         case 'k':
         case 'K':
-            // Mostrar/ocultar el teclado bioKeyb si no está en modo edición
             if (!bioKeybVisible) {
-                // Si el teclado está oculto, mostrarlo
-                loadBioKeyb(false); // Cargar teclado mostrando su presencia pero sin guardar configuración
-                bioKeybVisible = true;
-                console.log("Teclado bioKeyb mostrado con tecla K");
+                loadBioKeyb(false).then(() => {
+                    console.log("Teclado bioKeyb mostrado con tecla K física.");
+                }).catch(error => {
+                    console.error("Error al mostrar bioKeyb con tecla K:", error);
+                });
             } else {
-                // Si la tecla K se usa mientras el teclado está visible, permitir que actúe como una tecla normal
-                console.log("Tecla K presionada con teclado visible (comportamiento normal)");
+                clearBioKeybOnly(); 
+            }
+            return;
+        case 'Escape':
+            if (isSelecting) { 
+                isSelecting = false;
+                selectionBox.style.display = 'none';
+                controls.enabled = true; 
+            } else if (panels.some(p => p.selected)) { 
+                panels.forEach(p => {
+                    if (p.selected) {
+                        p.selected = false;
+                        updatePanelColor(p);
+                    }
+                });
             }
             return;
     }
 
-    // --- Procesar Cambio de Resolución --- 
+    // Procesar cambios de resolución, movimiento, borrado
     if (resolutionChanged && newDivisions !== currentDivisions) {
-        // NO eliminamos los grupos de paneles de la escena aquí.
-        // updateGrid se encargará de actualizar su contenido y posición.
         updateGrid(newDivisions); 
-    }
-    
-    // --- Procesar Movimiento --- 
-    if (moveDelta.dx !== 0 || moveDelta.dy !== 0) {
-        const currentGridParams = getCurrentGridParams();
+    } else if (moveDelta.dx !== 0 || moveDelta.dy !== 0) {
+            const currentGridParams = getCurrentGridParams();
         if (!currentGridParams) {
-            console.warn("No se pudo obtener la configuración actual del grid");
+            console.warn("No se pudo obtener la configuración actual del grid para mover paneles");
             return;
         }
-        
         let somethingMoved = false;
-        
         panels.forEach(panel => {
-            // Solo mover paneles seleccionados y que no sean del teclado bioKeyb
             if (panel.selected && !panel.isKeyboardKey) {
                 movePanel(panel, moveDelta.dx, moveDelta.dy, currentGridParams);
                 somethingMoved = true;
             }
         });
-        
         if (somethingMoved) {
-            // Animar los paneles moviéndose
             animateResizingPanels();
         }
-    }
-    // --- Procesar Borrado --- 
-    else if (deleteTriggered) {
+    } else if (deleteTriggered) {
         const remainingPanels = [];
         let deletedSomething = false;
         panels.forEach(panel => {
-            // Solo borrar paneles seleccionados que no sean del teclado bioKeyb
             if (panel.selected && !panel.isKeyboardKey) {
                 if(panel.group) {
                     scene.remove(panel.group);
-                    // Limpiar geometrías de los hijos (líneas)
                     while(panel.group.children.length > 0){
                          const child = panel.group.children[0]; 
                          panel.group.remove(child);
                          if (child.geometry) child.geometry.dispose();
+                         if (child.material) child.material.dispose(); 
                      }
                 }
                 if (panel === currentlyHoveredPanel) {
@@ -1526,14 +1768,11 @@ document.addEventListener('keydown', (event) => {
             }
         });
         if(deletedSomething) {
-            panels.length = 0; 
-            panels.push(...remainingPanels);
-            // Reindexar paneles después de borrar
+            panels = remainingPanels; 
             reindexPanels();
         }
     }
 
-    // Desactivar snap to grid mientras se presiona Shift durante arrastre
     if (event.key === 'Shift' && isDraggingPanel) {
         dragSnapToGrid = false;
     }
@@ -1776,6 +2015,7 @@ function createPanelOrderLabel(panelData) {
     // Eliminar etiqueta anterior si existe
     if (panelData.orderLabel) {
         panelData.group.remove(panelData.orderLabel);
+        panelData.orderLabel = null; // Asegurar que se limpie la referencia
     }
     
     // Solo crear etiqueta si showOrderNumber es true
@@ -1783,17 +2023,29 @@ function createPanelOrderLabel(panelData) {
         // Crear canvas para la etiqueta
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
-        canvas.width = 256; // Aumentado a 256
-        canvas.height = 256; // Aumentado a 256
+        canvas.width = 256; 
+        canvas.height = 256; 
         
         // Estilo del número
-        context.fillStyle = '#000000';
+        context.fillStyle = '#000000'; // Fondo negro para mejor contraste
         context.fillRect(0, 0, canvas.width, canvas.height);
-        context.fillStyle = '#ffffff';
-        context.font = 'bold 160px Arial'; // Aumentado a 160px
+        context.fillStyle = '#ffffff'; // Texto blanco
+        context.font = 'bold 160px Arial'; 
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        context.fillText(panelData.orderNumber.toString(), canvas.width/2, canvas.height/2);
+
+        // Determinar el texto de la etiqueta
+        let labelText = '';
+        if (panelData.isKeyboardKey) {
+            // Para teclas del teclado, no mostrar prefijo "P" (o manejar diferente si se necesita)
+            // Por ahora, las teclas del teclado no muestran número de orden por defecto.
+            // Si se activara showOrderNumber para ellas, aquí se podría definir su formato.
+            labelText = panelData.orderNumber.toString();
+        } else {
+            // Para paneles de usuario, añadir prefijo "P"
+            labelText = 'P' + panelData.orderNumber.toString();
+        }
+        context.fillText(labelText, canvas.width/2, canvas.height/2);
         
         // Crear textura y sprite
         const texture = new THREE.CanvasTexture(canvas);
@@ -2032,31 +2284,49 @@ function updatePanelColor(panelData) {
     let targetLineMaterial;
     let targetFillMaterial;
 
-    if (panelData.selected) {
-        targetLineMaterial = panelLineMaterialSelected;
-        targetFillMaterial = panelFillMaterialSelected;
-    } else if (panelData.hovered && !('ontouchstart' in window)) {
-        // Solo aplicar hover si no es un dispositivo táctil
-        targetLineMaterial = panelLineMaterialHover;
-        targetFillMaterial = panelFillMaterialHover;
+    if (panelData.hasTexture && panelData.textureMaterials) {
+        // Si el panel tiene textura, usar los materiales con textura
+        if (panelData.selected) {
+            targetFillMaterial = panelData.textureMaterials.selected;
+        } else if (panelData.hovered && !('ontouchstart' in window)) {
+            targetFillMaterial = panelData.textureMaterials.hover;
+        } else {
+            targetFillMaterial = panelData.textureMaterials.normal;
+        }
         
-        // Imprimir el carácter en la consola cuando se hace hover
-        if (panelData.behavior && panelData.behavior.character) {
-            console.log(`Tecla: ${panelData.behavior.character}`);
+        // Para las líneas usar los materiales normales
+        if (panelData.selected) {
+            targetLineMaterial = panelLineMaterialSelected;
+        } else if (panelData.hovered && !('ontouchstart' in window)) {
+            targetLineMaterial = panelLineMaterialHover;
+        } else {
+            targetLineMaterial = panelLineMaterialNormal;
         }
     } else {
-        targetLineMaterial = panelLineMaterialNormal;
-        targetFillMaterial = panelFillMaterialNormal;
+        // Comportamiento normal para paneles sin textura
+        if (panelData.selected) {
+            targetLineMaterial = panelLineMaterialSelected;
+            targetFillMaterial = panelFillMaterialSelected;
+        } else if (panelData.hovered && !('ontouchstart' in window)) {
+            targetLineMaterial = panelLineMaterialHover;
+            targetFillMaterial = panelFillMaterialHover;
+            
+            // Imprimir el carácter en la consola cuando se hace hover
+            if (panelData.behavior && panelData.behavior.character) {
+                console.log(`Tecla: ${panelData.behavior.character}`);
+            }
+        } else {
+            targetLineMaterial = panelLineMaterialNormal;
+            targetFillMaterial = panelFillMaterialNormal;
+        }
     }
 
-    // Aplicar el material a todas las líneas dentro del grupo
+    // Aplicar materiales
     panelData.group.children.forEach(child => {
         if (child instanceof THREE.Line) {
             child.material = targetLineMaterial;
-        } 
-        // Aplicar al mesh de relleno si existe
-        else if (child === panelData.fillMesh) { 
-             child.material = targetFillMaterial;
+        } else if (child === panelData.fillMesh) {
+            child.material = targetFillMaterial;
         }
     });
 
@@ -2066,6 +2336,41 @@ function updatePanelColor(panelData) {
 }
 
 // Event listeners para selección
+// Event listener para doble click
+renderer.domElement.addEventListener('dblclick', (event) => {
+    // Ignorar eventos táctiles
+    if (event.pointerType === 'touch') return;
+    
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Recopilar todos los objetos seleccionables
+    const allSelectable = [];
+    const allFillMeshes = panels.map(p => p.fillMesh).filter(Boolean);
+    const allBorderLines = panels.flatMap(p => p.borderLines || []).filter(Boolean);
+    allSelectable.push(...allFillMeshes, ...allBorderLines);
+    
+    const intersects = raycaster.intersectObjects(allSelectable, false);
+    
+    if (intersects.length > 0) {
+        let panelData = null;
+        let currentObject = intersects[0].object;
+        while (currentObject && !panelData) {
+            if (currentObject.userData && currentObject.userData.panelDataRef) {
+                panelData = currentObject.userData.panelDataRef;
+                break;
+            }
+            currentObject = currentObject.parent;
+        }
+        
+        if (panelData) {
+            handlePanelDoubleClick(panelData);
+        }
+    }
+});
+
 renderer.domElement.addEventListener('mousedown', (event) => {
     // Ignorar eventos táctiles
     if (event.pointerType === 'touch') return;
@@ -2120,61 +2425,34 @@ renderer.domElement.addEventListener('mousedown', (event) => {
             }
             
             if (clickedPanelData) {
-                // No permitir arrastre para teclas del teclado
-                if (!clickedPanelData.isKeyboardKey) {
-                // Guardar la posición inicial del mouse ahora
-                const mouseStartPosition = { 
-                    x: event.clientX, 
-                    y: event.clientY 
-                };
-                
-                // Guardar posición inicial del panel
-                const panelStartPosition = { 
-                    x: clickedPanelData.group.position.x, 
-                    y: clickedPanelData.group.position.y 
-                };
-                
-                // Guardar índices de celda iniciales
-                const cellStartIndices = {
-                    minX: clickedPanelData.minCellIndex.x,
-                    minY: clickedPanelData.minCellIndex.y,
-                    maxX: clickedPanelData.maxCellIndex.x,
-                    maxY: clickedPanelData.maxCellIndex.y
-                };
-                
-                // Configurar temporizador para iniciar el arrastre después del retraso
-                // Cancelar cualquier temporizador existente primero
-                if (dragStartTimer) {
-                    clearTimeout(dragStartTimer);
-                }
-                
-                // Guardar panel potencial para arrastrar
-                potentialDragPanel = clickedPanelData;
-                
-                // Iniciar nuevo temporizador
-                dragStartTimer = setTimeout(() => {
-                    // Si todavía está presionado el botón del mouse después del retraso,
-                    // iniciar el arrastre
-                    if (potentialDragPanel) {
-                        draggedPanel = potentialDragPanel;
-                        isDraggingPanel = true;
-                        
-                        // Transferir valores guardados
-                        dragStartPosition = mouseStartPosition;
-                        dragStartPanelPosition = panelStartPosition;
-                        dragStartCellIndices = cellStartIndices;
-                        
-                        // Cambiar cursor para indicar arrastre activo
-                        renderer.domElement.style.cursor = 'move';
-                    }
-                }, dragStartDelay);
-                }
-                
-                // Procesar la selección de inmediato (no se espera para esto)
-                if (event.shiftKey) {
-                    // --- Shift + Click: Añadir/Quitar de la selección --- 
-                    clickedPanelData.selected = !clickedPanelData.selected; 
+                // NUEVA LÓGICA: Verificar si el panel está asignado para navegar a un slot
+                if (!clickedPanelData.isKeyboardKey && typeof clickedPanelData.navigateToSlot === 'number') {
+                    console.log(`Panel P${clickedPanelData.orderNumber} clickeado. Navegando a Slot ${clickedPanelData.navigateToSlot}.`);
+                    loadFromSlot(clickedPanelData.navigateToSlot);
+                    // Deseleccionar el panel después de la navegación para evitar acciones no deseadas si el slot carga paneles seleccionados.
+                    clickedPanelData.selected = false;
                     updatePanelColor(clickedPanelData);
+                    return; // Terminar el procesamiento aquí para no interferir con la selección normal
+                }
+
+                if (clickedPanelData.isKeyboardKey && clickedPanelData.behavior && clickedPanelData.behavior.character) {
+                    // Es una tecla del teclado, solo ejecutar onPress y flash
+                    if (clickedPanelData.onPress) {
+                        clickedPanelData.onPress();
+                        console.log(`Tecla bioKeyb presionada: ${clickedPanelData.behavior.character}`);
+                        
+                        // Asegurar que no quede seleccionada
+                        clickedPanelData.selected = false;
+                        
+                        // Efecto visual de flash
+                        clickedPanelData.flashProgress = 0;
+                        clickedPanelData.shouldFlash = true;
+                        panelsFlashing.add(clickedPanelData);
+                    }
+                } else {
+                    // Comportamiento normal para paneles regulares
+                if (event.shiftKey) {
+                    clickedPanelData.selected = !clickedPanelData.selected; 
                 } else {
                     // --- Click Normal: Deseleccionar todos y seleccionar solo este --- 
                     panels.forEach(p => {
@@ -2183,8 +2461,9 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                             updatePanelColor(p);
                         }
                     });
-                    clickedPanelData.selected = true; 
-                    updatePanelColor(clickedPanelData);
+                       clickedPanelData.selected = true; 
+                       updatePanelColor(clickedPanelData);
+                }
                 }
             }
         } else {
@@ -2501,20 +2780,20 @@ renderer.domElement.addEventListener('mouseleave', () => {
 
 function getSerializableConfig() {
     try {
-    const currentGridParams = getCurrentGridParams();
-    if (!currentGridParams) return null;
-    
-    const { width, height } = calculateGridSize();
-    
-    // Obtener los valores actuales del bioFX
-    const currentColor = parseInt(colorPicker.value.substring(1), 16);
-    const currentBlendType = parseInt(blendTypePicker.value);
-    const currentIntensity = parseFloat(intensitySlider.value);
-    const currentGlowIntensity = parseFloat(glowSlider.value);
-    const currentGlowRadius = parseFloat(glowRadiusSlider.value);
-    const currentGlowThreshold = parseFloat(glowThresholdSlider.value);
-    
-    // Serializar solo los paneles que NO son teclas del teclado
+        const currentGridParams = getCurrentGridParams();
+        if (!currentGridParams) return null;
+        
+        const { width, height } = calculateGridSize();
+        
+        // Obtener los valores actuales del bioFX
+        const currentColor = parseInt(colorPicker.value.substring(1), 16);
+        const currentBlendType = parseInt(blendTypePicker.value);
+        const currentIntensity = parseFloat(intensitySlider.value);
+        const currentGlowIntensity = parseFloat(glowSlider.value);
+        const currentGlowRadius = parseFloat(glowRadiusSlider.value);
+        const currentGlowThreshold = parseFloat(glowThresholdSlider.value);
+        
+        // Serializar solo los paneles que NO son teclas del teclado
         const serializedPanels = [];
         
         // Filtrar y mapear en pasos separados para evitar problemas con paneles inválidos
@@ -2522,10 +2801,10 @@ function getSerializableConfig() {
         
         for (const panel of regularPanels) {
             try {
-            const textState = panelTextState.get(panel);
-            const currentText = panel.hasText ? 
-                (textState && textState.isPassword ? textState.realText : getPanelText(panel)) : '';
-            
+                const textState = panelTextState.get(panel);
+                const currentText = panel.hasText ? 
+                    (textState && textState.isPassword ? textState.realText : getPanelText(panel)) : '';
+                
                 // Crear un objeto simple serializable
                 const serializedPanel = {
                     minCellIndex: { 
@@ -2539,18 +2818,18 @@ function getSerializableConfig() {
                     orderNumber: typeof panel.orderNumber === 'number' ? panel.orderNumber : 0,
                     showOrderNumber: !!panel.showOrderNumber,
                     selected: !!panel.selected,
-                behavior: {
+            behavior: {
                         hasText: !!panel.hasText,
                         textContent: typeof currentText === 'string' ? currentText : '',
                         messageBuffer: Array.isArray(textState?.lines) ? [...textState.lines] : [],
                         maxLines: typeof textState?.maxCharsPerLine === 'number' ? textState.maxCharsPerLine : 0,
                         isPassword: !!textState?.isPassword,
-                    isGATCActive: gatcIntervals.has(panel),
-                    modelData: panel.modelData ? {
+                isGATCActive: gatcIntervals.has(panel),
+                modelData: panel.modelData ? {
                             modelUrl: typeof panel.modelData.url === 'string' ? panel.modelData.url : '',
                             isRotating: !!panel.modelData.isRotating,
                             rotationSpeed: typeof panel.modelData.rotationSpeed === 'number' ? panel.modelData.rotationSpeed : 0.005
-                    } : null,
+                } : null,
                     genomData: panel.genomData || null
                 }
             };
@@ -2722,7 +3001,9 @@ function loadConfiguration() {
             configString = localStorage.getItem('gridConfig');
         if (!configString) {
             console.log('No hay configuración guardada en localStorage.');
+            if (!bioKeybVisible) {
                 loadBioKeyb(true); // Cargar teclado pero no guardar configuración
+            }
             return;
             }
         }
@@ -2789,7 +3070,7 @@ function loadConfiguration() {
             camera.zoom = config.cameraZoom;
             camera.updateProjectionMatrix();
         }
-
+        
         // Restaurar el estado del teclado según la configuración guardada
         if (config.bioKeybVisible !== undefined) {
             bioKeybVisible = !!config.bioKeybVisible;
@@ -2812,72 +3093,72 @@ function loadConfiguration() {
 
             // Cargar solo los paneles que NO son teclas del teclado
             config.panels.forEach(panelInfo => {
-                    const panelData = {
-                        group: null,
-                        minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
-                        maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
-                        orderNumber: panelInfo.orderNumber,
-                        showOrderNumber: panelInfo.showOrderNumber,
-                        hasText: panelInfo.behavior?.hasText || false
-                    };
+                const panelData = {
+                    group: null,
+                    minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
+                    maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
+                    orderNumber: panelInfo.orderNumber,
+                    showOrderNumber: panelInfo.showOrderNumber,
+                    hasText: panelInfo.behavior?.hasText || false
+                };
 
-                    updatePanelGeometryAndPosition(panelData, currentGridParams);
-                    
-                    if(panelData.group) {
-                        scene.add(panelData.group);
-                        panels.push(panelData);
+                updatePanelGeometryAndPosition(panelData, currentGridParams);
+                
+                if(panelData.group) {
+                    scene.add(panelData.group);
+                    panels.push(panelData);
 
-                        // Restaurar comportamiento del panel
-                        if (panelInfo.behavior) {
-                            if (panelInfo.behavior.hasText) {
-                                panelData.hasText = true;
-                                const textState = {
-                                    text: panelInfo.behavior.textContent,
-                                    lines: panelInfo.behavior.messageBuffer,
-                                    maxCharsPerLine: panelInfo.behavior.maxLines,
-                                    cursorPosition: 0,
-                                    isEditing: false,
-                                    scrollOffset: 0,
-                                    isPassword: panelInfo.behavior.isPassword || false,
-                                    realText: panelInfo.behavior.isPassword ? panelInfo.behavior.textContent : ''
-                                };
-                                panelTextState.set(panelData, textState);
-                                
-                                createPanelText(panelData, currentGridParams.cellSize);
-                                if (textState.isPassword) {
-                                    setPanelText(panelData, '*'.repeat(textState.realText.length), currentGridParams.cellSize);
-                                } else {
-                                    setPanelText(panelData, panelInfo.behavior.textContent, currentGridParams.cellSize);
-                                }
+                    // Restaurar comportamiento del panel
+                    if (panelInfo.behavior) {
+                        if (panelInfo.behavior.hasText) {
+                            panelData.hasText = true;
+                            const textState = {
+                                text: panelInfo.behavior.textContent,
+                                lines: panelInfo.behavior.messageBuffer,
+                                maxCharsPerLine: panelInfo.behavior.maxLines,
+                                cursorPosition: 0,
+                                isEditing: false,
+                                scrollOffset: 0,
+                                isPassword: panelInfo.behavior.isPassword || false,
+                                realText: panelInfo.behavior.isPassword ? panelInfo.behavior.textContent : ''
+                            };
+                            panelTextState.set(panelData, textState);
+                            
+                            createPanelText(panelData, currentGridParams.cellSize);
+                            if (textState.isPassword) {
+                                setPanelText(panelData, '*'.repeat(textState.realText.length), currentGridParams.cellSize);
+                            } else {
+                                setPanelText(panelData, panelInfo.behavior.textContent, currentGridParams.cellSize);
                             }
+                        }
 
-                            if (panelInfo.behavior.isGATCActive) {
+                        if (panelInfo.behavior.isGATCActive) {
                             handleGATCCommand({ 
                                 appendChild: () => {}, // Mock output para la función
                                 innerHTML: ''
                             }, panelData);
-                            }
-
-                            if (panelInfo.behavior.modelData) {
-                                const { modelUrl, isRotating, rotationSpeed } = panelInfo.behavior.modelData;
-                                loadModelToPanel(panelData, modelUrl, currentGridParams.cellSize).then(() => {
-                                    if (isRotating) {
-                                        toggleModelRotation(panelData);
-                                        if (rotationSpeed) {
-                                            setModelRotationSpeed(panelData, rotationSpeed);
-                                        }
-                                    }
-                                });
-                            }
-
-                            if (panelInfo.behavior.genomData) {
-                                panelData.genomData = panelInfo.behavior.genomData;
-                            }
                         }
 
-                        if (panelInfo.selected) {
-                            panelData.selected = true;
-                            updatePanelColor(panelData);
+                        if (panelInfo.behavior.modelData) {
+                            const { modelUrl, isRotating, rotationSpeed } = panelInfo.behavior.modelData;
+                            loadModelToPanel(panelData, modelUrl, currentGridParams.cellSize).then(() => {
+                                if (isRotating) {
+                                    toggleModelRotation(panelData);
+                                    if (rotationSpeed) {
+                                        setModelRotationSpeed(panelData, rotationSpeed);
+                                    }
+                                }
+                            });
+                        }
+
+                        if (panelInfo.behavior.genomData) {
+                            panelData.genomData = panelInfo.behavior.genomData;
+                        }
+                    }
+
+                    if (panelInfo.selected) {
+                        panelData.selected = true;
+                        updatePanelColor(panelData);
                     }
                 }
             });
@@ -2995,6 +3276,33 @@ document.getElementById('save-config-btn').addEventListener('click', saveConfigu
 document.getElementById('load-config-btn').addEventListener('click', loadConfiguration);
 document.getElementById('download-config-btn').addEventListener('click', downloadConfiguration);
 document.getElementById('toggle-numbers-btn').addEventListener('click', togglePanelNumbers);
+
+// Agregar listener para el botón de limpiar diseño
+const clearDesignButton = document.getElementById('clear-layout-btn'); // ID CORREGIDO
+if (clearDesignButton) {
+    clearDesignButton.addEventListener('click', () => {
+        console.log("Botón 'Limpiar Diseño' (ID: clear-layout-btn) presionado.");
+        // Llamar a clearAllPanels con skipSave = true y clearBioKeyb = false
+        // Esto replica el comportamiento de Ctrl+C
+        clearAllPanels(true, false); 
+        
+        const terminalOutput = document.getElementById('terminal-output');
+        if (terminalOutput) {
+            // Usar una función existente para mostrar mensajes en la terminal si está disponible
+            if (typeof showInfo === 'function') {
+                showInfo('Diseño limpiado (paneles de usuario eliminados). El teclado permanece.', terminalOutput);
+            } else {
+                const infoDiv = document.createElement('div');
+                infoDiv.textContent = 'Diseño limpiado (paneles de usuario eliminados). El teclado permanece.';
+                terminalOutput.appendChild(infoDiv);
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            }
+        }
+    });
+} else {
+    // Este log ahora solo aparecerá si realmente falta después de corregir el ID, o si el script se ejecuta demasiado pronto.
+    console.warn("El botón con ID 'clear-layout-btn' no fue encontrado en el DOM. Asegúrate que el script se ejecute después de que el DOM esté cargado.");
+}
 
 // Agregar event listeners para cargar JSON
 document.getElementById('upload-config-btn').addEventListener('click', () => {
@@ -3492,24 +3800,44 @@ function animateFlashingPanels() {
                     child.material.color = color;
                 }
                 else if (child === panelData.fillMesh && child.material) {
-                    const color = new THREE.Color().lerpColors(
-                        baseColor, 
-                        flashColor, 
-                        positiveFlash * 0.7
-                    );
-                    child.material = child.material.clone();
-                    child.material.color = color;
-                    
-                    const baseOpacity = panelData.selected ? 0.4 : (panelData.hovered ? 0.3 : 0.2);
-                    child.material.opacity = baseOpacity + (positiveFlash * 0.3);
+                    // Si el panel tiene textura, solo modificamos la opacidad
+                    if (panelData.hasTexture) {
+                        const baseOpacity = panelData.selected ? 0.9 : (panelData.hovered ? 0.8 : 0.7);
+                        child.material = child.material.clone();
+                        child.material.opacity = baseOpacity + (positiveFlash * 0.1);
+                    } else {
+                        const color = new THREE.Color().lerpColors(
+                            baseColor, 
+                            flashColor, 
+                            positiveFlash * 0.7
+                        );
+                        child.material = child.material.clone();
+                        child.material.color = color;
+                        const baseOpacity = panelData.selected ? 0.4 : (panelData.hovered ? 0.3 : 0.2);
+                        child.material.opacity = baseOpacity + (positiveFlash * 0.3);
+                    }
                 }
             });
         }
         
-        // Finalizar animación después de 1 ciclo completo (más rápido)
-        if (panelData.flashProgress >= 1) { // Reducido de 2 a 1
+        // Finalizar animación después de 1 ciclo completo
+        if (panelData.flashProgress >= 1) {
             panelData.shouldFlash = false;
             panelsToRemove.push(panelData);
+            
+            // Verificar si hay un segundo flash pendiente
+            if (doubleFlashPending.has(panelData)) {
+                const remainingFlashes = doubleFlashPending.get(panelData);
+                if (remainingFlashes > 0) {
+                    // Iniciar siguiente flash
+                    panelData.flashProgress = 0;
+                    panelData.shouldFlash = true;
+                    doubleFlashPending.set(panelData, remainingFlashes - 1);
+                    panelsFlashing.add(panelData);
+                } else {
+                    doubleFlashPending.delete(panelData);
+                }
+            }
             
             // Restaurar materiales originales
             updatePanelColor(panelData);
@@ -3518,7 +3846,9 @@ function animateFlashingPanels() {
     
     // Limpiar paneles que ya no están en animación
     panelsToRemove.forEach(panel => {
-        panelsFlashing.delete(panel);
+        if (!doubleFlashPending.has(panel) || doubleFlashPending.get(panel) <= 0) {
+            panelsFlashing.delete(panel);
+        }
     });
 }
 
@@ -3792,6 +4122,8 @@ window.addEventListener('load', () => {
     initTerminalConsole();
     controlsVisible = false;
     toggleControlPanels(false);
+    initSlotsPanel(); // Inicializar el panel de slots después de que el DOM esté listo
+    updateSlotsPanelUI(); // Asegurar que la UI de slots esté actualizada después de cargar slots de localStorage
 });
 
 // Por si el documento ya está cargado
@@ -3799,6 +4131,8 @@ if (document.readyState === 'complete') {
     initTerminalConsole();
     controlsVisible = false;
     toggleControlPanels(false);
+    initSlotsPanel();
+    updateSlotsPanelUI();
 }
 
 // Inicialización de la consola terminal
@@ -3846,124 +4180,222 @@ function initTerminalConsole() {
 }
 
 // Función para cargar configuración desde datos
-function applyConfigurationFromData(configData) {
-    if (!configData || !configData.grid || !configData.panels) {
-        console.error("Formato de configuración inválido");
+async function applyConfigurationFromData(configData) {
+    console.log("applyConfigurationFromData llamada con:", JSON.parse(JSON.stringify(configData)));
+    if (!configData || !configData.grid) { // Se mantiene la validación de grid, pero se enfocará en panels
+        console.error("Formato de configuración inválido: falta configData o configData.grid");
         return false;
     }
     
     // Limpiar los paneles actuales y sus comportamientos
-    clearAllPanels();
+    clearAllPanels(true, true); // Limpiar todo, incluyendo teclado, antes de cargar un estado completo
     gatcIntervals.forEach(interval => clearInterval(interval));
     gatcIntervals.clear();
     
-    // Encontrar el número de orden más alto en la configuración
-    let maxOrderNumber = 0;
-    configData.panels.forEach(panel => {
-        const orderNum = parseInt(panel.orderNumber);
-        if (!isNaN(orderNum) && orderNum > maxOrderNumber) {
-            maxOrderNumber = orderNum;
-        }
-    });
-    
-    // Actualizar el contador global para empezar desde el siguiente número
-    panelOrderCounter = maxOrderNumber + 1;
-    console.log('Contador de paneles iniciado en:', panelOrderCounter);
-    
-    // Aplicar configuración de la cuadrícula
-    const gridParams = {
-        cellSize: configData.grid.cellSize,
-        cellsX: configData.grid.cellsX,
-        cellsY: configData.grid.cellsY,
-        halfWidth: (configData.grid.cellsX * configData.grid.cellSize) / 2,
-        halfHeight: (configData.grid.cellsY * configData.grid.cellSize) / 2
-    };
-    
-    // Regenerar cuadrícula
-    regenerateGrid(gridParams);
-    
-    // Recrear los paneles con sus comportamientos
-    for (const panelData of configData.panels) {
-        // Asegurar que el número de orden es un entero válido
-        const orderNumber = parseInt(panelData.orderNumber);
-        if (isNaN(orderNumber)) {
-            console.error('Número de orden inválido:', panelData.orderNumber);
-            continue;
-        }
+    console.log("Paneles en la configuración a aplicar:", configData.panels);
+    if (!configData.panels || !Array.isArray(configData.panels)) {
+        console.error("Error en applyConfigurationFromData: configData.panels no es un array o no existe.");
+        // Aunque no haya paneles, el grid y la cámara podrían haberse restaurado, por lo que podríamos retornar true
+        // o false dependiendo de si consideramos esto un fallo total.
+        // Por ahora, si no hay paneles para cargar, es posible que el slot estuviera "vacío" de paneles.
+        // Se procederá a cargar el resto (grid, cámara, etc.)
+    }
 
-        // Crear panel base
-        const panel = {
-            group: null,
-            minCellIndex: panelData.minCellIndex,
-            maxCellIndex: panelData.maxCellIndex,
-            orderNumber: orderNumber,
-            showOrderNumber: globalShowNumbers,
-            hasText: false
-        };
-        
-        // Actualizar geometría y posición
-        updatePanelGeometryAndPosition(panel, gridParams);
-        
-        if(panel.group) {
-            scene.add(panel.group);
-            panels.push(panel);
+    // Restaurar configuración de bioFX si existe
+    if (configData.bioFX) {
+        const colorHex = '#' + configData.bioFX.color.toString(16).padStart(6, '0');
+        colorPicker.value = colorHex;
+        blendTypePicker.value = configData.bioFX.blendType.toString();
+        intensitySlider.value = configData.bioFX.intensity.toString();
+        glowSlider.value = configData.bioFX.glow.intensity.toString();
+        glowRadiusSlider.value = configData.bioFX.glow.radius.toString();
+        glowThresholdSlider.value = configData.bioFX.glow.threshold.toString();
+        updateBioFXEffect();
+        console.log("Configuración de bioFX aplicada.");
+    }
+
+    // Actualizar la división del grid solo si es diferente
+    const newDivisions = configData.grid.divisions;
+    if (typeof newDivisions === 'number' && newDivisions !== currentDivisions) {
+        console.log(`Actualizando grid de ${currentDivisions} a ${newDivisions} divisiones`);
+        currentDivisions = newDivisions;
+        updateGrid(newDivisions); // updateGrid se encarga de scene.remove(currentGrid) y scene.add(newGrid)
+    } else {
+        // Si las divisiones son las mismas, aún es necesario asegurarse de que el grid actual exista o se regenere.
+        // Esto es importante si clearAllPanels eliminó el grid, o si es la carga inicial.
+        // La función updateGrid puede manejar esto si se llama incluso con las mismas divisiones.
+        console.log("Divisiones del grid sin cambios, asegurando regeneración del grid si es necesario.");
+        updateGrid(currentDivisions); 
+    }
+    
+    // Restaurar posición y zoom de la cámara si existen en la configuración
+    if (configData.cameraPosition) {
+        camera.position.set(
+            configData.cameraPosition.x,
+            configData.cameraPosition.y,
+            configData.cameraPosition.z
+        );
+        console.log("Posición de cámara aplicada.");
+    }
+    
+    if (typeof configData.cameraZoom === 'number') {
+        camera.zoom = configData.cameraZoom;
+        // camera.updateProjectionMatrix(); // adjustCameraToGrid lo hará implicitamente si es necesario, o updateGrid
+        console.log("Zoom de cámara aplicado.");
+    }
+    adjustCameraToGrid(); // Siempre ajustar la cámara después de cambiar grid o zoom.
+
+    // Restaurar el estado del teclado según la configuración guardada
+    // Es importante hacer esto ANTES de recrear los paneles de usuario,
+    // para que el teclado (si estaba visible) no sea borrado por clearAllPanels y luego no recreado.
+    if (configData.bioKeybVisible !== undefined) {
+        bioKeybVisible = !!configData.bioKeybVisible;
+    }
+    if (bioKeybVisible) {
+        await loadBioKeyb(true); // Cargar teclado sin guardar configuración, si estaba visible
+        console.log("Teclado bioKeyb restaurado según configuración.");
+    }
+
+    // Encontrar el número de orden más alto en la configuración de paneles de usuario
+    let maxOrderNumber = 0;
+    if (configData.panels && Array.isArray(configData.panels)) {
+        configData.panels.forEach(panel => {
+            // Considerar solo paneles que no son del teclado para el panelOrderCounter
+            // (aunque al cargar un slot, los paneles del teclado deberían venir de la config si bioKeybVisible era true)
+            const orderNum = parseInt(panel.orderNumber);
+            if (!isNaN(orderNum) && orderNum > maxOrderNumber) {
+                maxOrderNumber = orderNum;
+            }
+        });
+    }
+    panelOrderCounter = maxOrderNumber + 1;
+    console.log('panelOrderCounter reiniciado a:', panelOrderCounter, 'basado en los paneles del slot.');
+    
+    const currentGridParams = getCurrentGridParams();
+    if (!currentGridParams) {
+        console.error("Error Crítico en applyConfigurationFromData: No se pudieron obtener los parámetros del grid después de la actualización.");
+        return false; // Fallo si no podemos obtener parámetros del grid para los paneles.
+    }
+    
+    // Recrear los paneles guardados (que no son del teclado, ya que el teclado se maneja con loadBioKeyb)
+    if (configData.panels && Array.isArray(configData.panels)) {
+        for (const panelInfo of configData.panels) {
+            console.log("Procesando panelInfo para recreación:", panelInfo);
+            // Asegurar que el número de orden es un entero válido
+            const orderNumber = parseInt(panelInfo.orderNumber);
+            if (isNaN(orderNumber)) {
+                console.warn('PanelInfo con número de orden inválido, omitiendo:', panelInfo.orderNumber);
+                continue;
+            }
+
+            // Crear panel base
+            const panel = {
+                group: null,
+                minCellIndex: panelInfo.minCellIndex,
+                maxCellIndex: panelInfo.maxCellIndex,
+                orderNumber: orderNumber,
+                showOrderNumber: panelInfo.showOrderNumber !== undefined ? panelInfo.showOrderNumber : globalShowNumbers,
+                hasText: panelInfo.behavior?.hasText || false,
+                // Añadir más propiedades por defecto si es necesario o si vienen de panelInfo
+                selected: panelInfo.selected || false,
+                navigateToSlot: panelInfo.navigateToSlot // Preservar asignación de navegación
+            };
             
-            // Restaurar comportamiento del panel
-            if (panelData.behavior) {
-                // Restaurar texto
-                if (panelData.behavior.hasText) {
-                    panel.hasText = true;
-                    panel.textContent = panelData.behavior.textContent;
-                    panel.messageBuffer = panelData.behavior.messageBuffer;
-                    panel.maxLines = panelData.behavior.maxLines;
-                    if (panel.textContent) {
-                        // Inicializar el panel con texto
-                        createPanelText(panel, gridParams.cellSize);
-                        // Establecer el texto
-                        setPanelText(panel, panel.textContent, gridParams.cellSize);
+            updatePanelGeometryAndPosition(panel, currentGridParams);
+            
+            if(panel.group) {
+                scene.add(panel.group);
+                panels.push(panel); // Añadir a la lista global de paneles
+                
+                // Restaurar comportamiento del panel
+                if (panelInfo.behavior) {
+                    if (panelInfo.behavior.hasText) {
+                        panel.hasText = true; // Asegurar que está marcado
+                        const textState = {
+                            text: panelInfo.behavior.textContent || '',
+                            lines: panelInfo.behavior.messageBuffer || [],
+                            maxCharsPerLine: panelInfo.behavior.maxLines || TEXT_CONFIG.defaultMaxCharsPerLine,
+                            cursorPosition: 0,
+                            isEditing: false,
+                            scrollOffset: 0,
+                            isPassword: panelInfo.behavior.isPassword || false,
+                            realText: (panelInfo.behavior.isPassword && panelInfo.behavior.textContent) ? panelInfo.behavior.textContent : ''
+                        };
+                        panelTextState.set(panel, textState);
+                        
+                        createPanelText(panel, currentGridParams.cellSize); // Crea la estructura visual del texto
+                        // Establecer el texto con el contenido guardado, manejando el caso de contraseña
+                        if (textState.isPassword) {
+                            setPanelText(panel, '*'.repeat(textState.realText.length), currentGridParams.cellSize);
+                        } else {
+                            setPanelText(panel, textState.text, currentGridParams.cellSize); 
+                        }
+                        console.log(`Texto restaurado para panel P${orderNumber}. Contenido: ${textState.isPassword ? '(contraseña)' : textState.text}`);
                     }
-                }
-                
-                // Restaurar GATC si estaba activo
-                if (panelData.behavior.isGATCActive) {
-                    handleGATCCommand({ 
-                        appendChild: () => {}, // Mock output para la función
-                        innerHTML: ''
-                    }, panel);
-                }
-                
-                // Restaurar modelo 3D si existía
-                if (panelData.behavior.modelData) {
-                    const { modelUrl, isRotating, rotationSpeed } = panelData.behavior.modelData;
-                    loadModelToPanel(panel, modelUrl, gridParams.cellSize).then(() => {
-                        if (isRotating) {
-                            toggleModelRotation(panel);
+
+                    if (panelInfo.behavior.isGATCActive) {
+                        // Para restaurar GATC, necesitamos asegurar que el panel esté configurado como texto primero
+                        if (!panel.hasText) panel.hasText = true;
+                        if (!panelTextState.has(panel)) createPanelText(panel, currentGridParams.cellSize); 
+
+                        handleGATCCommand({ 
+                            appendChild: () => {}, 
+                            innerHTML: ''
+                        }, panel);
+                        console.log(`GATC restaurado para panel P${orderNumber}`);
+                    }
+
+                    if (panelInfo.behavior.modelData && panelInfo.behavior.modelData.modelUrl) {
+                        const { modelUrl, isRotating, rotationSpeed } = panelInfo.behavior.modelData;
+                        console.log(`Restaurando modelo ${modelUrl} para panel P${orderNumber}`);
+                        await loadModelToPanel(panel, modelUrl, currentGridParams.cellSize).then(() => {
+                            if (isRotating) {
+                                // toggleModelRotation invierte el estado. Si queremos que esté rotando, y empieza sin rotar, llamamos una vez.
+                                // Asumimos que loadModelToPanel podría o no iniciar la rotación. Es más seguro setearlo explícitamente.
+                                if (!panel.modelData.isRotating) toggleModelRotation(panel); 
+                            }
                             if (rotationSpeed) {
                                 setModelRotationSpeed(panel, rotationSpeed);
                             }
-                        }
-                    });
+                            console.log(`Modelo ${modelUrl} restaurado y configurado en panel P${orderNumber}. Rotando: ${panel.modelData.isRotating}, Vel: ${rotationSpeed}`);
+                        }).catch(err => console.error(`Error al restaurar modelo para panel P${orderNumber}:`, err));
+                    }
+
+                    if (panelInfo.behavior.genomData) {
+                        panel.genomData = panelInfo.behavior.genomData;
+                        // Aquí necesitaríamos una función para RECREAR la visualización del genoma si es necesario
+                        // Por ahora, solo restauramos los datos. La visualización podría requerir una llamada explícita.
+                        // Ejemplo: await recreateGenomVisuals(panel, currentGridParams.cellSize);
+                        console.log(`GenomData restaurado para panel P${orderNumber}`);
+                    }
+                     if (panelInfo.behavior.codonData) { // Asumiendo que codonData se guarda en behavior
+                        panel.codonData = panelInfo.behavior.codonData;
+                        await loadCodonToPanel(panel, currentGridParams.cellSize);
+                        console.log(`CodonData restaurado para panel P${orderNumber}`);
+                    }
                 }
-            }
-            
-            // Crear etiqueta con número de orden
-            createPanelOrderLabel(panel);
-            
-            // Restaurar selección
-            if (panelData.selected) {
-                panel.selected = true;
-                updatePanelColor(panel);
+                
+                createPanelOrderLabel(panel); // Crear etiqueta de orden (visible o no según globalShowNumbers y panel.showOrderNumber)
+                
+                if (panel.selected) {
+                    // panel.selected = true; // ya debería estar seteado desde la creación del objeto panel
+                    updatePanelColor(panel);
+                }
+                console.log(`Panel P${orderNumber} completamente recreado y añadido a la escena.`);
+            } else {
+                console.warn(`No se pudo crear el grupo para panelInfo:`, panelInfo);
             }
         }
     }
     
-    // Verificar y ajustar el contador si es necesario
-    const actualMaxOrder = Math.max(...panels.map(p => parseInt(p.orderNumber) || 0));
-    if (actualMaxOrder >= panelOrderCounter) {
-        panelOrderCounter = actualMaxOrder + 1;
-        console.log('Contador ajustado a:', panelOrderCounter);
-    }
+    // Verificar y ajustar el contador global de paneles de USUARIO si es necesario después de cargar.
+    // Esto asegura que los nuevos paneles creados manualmente obtengan un número de orden correcto.
+    const userPanels = panels.filter(p => !p.isKeyboardKey);
+    const actualMaxUserOrder = Math.max(0, ...userPanels.map(p => parseInt(p.orderNumber) || 0));
+    panelOrderCounter = actualMaxUserOrder + 1;
+    console.log('panelOrderCounter final ajustado a:', panelOrderCounter, 'después de cargar todos los paneles del slot.');
     
+    console.log("applyConfigurationFromData completado exitosamente.");
     return true;
 }
 
@@ -4094,8 +4526,14 @@ function processTerminalCommand(command) {
         case 'logo':
             mapLogo(args, output);
             break;
+        case 'apps':
+            mapApps(args, output);
+            break;
         case 'txt':
             handleTextCommand(args, output);
+            break;
+        case 'terms':
+            handleTermsCommand(output);
             break;
         case 'model':
             if (args.length > 0) {
@@ -4190,6 +4628,7 @@ Comandos disponibles:
     clear          Limpia la terminal
     delete <n>     Elimina el panel número n
     logo           Crea un logo en el panel seleccionado
+    apps           Crea un grid de iconos de aplicaciones
     txt            Añade texto al panel seleccionado
     model          Crea un modelo 3D en el panel seleccionado
     genom          Crea una visualización de ADN en el panel
@@ -4418,7 +4857,67 @@ function initializeApp() {
 
 // Reemplazar la función mapLogo existente
 function mapLogo(args, output) {
-    handleLogoCommand(args, output, scene, panels);
+    const selectedPanels = panels.filter(p => p.selected);
+    if (selectedPanels.length !== 1) {
+        showError('Selecciona exactamente un panel para el logo', output);
+        return;
+    }
+
+    const panel = selectedPanels[0];
+    showInfo('Aplicando logo al panel...', output);
+
+    loadTexture(
+        './public/img/bioprint_logo.png',
+        (texture) => {
+            if (panel.fillMesh) {
+                // Crear los materiales con textura
+                panel.textureMaterials = createPanelMaterials(texture);
+                
+                // Aplicar el material inicial
+                panel.fillMesh.material = panel.textureMaterials.normal;
+
+                // Actualizar UVs para ajustar la textura con fit horizontal
+                const geometry = panel.fillMesh.geometry;
+                const uvAttribute = geometry.attributes.uv;
+                
+                // Obtener dimensiones
+                const imageAspect = texture.image.width / texture.image.height;
+                const panelWidth = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
+                const panelHeight = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+                const panelAspect = panelWidth / panelHeight;
+                
+                // Calcular escalado para fit horizontal
+                const scaleY = panelAspect / imageAspect;
+                const offsetY = (1 - scaleY) / 2;
+                
+                // Aplicar transformación UV
+                for (let i = 0; i < uvAttribute.count; i++) {
+                    const u = uvAttribute.getX(i);
+                    const v = uvAttribute.getY(i);
+                    uvAttribute.setXY(
+                        i,
+                        u, // Mantener coordenada U para fit horizontal
+                        offsetY + (v * scaleY) // Ajustar V para mantener proporción
+                    );
+                }
+                
+                uvAttribute.needsUpdate = true;
+                panel.hasTexture = true; // Marcar que el panel tiene textura
+                
+                // Forzar actualización
+                if (typeof render === 'function') {
+                    render();
+                }
+                
+                showSuccess('Logo aplicado exitosamente', output);
+            } else {
+                showError('El panel no tiene una malla para aplicar la textura', output);
+            }
+        },
+        (error) => {
+            showError(`No se pudo cargar el logo: ${error.message}`, output);
+        }
+    );
 }
 
 // Nueva función para manejar el comando de texto
@@ -4472,6 +4971,101 @@ function handleTextCommand(args, output) {
     document.addEventListener('keydown', handleEscape);
 }
 
+// Función para manejar el comando "terms" - mostrar términos y condiciones
+function handleTermsCommand(output) {
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para mostrar los términos y condiciones', output);
+        return;
+    }
+    
+    if (selectedPanels.length > 1) {
+        showError('Seleccione solo un panel para mostrar los términos', output);
+        return;
+    }
+    
+    const panel = selectedPanels[0];
+    const currentGridParams = getCurrentGridParams();
+    
+    if (!currentGridParams) {
+        showError('No se pudo obtener la configuración del grid', output);
+        return;
+    }
+    
+    // Marcar el panel como contenedor de texto
+    panel.hasText = true;
+    
+    // Crear texto con términos y condiciones extensos
+    const termsText = `TÉRMINOS Y CONDICIONES DE USO DEL BIOMETRICS SYSTEM
+
+IMPORTANTE: LEA DETENIDAMENTE ESTOS TÉRMINOS Y CONDICIONES ANTES DE USAR EL SISTEMA.
+
+1. RECOPILACIÓN DE DATOS BIOMÉTRICOS
+Al usar este sistema, usted acepta que podemos recopilar, procesar, almacenar y utilizar sus datos biométricos, incluyendo pero no limitado a: huellas dactilares, escaneos faciales, reconocimiento de voz, patrones de retina, muestras de ADN, y cualquier otro dato biológico único que pueda ser utilizado para crear un modelo biométrico personalizado.
+
+2. USO DE LOS DATOS
+Sus datos biométricos serán utilizados para:
+   a. Desarrollar y mejorar modelos de aprendizaje automático
+   b. Identificación y autenticación personalizada
+   c. Investigación médica y científica
+   d. Análisis estadístico y demográfico
+   e. Desarrollo de productos y servicios nuevos
+   f. Cualquier otro propósito que consideremos apropiado en el futuro
+
+3. COMPARTIR DATOS
+Nos reservamos el derecho de compartir sus datos biométricos con:
+   a. Afiliados y socios comerciales
+   b. Instituciones de investigación y universidades
+   c. Agencias gubernamentales cuando sea requerido por ley
+   d. Terceros que adquieran nuestra compañía o activos
+   e. Proveedores de servicios que nos asisten en nuestras operaciones
+
+4. SEGURIDAD DE DATOS
+Aunque implementamos medidas de seguridad razonables, no podemos garantizar que sus datos biométricos estén completamente seguros contra accesos no autorizados, filtración de datos, alteración o destrucción.
+
+5. ALMACENAMIENTO Y RETENCIÓN
+Sus datos biométricos serán almacenados por tiempo indefinido, incluso después de que usted deje de utilizar nuestros servicios o solicite la eliminación de su cuenta.
+
+6. CONSENTIMIENTO IRREVOCABLE
+Al aceptar estos términos, usted otorga un consentimiento irrevocable para el uso de sus datos biométricos como se describe en este documento. Este consentimiento sobrevive a la terminación de su relación con nosotros.
+
+7. CAMBIOS EN LA POLÍTICA
+Nos reservamos el derecho de modificar estos términos en cualquier momento sin previo aviso. Su uso continuado del sistema constituye la aceptación de dichos cambios.
+
+8. LIMITACIÓN DE RESPONSABILIDAD
+No seremos responsables por ningún daño directo, indirecto, incidental, especial o consecuente que resulte del uso o la imposibilidad de usar nuestro sistema, o de la pérdida, mal uso o alteración de sus datos biométricos.
+
+9. LEY APLICABLE
+Estos términos se regirán e interpretarán de acuerdo con las leyes del país donde se encuentra nuestra sede principal, sin tener en cuenta sus principios de conflicto de leyes.
+
+10. DISPUTAS
+Cualquier disputa relacionada con estos términos o el uso de sus datos biométricos será resuelta exclusivamente mediante arbitraje vinculante en el lugar designado por nuestra compañía.
+
+11. EXPERIMENTACIÓN
+Usted reconoce y acepta que podemos utilizar sus datos biométricos para experimentos científicos, médicos o tecnológicos sin notificación adicional o compensación.
+
+12. MODELOS DE IA
+Los modelos de inteligencia artificial creados utilizando sus datos biométricos serán propiedad exclusiva de nuestra compañía y podrán ser utilizados para cualquier propósito, incluyendo la creación de réplicas digitales o físicas de sus características biológicas.
+
+13. COMERCIALIZACIÓN
+Podemos utilizar los resultados derivados del análisis de sus datos biométricos con fines comerciales, incluyendo pero no limitado a la venta de productos y servicios personalizados basados en sus características biológicas únicas.
+
+14. TRANSFERENCIA INTERNACIONAL
+Sus datos biométricos pueden ser transferidos y procesados en países distintos al suyo, que pueden tener leyes de protección de datos menos estrictas.
+
+15. RENUNCIA DE DERECHOS
+Al aceptar estos términos, usted renuncia a cualquier derecho a revisar, aprobar, detener o restringir el uso de sus datos biométricos por nuestra parte.
+
+AL CONTINUAR USANDO ESTE SISTEMA, USTED CONFIRMA QUE HA LEÍDO, ENTENDIDO Y ACEPTADO ESTOS TÉRMINOS Y CONDICIONES EN SU TOTALIDAD.`;
+    
+    // Aplicar el texto al panel
+    setPanelText(panel, termsText, currentGridParams.cellSize);
+    
+    // Mostrar mensaje de éxito
+    showSuccess('Términos y condiciones cargados en el panel seleccionado', output);
+}
+
 // Exportar funciones para controlar los efectos desde la consola
 window.setColorEffect = setColorEffect;
 
@@ -4479,6 +5073,7 @@ window.setColorEffect = setColorEffect;
 function toggleControlPanels(show) {
     const controlsPanel = document.getElementById('controls');
     const bioFXPanel = document.getElementById('bioFX-panel');
+    const slotsPanel = document.getElementById('slots-panel'); // Obtener el panel de slots
     
     if (show === undefined) {
         // Si no se especifica, alternar basado en el estado actual
@@ -4487,6 +5082,7 @@ function toggleControlPanels(show) {
     
     controlsPanel.style.display = show ? 'block' : 'none';
     bioFXPanel.style.display = show ? 'block' : 'none';
+    if (slotsPanel) slotsPanel.style.display = show ? 'block' : 'none'; // Mostrar/ocultar panel de slots
 }
 
 // Mostrar/ocultar paneles con la tecla V
@@ -4735,69 +5331,16 @@ renderer.domElement.addEventListener('touchstart', (event) => {
     }
 }, { passive: false });
 
-renderer.domElement.addEventListener('touchmove', (event) => {
-    event.preventDefault();
-    
-    if (isTwoFingerDrag && event.touches.length === 2) {
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        
-        // Calcular punto medio actual
-        const currentMidPoint = {
-            x: (touch1.clientX + touch2.clientX) / 2,
-            y: (touch1.clientY + touch2.clientY) / 2
-        };
-        
-        // Calcular distancia actual entre dedos
-        const currentDistance = Math.hypot(
-            touch2.clientX - touch1.clientX,
-            touch2.clientY - touch1.clientY
-        );
-        
-        // Si la distancia entre dedos no ha cambiado significativamente,
-        // considerarlo como un drag (evitar confundir con pinch)
-        const distanceChange = Math.abs(currentDistance - previousTouchDistance);
-        if (distanceChange < 20) { // tolerancia de 20px
-            // Simular evento de mousemove con botón derecho
-            const mouseEvent = new MouseEvent('mousemove', {
-                clientX: currentMidPoint.x,
-                clientY: currentMidPoint.y,
-                button: 2,
-                buttons: 2,
-                bubbles: true,
-                cancelable: true
-            });
-            event.target.dispatchEvent(mouseEvent);
-        }
-        
-        previousTouchDistance = currentDistance;
-        
-    } else if (event.touches.length === 1) {
-        const touch = event.touches[0];
-        
-        // Simular evento de mousemove con botón izquierdo
-        const mouseEvent = new MouseEvent('mousemove', {
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            button: 0,
-            buttons: 1,
-            bubbles: true,
-            cancelable: true
-        });
-        event.target.dispatchEvent(mouseEvent);
-    }
-}, { passive: false });
-
 // Función para manejar el comando splice
 async function handleSpliceCommand(output) {
     try {
-        const selectedPanels = panels.filter(p => p.selected);
-        if (selectedPanels.length === 0) {
+    const selectedPanels = panels.filter(p => p.selected);
+    if (selectedPanels.length === 0) {
             showError("Debes seleccionar al menos un panel para el proceso de splice.", output);
-            return;
-        }
-
-        const panel = selectedPanels[0];
+        return;
+    }
+    
+    const panel = selectedPanels[0];
         const currentGridParams = getCurrentGridParams();
         
         // Marcar el panel como contenedor de texto
@@ -4810,117 +5353,117 @@ async function handleSpliceCommand(output) {
         updatePanelGeometryAndPosition(progressPanel, currentGridParams);
         
         // Mensajes detallados sobre ingeniería bioquímica
-        const SELECTED_MESSAGES = [
-            "Iniciando análisis preliminar del genoma...",
-            "Cargando bases de datos genómicas locales...",
-            "Conectando con servidores de referencia genómica...",
-            "Verificando integridad de secuencias de ADN...",
-            "Analizando estructura primaria del genoma...",
-            "Identificando regiones codificantes...",
-            "Escaneando secuencias reguladoras...",
-            "Detectando elementos transponibles...",
-            "Analizando contenido GC...",
-            "Identificando islas CpG...",
-            "Mapeando sitios de metilación...",
-            "Verificando modificaciones epigenéticas...",
-            "Analizando estructura de la cromatina...",
-            "Identificando regiones hipersensibles a DNasa...",
-            "Detectando fronteras de dominios topológicos...",
-            "Analizando interacciones cromosómicas...",
-            "Verificando organización nuclear...",
-            "Identificando territorios cromosómicos...",
-            "Calibrando enzimas de restricción...",
-            "Optimizando temperatura de reacción...",
-            "Ajustando concentraciones iónicas...",
-            "Verificando pH del buffer...",
-            "Analizando cofactores necesarios...",
-            "Optimizando condiciones de reacción...",
-            "Preparando solución tampón...",
-            "Verificando estabilidad enzimática...",
-            "Analizando sitios de corte potenciales...",
-            "Identificando secuencias palindrómicas...",
-            "Verificando especificidad de corte...",
-            "Analizando productos secundarios...",
-            "Optimizando eficiencia de corte...",
-            "Verificando compatibilidad de extremos...",
-            "Analizando topología del ADN...",
-            "Identificando superenrollamiento...",
-            "Verificando tensión torsional...",
-            "Analizando estructura terciaria...",
-            "Identificando regiones promotoras...",
-            "Analizando elementos reguladores proximales...",
-            "Verificando enhancers distales...",
-            "Identificando silenciadores...",
-            "Analizando elementos de respuesta...",
-            "Verificando cajas TATA...",
-            "Identificando iniciadores...",
-            "Analizando elementos downstream...",
-            "Verificando secuencias consenso...",
-            "Identificando motivos conservados...",
-            "Analizando factores de transcripción...",
-            "Verificando sitios de unión...",
-            "Identificando cofactores reguladores...",
-            "Analizando complejos proteicos...",
-            "Verificando marcos de lectura...",
-            "Identificando codones de inicio...",
-            "Analizando secuencias Kozak...",
-            "Verificando codones de terminación...",
-            "Identificando señales de poliadenilación...",
-            "Analizando sitios de splicing...",
-            "Verificando branch points...",
-            "Identificando secuencias ESE/ESS...",
-            "Analizando estructura secundaria...",
-            "Verificando estabilidad de horquillas...",
-            "Identificando pseudonudos...",
-            "Analizando motivos estructurales...",
-            "Verificando interacciones de base...",
-            "Identificando regiones de apareamiento...",
-            "Analizando estabilidad térmica...",
-            "Verificando temperatura de fusión...",
-            "Identificando regiones de alta estabilidad...",
-            "Analizando contenido energético...",
-            "Verificando energía libre de Gibbs...",
-            "Identificando estados conformacionales...",
-            "Analizando dinámica molecular...",
-            "Verificando flexibilidad estructural...",
-            "Identificando dominios funcionales...",
-            "Analizando interfaces de interacción...",
-            "Verificando sitios alostéricos...",
-            "Identificando bolsillos catalíticos...",
-            "Analizando residuos conservados...",
-            "Verificando puentes de hidrógeno...",
-            "Identificando interacciones hidrofóbicas...",
-            "Analizando redes de contacto...",
-            "Verificando empaquetamiento...",
-            "Identificando centros activos...",
-            "Analizando especificidad de sustrato...",
-            "Verificando mecanismo catalítico...",
-            "Identificando estados de transición...",
-            "Analizando productos intermedios...",
-            "Verificando eficiencia catalítica...",
-            "Identificando inhibidores potenciales...",
-            "Analizando modificaciones post-traduccionales...",
-            "Verificando sitios de fosforilación...",
-            "Identificando señales de localización...",
-            "Analizando topología proteica...",
-            "Verificando plegamiento proteico...",
-            "Identificando dominios transmembrana...",
-            "Analizando péptidos señal...",
-            "Verificando secuencias de retención...",
-            "Identificando motivos de sorting...",
-            "Analizando estabilidad proteica...",
-            "Verificando vida media...",
-            "Identificando degrones...",
-            "Analizando ubiquitinación...",
-            "Verificando degradación...",
-            "Preparando ligasa de ADN...",
-            "Optimizando condiciones de ligación...",
-            "Verificando compatibilidad de extremos...",
-            "Analizando eficiencia de ligación...",
-            "Monitoreando formación de enlaces...",
-            "Verificando integridad del producto...",
-            "Completando proceso de empalme..."
-        ];
+    const SELECTED_MESSAGES = [
+        "Iniciando análisis preliminar del genoma...",
+        "Cargando bases de datos genómicas locales...",
+        "Conectando con servidores de referencia genómica...",
+        "Verificando integridad de secuencias de ADN...",
+        "Analizando estructura primaria del genoma...",
+        "Identificando regiones codificantes...",
+        "Escaneando secuencias reguladoras...",
+        "Detectando elementos transponibles...",
+        "Analizando contenido GC...",
+        "Identificando islas CpG...",
+        "Mapeando sitios de metilación...",
+        "Verificando modificaciones epigenéticas...",
+        "Analizando estructura de la cromatina...",
+        "Identificando regiones hipersensibles a DNasa...",
+        "Detectando fronteras de dominios topológicos...",
+        "Analizando interacciones cromosómicas...",
+        "Verificando organización nuclear...",
+        "Identificando territorios cromosómicos...",
+        "Calibrando enzimas de restricción...",
+        "Optimizando temperatura de reacción...",
+        "Ajustando concentraciones iónicas...",
+        "Verificando pH del buffer...",
+        "Analizando cofactores necesarios...",
+        "Optimizando condiciones de reacción...",
+        "Preparando solución tampón...",
+        "Verificando estabilidad enzimática...",
+        "Analizando sitios de corte potenciales...",
+        "Identificando secuencias palindrómicas...",
+        "Verificando especificidad de corte...",
+        "Analizando productos secundarios...",
+        "Optimizando eficiencia de corte...",
+        "Verificando compatibilidad de extremos...",
+        "Analizando topología del ADN...",
+        "Identificando superenrollamiento...",
+        "Verificando tensión torsional...",
+        "Analizando estructura terciaria...",
+        "Identificando regiones promotoras...",
+        "Analizando elementos reguladores proximales...",
+        "Verificando enhancers distales...",
+        "Identificando silenciadores...",
+        "Analizando elementos de respuesta...",
+        "Verificando cajas TATA...",
+        "Identificando iniciadores...",
+        "Analizando elementos downstream...",
+        "Verificando secuencias consenso...",
+        "Identificando motivos conservados...",
+        "Analizando factores de transcripción...",
+        "Verificando sitios de unión...",
+        "Identificando cofactores reguladores...",
+        "Analizando complejos proteicos...",
+        "Verificando marcos de lectura...",
+        "Identificando codones de inicio...",
+        "Analizando secuencias Kozak...",
+        "Verificando codones de terminación...",
+        "Identificando señales de poliadenilación...",
+        "Analizando sitios de splicing...",
+        "Verificando branch points...",
+        "Identificando secuencias ESE/ESS...",
+        "Analizando estructura secundaria...",
+        "Verificando estabilidad de horquillas...",
+        "Identificando pseudonudos...",
+        "Analizando motivos estructurales...",
+        "Verificando interacciones de base...",
+        "Identificando regiones de apareamiento...",
+        "Analizando estabilidad térmica...",
+        "Verificando temperatura de fusión...",
+        "Identificando regiones de alta estabilidad...",
+        "Analizando contenido energético...",
+        "Verificando energía libre de Gibbs...",
+        "Identificando estados conformacionales...",
+        "Analizando dinámica molecular...",
+        "Verificando flexibilidad estructural...",
+        "Identificando dominios funcionales...",
+        "Analizando interfaces de interacción...",
+        "Verificando sitios alostéricos...",
+        "Identificando bolsillos catalíticos...",
+        "Analizando residuos conservados...",
+        "Verificando puentes de hidrógeno...",
+        "Identificando interacciones hidrofóbicas...",
+        "Analizando redes de contacto...",
+        "Verificando empaquetamiento...",
+        "Identificando centros activos...",
+        "Analizando especificidad de sustrato...",
+        "Verificando mecanismo catalítico...",
+        "Identificando estados de transición...",
+        "Analizando productos intermedios...",
+        "Verificando eficiencia catalítica...",
+        "Identificando inhibidores potenciales...",
+        "Analizando modificaciones post-traduccionales...",
+        "Verificando sitios de fosforilación...",
+        "Identificando señales de localización...",
+        "Analizando topología proteica...",
+        "Verificando plegamiento proteico...",
+        "Identificando dominios transmembrana...",
+        "Analizando péptidos señal...",
+        "Verificando secuencias de retención...",
+        "Identificando motivos de sorting...",
+        "Analizando estabilidad proteica...",
+        "Verificando vida media...",
+        "Identificando degrones...",
+        "Analizando ubiquitinación...",
+        "Verificando degradación...",
+        "Preparando ligasa de ADN...",
+        "Optimizando condiciones de ligación...",
+        "Verificando compatibilidad de extremos...",
+        "Analizando eficiencia de ligación...",
+        "Monitoreando formación de enlaces...",
+        "Verificando integridad del producto...",
+        "Completando proceso de empalme..."
+    ];
 
         // Inicializar estado del texto
         const state = panelTextState.get(panel);
@@ -4955,14 +5498,14 @@ async function handleSpliceCommand(output) {
             function animate() {
                 if (!isRunning) return;
 
-                const currentTime = Date.now();
+            const currentTime = Date.now();
                 const elapsed = currentTime - startTime;
                 const progress = Math.min(100, (elapsed / duration) * 100);
-                
-                // Actualizar barra de progreso
+            
+            // Actualizar barra de progreso
                 if (progress !== lastProgress) {
                     const pulse = Math.sin((currentTime - lastPulseTime) / 200) * 0.2;
-                    progressPanel.drawProgress(progress, pulse);
+                progressPanel.drawProgress(progress, pulse);
                     lastProgress = progress;
                 }
                 
@@ -4997,33 +5540,35 @@ async function handleSpliceCommand(output) {
 
 // Función para reindexar los paneles
 function reindexPanels() {
-    // Ordenar paneles por su número actual
-    panels.sort((a, b) => parseInt(a.orderNumber) - parseInt(b.orderNumber));
+    // Filtrar solo los paneles de usuario (no los del teclado)
+    const userPanels = panels.filter(panel => !panel.isKeyboardKey);
 
-    // Verificar y cerrar huecos en la numeración
-    let currentNumber = 1;
-    let needsUpdate = false;
+    // Ordenar paneles de usuario por su número actual
+    userPanels.sort((a, b) => parseInt(a.orderNumber) - parseInt(b.orderNumber));
 
-    panels.forEach(panel => {
-        if (parseInt(panel.orderNumber) > currentNumber) {
-            // Hay un hueco, actualizar este panel
+    let currentNumber = 1; // Los paneles de usuario comienzan en P1
+    let updatedCount = 0;
+
+    userPanels.forEach(panel => {
+        if (parseInt(panel.orderNumber) !== currentNumber) {
             panel.orderNumber = currentNumber;
             if (panel.showOrderNumber) {
-                if (panel.orderLabel && panel.group) {
-                    panel.group.remove(panel.orderLabel);
-                    panel.orderLabel = null;
-                }
-                createPanelOrderLabel(panel);
+                // Recrear la etiqueta con el nuevo número y prefijo "P"
+                createPanelOrderLabel(panel); 
             }
-            needsUpdate = true;
+            updatedCount++;
         }
-        currentNumber = parseInt(panel.orderNumber) + 1;
+        currentNumber++;
     });
 
-    // Actualizar el contador global
-    panelOrderCounter = panels.length + 1;
+    // Actualizar el contador global para el próximo panel de USUARIO
+    // Se basa en la cantidad de paneles de usuario + 1
+    panelOrderCounter = userPanels.length + 1; 
     
-    return needsUpdate ? panels.length : 0;
+    if (updatedCount > 0) {
+        console.log(`${updatedCount} paneles de usuario reindexados. Próximo panel de usuario será P${panelOrderCounter}`);
+    }
+    return updatedCount;
 }
 
 // Función para manejar el comando pass (campo de contraseña)
@@ -5146,8 +5691,10 @@ function clearBioKeybOnly() {
 }
 
 // Función para cargar el teclado bioKeyb
-function loadBioKeyb(skipSave = false) {
-    console.log("Cargando teclado bioKeyb...");
+async function loadBioKeyb(skipSave = false) { // Convertir a async
+    await ensureBioKeybModuleInitialized(); // ESPERAR a que la fuente y el estado estén listos
+
+    console.log("Cargando teclado bioKeyb en la escena...");
     const currentGridParams = getCurrentGridParams();
     if (!currentGridParams) {
         console.error("No se pudieron obtener los parámetros del grid.");
@@ -5179,7 +5726,7 @@ function loadBioKeyb(skipSave = false) {
                 console.log("Borrando teclado bioKeyb...");
                 clearBioKeybOnly(); // Solo borrar los paneles del teclado
             };
-        } else {
+    } else {
             panelData.onPress = panelInfo.onPress; // Mantener el comportamiento original para otras teclas
         }
 
@@ -5198,9 +5745,9 @@ function loadBioKeyb(skipSave = false) {
             createKeyLabel(panelData);
             
             // Animar aparición
-            panelData.flashProgress = 0;
-            panelData.shouldFlash = true;
-            panelsFlashing.add(panelData);
+                    panelData.flashProgress = 0;
+                    panelData.shouldFlash = true;
+                    panelsFlashing.add(panelData);
         }
     });
     
@@ -5295,9 +5842,9 @@ renderer.domElement.addEventListener('mouseup', (event) => {
                 panel.borderLines.forEach(line => {
                     if (!line.userData.ignoreRaycast) {
                         allSelectable.push(line);
-                    }
-                });
-            }
+        }
+    });
+}
         }
     });
     
@@ -5323,6 +5870,16 @@ renderer.domElement.addEventListener('mouseup', (event) => {
         }
 
         if (panelData) {
+            // NUEVA LÓGICA: Verificar si el panel está asignado para navegar a un slot
+            if (!panelData.isKeyboardKey && typeof panelData.navigateToSlot === 'number') {
+                console.log(`Panel P${panelData.orderNumber} clickeado. Navegando a Slot ${panelData.navigateToSlot}.`);
+                loadFromSlot(panelData.navigateToSlot);
+                // Deseleccionar el panel después de la navegación para evitar acciones no deseadas si el slot carga paneles seleccionados.
+                panelData.selected = false;
+                updatePanelColor(panelData);
+                return; // Terminar el procesamiento aquí para no interferir con la selección normal
+            }
+
             if (panelData.isKeyboardKey && panelData.behavior && panelData.behavior.character) {
                 // Es una tecla del teclado, solo ejecutar onPress y flash
                 if (panelData.onPress) {
@@ -5333,9 +5890,9 @@ renderer.domElement.addEventListener('mouseup', (event) => {
                     panelData.selected = false;
                     
                     // Efecto visual de flash
-                    panelData.flashProgress = 0;
-                    panelData.shouldFlash = true;
-                    panelsFlashing.add(panelData);
+    panelData.flashProgress = 0;
+    panelData.shouldFlash = true;
+    panelsFlashing.add(panelData);
                 }
             } else {
                 // Comportamiento normal para paneles regulares
@@ -5457,7 +6014,7 @@ async function handleModelCommand(args, output) {
         // Verificar si ya existe un modelo en el panel
         const hasExistingModel = panel.group && panel.group.children.some(child => 
             child.userData && child.userData.isModel);
-        
+
         // Mostrar mensaje de carga
         const loadingMessage = document.createElement('div');
         loadingMessage.textContent = hasExistingModel 
@@ -5578,19 +6135,19 @@ function handleModelSpeed(args, output) {
 // Función para manejar el comando genom
 async function handleGenomCommand(output) {
     try {
-        const selectedPanels = panels.filter(p => p.selected);
-        
-        if (selectedPanels.length === 0) {
-            showError('Seleccione un panel para generar la red de proteínas', output);
-            return;
-        }
-        
-        if (selectedPanels.length > 1) {
-            showError('Seleccione solo un panel para generar la red de proteínas', output);
-            return;
-        }
-        
-        const panel = selectedPanels[0];
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para generar la red de proteínas', output);
+        return;
+    }
+    
+    if (selectedPanels.length > 1) {
+        showError('Seleccione solo un panel para generar la red de proteínas', output);
+        return;
+    }
+    
+    const panel = selectedPanels[0];
         const currentGridParams = getCurrentGridParams();
         
         if (!currentGridParams) {
@@ -5599,11 +6156,11 @@ async function handleGenomCommand(output) {
         }
         
         const success = await loadGenomToPanel(panel, currentGridParams.cellSize);
-        
-        if (success) {
-            showSuccess(`Red de proteínas generada exitosamente en el panel #${panel.orderNumber}`, output);
-        } else {
-            showError('Error al generar la red de proteínas', output);
+    
+    if (success) {
+        showSuccess(`Red de proteínas generada exitosamente en el panel #${panel.orderNumber}`, output);
+    } else {
+        showError('Error al generar la red de proteínas', output);
         }
     } catch (error) {
         console.error('Error en handleGenomCommand:', error);
@@ -5614,21 +6171,21 @@ async function handleGenomCommand(output) {
 // Función para manejar el comando GATC
 function handleGATCCommand(output) {
     try {
-        const selectedPanels = panels.filter(p => p.selected);
-        
-        if (selectedPanels.length === 0) {
-            showError('Seleccione un panel para mostrar la secuencia GATC', output);
-            return false;
-        }
-        
-        const panel = selectedPanels[0];
-        
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para mostrar la secuencia GATC', output);
+        return false;
+    }
+    
+    const panel = selectedPanels[0];
+    
         // Limpiar intervalo existente si lo hay
-        if (gatcIntervals.has(panel)) {
-            clearInterval(gatcIntervals.get(panel));
-        }
-        
-        panel.hasText = true;
+    if (gatcIntervals.has(panel)) {
+        clearInterval(gatcIntervals.get(panel));
+    }
+    
+    panel.hasText = true;
         const currentGridParams = getCurrentGridParams();
         
         if (!currentGridParams) {
@@ -5637,42 +6194,42 @@ function handleGATCCommand(output) {
         }
         
         // Calcular dimensiones
-        const width = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
-        const height = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
-        const charsPerLine = Math.max(1, Math.floor(width * 1.8) - 2);
-        const maxLines = Math.floor(height * 1.2);
-        
-        // Inicializar buffer circular
-        panel.lineBuffer = Array(maxLines).fill('');
-        let currentLine = '';
-        
-        function writeChar() {
+    const width = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
+    const height = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+    const charsPerLine = Math.max(1, Math.floor(width * 1.8) - 2);
+    const maxLines = Math.floor(height * 1.2);
+    
+    // Inicializar buffer circular
+    panel.lineBuffer = Array(maxLines).fill('');
+    let currentLine = '';
+    
+    function writeChar() {
             try {
-                // Generar nuevo carácter
-                const char = DNA_BASES[Math.floor(Math.random() * 4)];
-                currentLine += char;
-                
-                // Si la línea está completa, agregarla al buffer
-                if (currentLine.length >= charsPerLine) {
-                    panel.lineBuffer.shift();
-                    panel.lineBuffer.push(currentLine);
-                    currentLine = '';
-                    
-                    // Actualizar texto visible
-                    const visibleText = panel.lineBuffer.join('\n');
+        // Generar nuevo carácter
+        const char = DNA_BASES[Math.floor(Math.random() * 4)];
+        currentLine += char;
+        
+        // Si la línea está completa, agregarla al buffer
+        if (currentLine.length >= charsPerLine) {
+            panel.lineBuffer.shift();
+            panel.lineBuffer.push(currentLine);
+            currentLine = '';
+            
+            // Actualizar texto visible
+            const visibleText = panel.lineBuffer.join('\n');
                     setPanelText(panel, visibleText, currentGridParams.cellSize);
                 }
             } catch (error) {
                 console.error('Error en writeChar:', error);
                 clearInterval(gatcIntervals.get(panel));
-            }
         }
-        
-        // Escribir caracteres cada 50ms
-        const interval = setInterval(writeChar, 50);
-        gatcIntervals.set(panel, interval);
-        
-        return true;
+    }
+    
+    // Escribir caracteres cada 50ms
+    const interval = setInterval(writeChar, 50);
+    gatcIntervals.set(panel, interval);
+    
+    return true;
     } catch (error) {
         console.error('Error en handleGATCCommand:', error);
         showError('Error inesperado al activar la secuencia GATC', output);
@@ -5683,20 +6240,20 @@ function handleGATCCommand(output) {
 // Función para manejar el comando codon
 async function handleCodonCommand(output) {
     try {
-        const selectedPanels = panels.filter(p => p.selected);
-        
-        if (selectedPanels.length === 0) {
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
             showError('Seleccione un panel para mostrar el modelo de transcripción', output);
-            return;
-        }
-        
+        return;
+    }
+    
         if (selectedPanels.length > 1) {
             showError('Seleccione solo un panel para mostrar el modelo de transcripción', output);
             return;
         }
         
         const panel = selectedPanels[0];
-        const currentGridParams = getCurrentGridParams();
+    const currentGridParams = getCurrentGridParams();
         
         if (!currentGridParams) {
             showError('Error: No se pudo obtener la configuración del grid', output);
@@ -5828,14 +6385,14 @@ async function handleStackCommand(output) {
             function animate() {
                 if (!isRunning) return;
 
-                const currentTime = Date.now();
+            const currentTime = Date.now();
                 const elapsed = currentTime - startTime;
                 const progress = Math.min(100, (elapsed / duration) * 100);
-                
-                // Actualizar barra de progreso
+            
+            // Actualizar barra de progreso
                 if (progress !== lastProgress) {
                     const pulse = Math.sin((currentTime - lastPulseTime) / 200) * 0.2;
-                    progressPanel.drawProgress(progress, pulse);
+                progressPanel.drawProgress(progress, pulse);
                     lastProgress = progress;
                 }
                 
@@ -5884,12 +6441,12 @@ async function handleStackCommand(output) {
 
 async function handleFlashCommand(output) {
     try {
-        const selectedPanels = panels.filter(p => p.selected);
-        if (selectedPanels.length === 0) {
+    const selectedPanels = panels.filter(p => p.selected);
+    if (selectedPanels.length === 0) {
             showError("Debes seleccionar un panel para el efecto flash.", output);
-            return;
-        }
-
+        return;
+    }
+    
         // Obtener solo el último panel seleccionado
         const panel = selectedPanels[selectedPanels.length - 1];
         
@@ -5908,8 +6465,8 @@ async function handleFlashCommand(output) {
 
         // Guardar colores originales del texto si existe
         if (panel.isTextContainer) {
-            const state = panelTextState.get(panel);
-            if (state) {
+    const state = panelTextState.get(panel);
+    if (state) {
                 originalTextColor = state.textColor;
                 originalTextBackground = state.backgroundColor;
             }
@@ -5922,14 +6479,14 @@ async function handleFlashCommand(output) {
                 
                 if (panel.isTextContainer) {
                     const state = panelTextState.get(panel);
-                    if (state) {
+            if (state) {
                         // Invertir colores del texto
                         state.textColor = 'rgba(0, 0, 0, 1)';
                         state.backgroundColor = 'rgba(255, 255, 255, 1)';
                         setPanelText(panel, state.lines.join('\n'), getCurrentGridParams().cellSize);
-                    }
+            }
                 }
-            } else {
+        } else {
                 // Mostrar panel
                 panel.fillMesh.material.color.copy(originalColor);
                 panel.fillMesh.material.opacity = originalOpacity;
@@ -5955,4 +6512,193 @@ async function handleFlashCommand(output) {
         console.error("Error en el comando flash:", error);
         showError("Error durante el efecto flash: " + error.message, output);
     }
+}
+
+// NUEVA función para asegurar que initBioKeyb (carga de fuente y estado) se ejecute una vez
+async function ensureBioKeybModuleInitialized() {
+    if (!bioKeybModuleInitialized) {
+        // El consoleEl puede ser opcional o definido aquí si es necesario.
+        // Pasamos null si no es esencial para la carga de la fuente/estado inicial.
+        await initBioKeyb(null); 
+        bioKeybModuleInitialized = true;
+        console.log("Módulo bioKeyb (fuente y estado) inicializado.");
+    }
+}
+
+// ... existing code ...
+// Función para limpiar un slot específico
+function clearSlot(slotIndex) {
+    if (slotIndex < 0 || slotIndex >= MAX_SLOTS) {
+        console.error(`Slot ${slotIndex} inválido para limpiar.`);
+        return;
+    }
+    if (slots[slotIndex]) {
+        slots[slotIndex] = null;
+        console.log(`Slot ${slotIndex} limpiado.`);
+        persistSlotsToLocalStorage(); // Guardar cambios en localStorage
+        updateSlotsPanelUI(); // Actualizar la interfaz del panel de slots
+
+        // Efecto flash para confirmar
+        gridAnimationInProgress = true;
+        gridAnimationStep = 2; // Solo paso de flash
+        gridAnimationProgress = 0;
+        gridFlashCount = 0;
+    } else {
+        console.log(`Slot ${slotIndex} ya está vacío.`);
+    }
+}
+
+// Función para actualizar la interfaz del panel de slots
+function updateSlotsPanelUI() {
+    const slotsContainer = document.getElementById('slots-container');
+    if (!slotsContainer) return;
+    console.log('Actualizando UI del panel de slots. Datos actuales de slots:', slots);
+
+    for (let i = 0; i < MAX_SLOTS; i++) {
+        const slotEntry = slotsContainer.querySelector(`.slot-entry[data-slot-index="${i}"]`);
+        if (slotEntry) {
+            const statusElement = slotEntry.querySelector('.slot-status');
+            if (slots[i]) {
+                try {
+                    const config = JSON.parse(slots[i]);
+                    const date = new Date(config.date || Date.now());
+                    statusElement.textContent = `Guardado: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+                    statusElement.title = `Guardado: ${date.toLocaleString()}\nPaneles: ${config.panels?.length || 0}, Divisiones: ${config.grid?.divisions || 'N/A'}`;
+                } catch (e) {
+                    statusElement.textContent = 'Error en datos';
+                    statusElement.title = 'Los datos de este slot parecen corruptos.';
+                }
+            } else {
+                statusElement.textContent = 'Vacío';
+                statusElement.title = 'Este slot está vacío.';
+            }
+        }
+    }
+}
+
+// Función para inicializar el panel de slots
+function initSlotsPanel() {
+    const slotsContainer = document.getElementById('slots-container');
+    if (!slotsContainer) {
+        console.error('El contenedor del panel de slots (slots-container) no fue encontrado.');
+        return;
+    }
+    slotsContainer.innerHTML = ''; // Limpiar contenido previo
+
+    for (let i = 0; i < MAX_SLOTS; i++) {
+        const slotEntry = document.createElement('div');
+        slotEntry.className = 'slot-entry';
+        slotEntry.setAttribute('data-slot-index', i);
+
+        const label = document.createElement('span');
+        label.className = 'slot-label';
+        label.textContent = `Slot ${i}:`;
+        slotEntry.appendChild(label);
+
+        const status = document.createElement('span');
+        status.className = 'slot-status';
+        status.textContent = 'Vacío'; // Estado inicial
+        slotEntry.appendChild(status);
+
+        const actions = document.createElement('div');
+        actions.className = 'slot-actions';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Guardar';
+        saveBtn.addEventListener('click', () => saveToSlot(i));
+        actions.appendChild(saveBtn);
+
+        const loadBtn = document.createElement('button');
+        loadBtn.textContent = 'Cargar';
+        loadBtn.addEventListener('click', () => loadFromSlot(i));
+        actions.appendChild(loadBtn);
+
+        const clearBtn = document.createElement('button');
+        clearBtn.textContent = 'Limpiar';
+        clearBtn.className = 'clear-btn';
+        clearBtn.addEventListener('click', () => clearSlot(i));
+        actions.appendChild(clearBtn);
+
+        slotEntry.appendChild(actions);
+        slotsContainer.appendChild(slotEntry);
+    }
+    updateSlotsPanelUI(); // Actualizar con los estados actuales al inicializar
+}
+
+// Carga Inicial y UI relacionada con slots
+window.addEventListener('load', () => {
+    // ... (código existente de initTerminalConsole, toggleControlPanels, etc.)
+    initSlotsPanel(); // Inicializar el panel de slots después de que el DOM esté listo
+    loadSlotsFromLocalStorage(); // Asegurarse que slots está cargado ANTES de actualizar la UI
+    updateSlotsPanelUI(); 
+});
+
+// Si el documento ya está cargado (para casos donde el script se carga después del evento load)
+if (document.readyState === 'complete') {
+    // ... (código existente de initTerminalConsole, toggleControlPanels, etc.)
+    initSlotsPanel();
+    loadSlotsFromLocalStorage(); // Asegurarse que slots está cargado ANTES de actualizar la UI
+    updateSlotsPanelUI();
+}
+
+// Configuración de los iconos en la imagen
+const ICON_GRID = {
+    COLS: 5,
+    ROWS: 4,
+    ICON_SIZE: 1/5  // Cada icono ocupa 1/5 del ancho ya que tenemos 5 columnas
+};
+
+// Función para obtener las coordenadas UV de un icono específico
+function getIconUVs(iconIndex) {
+    const col = iconIndex % ICON_GRID.COLS;
+    const row = Math.floor(iconIndex / ICON_GRID.COLS);
+    
+    return {
+        u1: col * ICON_GRID.ICON_SIZE,
+        v1: 1 - ((row + 1) * ICON_GRID.ICON_SIZE), // Invertido porque la textura se carga al revés
+        u2: (col + 1) * ICON_GRID.ICON_SIZE,
+        v2: 1 - (row * ICON_GRID.ICON_SIZE)
+    };
+}
+
+function mapApps(args, output) {
+    // Verificar si hay un panel seleccionado para usar como contenedor
+    const selectedPanels = panels.filter(p => p.selected);
+    if (selectedPanels.length !== 1) {
+        showError('Selecciona exactamente un panel para usar como contenedor de las apps', output);
+        return;
+    }
+    
+    const containerPanel = selectedPanels[0];
+    showInfo('Creando grid de apps en el panel seleccionado...', output);
+    
+    // Materiales para las líneas de los paneles
+    const lineMaterials = {
+        normal: panelLineMaterialNormal,
+        hover: panelLineMaterialHover,
+        selected: panelLineMaterialSelected
+    };
+    
+    // Llamar a la función del módulo bioApps
+    createAppGrid(
+        containerPanel,                // Panel contenedor
+        createPanelFromBoundingBox,    // Función para crear paneles
+        getCurrentGridParams,          // Función para obtener parámetros del grid
+        lineMaterials,                 // Materiales para las líneas
+        (createdPanels) => {           // Callback de éxito
+            // Deseleccionar el panel contenedor
+            containerPanel.selected = false;
+            updatePanelColor(containerPanel);
+            
+            showSuccess(`¡Iconos de apps mapeados exitosamente! Se crearon ${createdPanels.length} paneles.`, output);
+            
+            // Forzar actualización de la escena
+            if (typeof render === 'function') {
+                render();
+            }
+        },
+        (errorMessage) => {            // Callback de error
+            showError(errorMessage, output);
+        }
+    );
 }
