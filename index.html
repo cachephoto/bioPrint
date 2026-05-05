@@ -116,7 +116,7 @@
         outline: none;
       }
       #terminal-output {
-        max-height: 150px;
+        max-height: 400px;
         overflow-y: auto;
         margin-bottom: 5px;
       }
@@ -334,6 +334,31 @@
         margin-top: 2px;
       }
 
+      #bioFX-panel button {
+        width: 100%;
+        padding: 10px;
+        background-color: #0f0;
+        color: #000;
+        border: 1px solid #0f0;
+        border-radius: 4px;
+        font-family: inherit;
+        font-weight: bold;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: all 0.2s;
+      }
+
+      #bioFX-panel button:hover {
+        background-color: #0ff;
+        border-color: #0ff;
+        color: #000;
+      }
+
+      #bioFX-panel button:active {
+        background-color: #0a0;
+        transform: scale(0.98);
+      }
+
       /* Estilos para el panel de Slots */
       #slots-panel {
         position: absolute;
@@ -482,6 +507,11 @@
           <label for="bioFX-glow-threshold">Glow Threshold:</label>
           <input type="range" id="bioFX-glow-threshold" min="0" max="1" step="0.01" value="0.1">
           <div class="value-display" id="bioFX-glow-threshold-value">0.10</div>
+        </div>
+        
+        <div class="section-title">Guardar Estilo</div>
+        <div class="control-group">
+          <button id="bioFX-save-style" style="width: 100%; padding: 10px; background-color: #0f0; color: #000; border: 1px solid #0f0; border-radius: 4px; font-family: inherit; font-weight: bold; cursor: pointer; text-transform: uppercase;">Guardar Estilo Visual</button>
         </div>
       </div>
 

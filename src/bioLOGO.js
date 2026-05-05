@@ -35,7 +35,7 @@ export function createLogo(scene) {
     
     logoMesh = new THREE.Mesh(geometry, material);
     logoMesh.position.z = 2;
-    logoMesh.renderOrder = 999;
+    logoMesh.renderOrder = 0; // Renderizar antes que los bordes (renderOrder 10)
     logoMesh.visible = false;
     
     // Marcar el logo para que sea ignorado por el raycaster
@@ -51,7 +51,7 @@ function updateLogoPosition() {
     
     logoMesh.position.x = sourcePanel.group.position.x;
     logoMesh.position.y = sourcePanel.group.position.y + 0.5;
-    logoMesh.position.z = sourcePanel.group.position.z + 2;
+    logoMesh.position.z = sourcePanel.group.position.z - 0.01; // Detrás de los bordes (que están en z + 0.01)
 }
 
 export function toggleLogo(show, panel) {
@@ -122,4 +122,24 @@ export function handleLogoCommand(args, output, scene, panels) {
     
     toggleLogo(true, panel);
     output.innerHTML += '<div class="success">Logo activado</div>';
+}
+
+// Función para verificar si un panel tiene logo activo
+export function hasLogo(panel) {
+    return isLogoVisible && sourcePanel === panel;
+}
+
+// Función para obtener el panel que tiene logo activo
+export function getLogoPanel() {
+    return isLogoVisible ? sourcePanel : null;
+}
+
+// Función para verificar si el logo mesh existe
+export function logoMeshExists() {
+    return logoMesh !== null;
+}
+
+// Función para obtener el logo mesh (para verificación externa)
+export function getLogoMesh() {
+    return logoMesh;
 } 

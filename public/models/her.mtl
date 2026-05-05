@@ -1,0 +1,43 @@
+# MTL written from C:\Users\Admin\Desktop\Bioprint\Interface\bioPrint_UI\public\models\her.obj
+newmtl MI_CB_EYES_05
+Kd 0.00845031 0.0115478 0.0607595
+Ns 256
+d 1
+illum 1
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+newmtl M_CB_BODY
+Kd 0.00845031 0.0115478 0.0607595
+Ns 256
+d 1
+illum 1
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+newmtl M_CB_HEAD
+Kd 0.00845031 0.0115478 0.0607595
+Ns 256
+d 1
+illum 1
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+newmtl M_CB_LASHES
+Kd 0.00845031 0.0115478 0.0607595
+Ns 256
+d 1
+illum 1
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+newmtl M_CB_TEAR
+Kd 0.00845031 0.0115478 0.0607595
+Ns 256
+d 1
+illum 1
+Ka 0 0 0
+Ks 0.05 0.05 0.05
+newmtl M_CB_Teeth
+Kd 0.00845031 0.0115478 0.0607595
+Ns 256
+d 1
+illum 1
+Ka 0 0 0
+Ks 0.05 0.05 0.05

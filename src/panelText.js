@@ -36,11 +36,11 @@ export const TEXT_CONFIG = {
     cursorColor: 0xffffff,
     cursorBlinkRate: 530,
     padding: 0.8,
-    fontSize: 2,        // Tamaño ajustado para mejor visibilidad
-    lineHeight: 1.2,     // Reducido aún más (de 1.35) para acomodar una línea extra
+    fontSize: 1.8,      // Restaurado a un tamaño más legible
+    lineHeight: 1.15,    // Compromiso entre compacto y legible
     cursorWidth: 0.5,
     cursorHeight: 0.2,
-    charSpacing: 0.25,   // Espaciado ajustado para fuente monospace
+    charSpacing: 0.26,   // Espaciado aumentado para mejor legibilidad
     fontFamily: 'PressStart2P', // Fuente pixelada
     scrollOffset: 0      // Offset de desplazamiento para texto largo
 };
@@ -189,9 +189,14 @@ function preventPointerDefaultForMultiple(event) {
 
 // Precarga caracteres comunes para evitar parpadeos
 function precacheCommonCharacters() {
+    // Optimización: Precargar con tamaños comunes para evitar recreaciones
     const commonChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,;:!?-_+=()[]{}"\'/\\|<>@#$%^&*';
-    for (const char of commonChars) {
-        createCharacterMesh(char, 1, true); // Usamos tamaño 1 para el cache
+    const commonSizes = [0.5, 1.0, 1.8]; // Tamaños más comunes
+    
+    for (const size of commonSizes) {
+        for (const char of commonChars) {
+            createCharacterMesh(char, size, true); // Precargar con diferentes tamaños
+        }
     }
 }
 
@@ -464,11 +469,28 @@ function handleTextTouchEnd(event) {
 export function createPanelText(panel, gridSize) {
     if (!panel.group) return;
 
-    // Limpiar solo elementos que no deben persistir
+    // Optimización: Limpiar solo elementos que no deben persistir, pero reutilizar textContainer si existe
+    let existingTextContainer = null;
     for (const child of [...panel.group.children]) {
-        if (child.userData.isDynamicTextElement || child.userData.isCursor) {
+        if (child.userData.isDynamicTextElement && child instanceof THREE.Group) {
+            // Guardar referencia al contenedor existente para reutilizar
+            existingTextContainer = child;
+            // Limpiar hijos del contenedor pero mantener el contenedor
+            while (existingTextContainer.children.length > 0) {
+                const grandChild = existingTextContainer.children[0];
+                existingTextContainer.remove(grandChild);
+                if (grandChild.material && !grandChild.userData.isCached) {
+                    if (grandChild.material.map) grandChild.material.map.dispose();
+                    grandChild.material.dispose();
+                }
+                if (grandChild.geometry && !grandChild.userData.isCached) grandChild.geometry.dispose();
+            }
+        } else if (child.userData.isDynamicTextElement || child.userData.isCursor) {
             panel.group.remove(child);
-            if (child.material && !child.userData.isCached) child.material.dispose();
+            if (child.material && !child.userData.isCached) {
+                if (child.material.map) child.material.map.dispose();
+                child.material.dispose();
+            }
             if (child.geometry && !child.userData.isCached) child.geometry.dispose();
         }
     }
@@ -483,11 +505,28 @@ export function createPanelText(panel, gridSize) {
             maxCharsPerLine: 0,
             scrollOffset: 0,
             textMeshes: [], // Almacenar referencias a los meshes de texto
-            isPassword: false // Nuevo flag para modo contraseña
+            isPassword: false, // Nuevo flag para modo contraseña
+            textAlign: 'center', // Centrar texto por defecto
+            verticalAlign: 'middle', // Centrar verticalmente por defecto
+            useWhiteScrollIndicators: false // Flag para usar indicadores de scroll blancos
         });
     }
 
     const state = panelTextState.get(panel);
+    
+    // NUEVA LÓGICA: Determinar alineación vertical basada en número de líneas
+    const totalLines = state.lines.length;
+    const hasMultipleLines = totalLines > 1;
+    const hasLongText = state.lines.some(line => line.length > 50); // Considerar texto largo
+    
+    // Establecer alineación vertical automáticamente
+    if (hasMultipleLines || hasLongText) {
+        // Párrafos o texto largo: alinear al borde superior
+        state.verticalAlign = 'top';
+    } else {
+        // Una línea/palabra: centrar verticalmente
+        state.verticalAlign = 'middle';
+    }
     
     // Si es modo contraseña, mostrar asteriscos pero mantener el texto real
     let displayLines = state.lines;
@@ -528,10 +567,12 @@ export function createPanelText(panel, gridSize) {
     const isUniline = panelHeight <= 3;
     
     // Usamos siempre el tamaño global, incluso si el contenedor es pequeño
-    const charWidth = gridSize * TEXT_CONFIG.fontSize * TEXT_CONFIG.charSpacing;
+    // Verificar si el panel tiene un customFontSize definido en su estado
+    const effectiveFontSize = (state && state.customFontSize) ? state.customFontSize : TEXT_CONFIG.fontSize;
+    const charWidth = gridSize * effectiveFontSize * TEXT_CONFIG.charSpacing;
     
-    // Crear contenedor para todo el texto
-    const textContainer = new THREE.Group();
+    // Optimización: Reutilizar contenedor existente si está disponible
+    const textContainer = existingTextContainer || new THREE.Group();
     
     // Ajustamos la posición base manteniendo una celda de distancia
     textContainer.position.set(
@@ -540,6 +581,11 @@ export function createPanelText(panel, gridSize) {
         0.02
     );
     textContainer.userData.isDynamicTextElement = true;
+    
+    // Solo agregar al panel si es nuevo
+    if (!existingTextContainer) {
+        panel.group.add(textContainer);
+    }
     
     // Para contenedores extremadamente pequeños, mostrar un indicador en lugar de texto
     if (isTinyContainer) {
@@ -573,7 +619,14 @@ export function createPanelText(panel, gridSize) {
         // --- Inicio Modificación Unilinea: Tamaño Estándar Siempre ---
         let customFontSize, effectiveCharSpacing, effectiveLineHeight;
 
-        if (isUniline) {
+        // Verificar si el panel tiene un customFontSize definido en su estado
+        const state = panelTextState.get(panel);
+        if (state && state.customFontSize) {
+            // Usar el customFontSize del estado del panel (para porcentajes grandes, etc.)
+            customFontSize = state.customFontSize;
+            effectiveCharSpacing = TEXT_CONFIG.charSpacing;
+            effectiveLineHeight = TEXT_CONFIG.lineHeight;
+        } else if (isUniline) {
             // Para Unilinea, SIEMPRE usar tamaño estándar, ignorando isTooSmall para estos params
             customFontSize = TEXT_CONFIG.fontSize;
             effectiveCharSpacing = TEXT_CONFIG.charSpacing;
@@ -665,10 +718,29 @@ export function createPanelText(panel, gridSize) {
             // Usar la longitud real del texto, no el máximo disponible
             const lineWidth = Math.min(displayLine.length * adjustedCharWidth, textAreaWidth);
             
-            // Calcular el desplazamiento horizontal para centrar esta línea
-            const horizontalOffset = isUniline ?
-                (textAreaWidth - lineWidth) / 2 // Centrar en el área de texto
-                : 0; // <-- EMPEZAR DESDE LA IZQUIERDA para multilinea pequeño
+            // Calcular el desplazamiento horizontal según la alineación
+            let horizontalOffset = 0;
+            if (isUniline) {
+                // Para unilinea, aplicar alineación configurada
+                if (state.textAlign === 'center') {
+                    horizontalOffset = (textAreaWidth - lineWidth) / 2;
+                } else if (state.textAlign === 'right') {
+                    horizontalOffset = textAreaWidth - lineWidth;
+                } else {
+                    // left o por defecto: empezar desde la izquierda
+                    horizontalOffset = 0;
+                }
+            } else {
+                // Para multilinea pequeño, aplicar alineación configurada
+                if (state.textAlign === 'center') {
+                    horizontalOffset = (textAreaWidth - lineWidth) / 2;
+                } else if (state.textAlign === 'right') {
+                    horizontalOffset = textAreaWidth - lineWidth;
+                } else {
+                    // left o por defecto: empezar desde la izquierda
+                    horizontalOffset = 0;
+                }
+            }
             
             // Para cada carácter en la línea
             for (let i = 0; i < displayLine.length; i++) {
@@ -679,37 +751,53 @@ export function createPanelText(panel, gridSize) {
                 const charMesh = createCharacterMesh(char, gridSize, false, customFontSize);
                 
                 // --- Inicio Modificación Posición Vertical Unilinea (Centrado Panel) ---
-                charMesh.position.x = horizontalOffset + (i * adjustedCharWidth);
+                // Agregar separación adicional entre caracteres (aumentado para mejor legibilidad)
+                const pixelSpacing = gridSize * 0.03; // Espaciado aumentado para separar caracteres
+                charMesh.position.x = horizontalOffset + (i * adjustedCharWidth) + (i * pixelSpacing);
 
                 if (isUniline) {
-                    // Centrar verticalmente respecto al CENTRO DEL PANEL
+                    // Para unilinea, siempre centrar verticalmente respecto al CENTRO DEL PANEL
                     const charHeight = charMesh.geometry.parameters.height;
                     // El origen del textContainer está en la esquina superior izquierda del textArea.
                     // Queremos que el centro del carácter (y=0) esté en el centro del textArea.
                     // El centro vertical del textArea está en -textAreaHeight / 2 relativo al origen del textContainer.
                     charMesh.position.y = -(textAreaHeight / 2);
                 } else {
-                    // --- Inicio Modificación Centrado Vertical Multilinea v3 ---
-                    // Calcular la altura total del bloque de texto visible
-                    const visibleLineCount = Math.min(endLineIndex - startLineIndex, maxVisibleLines);
-                    const textBlockHeight = visibleLineCount * (gridSize * effectiveLineHeight);
+                    // Para contenedores pequeños multilinea, aplicar alineación vertical
+                    if (state.verticalAlign === 'top') {
+                        // NUEVA: Alineación superior para párrafos en contenedores pequeños
+                        const topPadding = gridSize * 0.15; // Padding más pequeño para contenedores pequeños
+                        charMesh.position.y = -(topPadding + displayLineIndex * (gridSize * effectiveLineHeight));
+                    } else {
+                        // Centrado vertical (comportamiento original)
+                        // --- Inicio Modificación Centrado Vertical Multilinea v3 ---
+                        // Calcular la altura total del bloque de texto visible
+                        const visibleLineCount = Math.min(endLineIndex - startLineIndex, maxVisibleLines);
+                        const textBlockHeight = visibleLineCount * (gridSize * effectiveLineHeight);
 
-                    // Calcular la posición Y del borde superior del bloque de texto cuando está centrado
-                    const centeredBlockTopY = -(textAreaHeight / 2) + (textBlockHeight / 2);
+                        // Calcular la posición Y del borde superior del bloque de texto cuando está centrado
+                        const centeredBlockTopY = -(textAreaHeight / 2) + (textBlockHeight / 2);
 
-                    // Calcular el offset desde el borde superior del bloque hasta el *centro* de la línea actual
-                    const offsetToCurrentLineCenter = (displayLineIndex + 0.5) * (gridSize * effectiveLineHeight);
+                        // Calcular el offset desde el borde superior del bloque hasta el *centro* de la línea actual
+                        const offsetToCurrentLineCenter = (displayLineIndex + 0.5) * (gridSize * effectiveLineHeight);
 
-                    // Posicionar el centro del carácter (mesh.position.y) en el centro calculado de la línea actual
-                    charMesh.position.y = centeredBlockTopY - offsetToCurrentLineCenter;
-                    // --- Fin Modificación Centrado Vertical Multilinea ---
+                        // Posicionar el centro del carácter (mesh.position.y) en el centro calculado de la línea actual
+                        charMesh.position.y = centeredBlockTopY - offsetToCurrentLineCenter;
+                        // --- Fin Modificación Centrado Vertical Multilinea ---
+                    }
                 }
                 // --- Fin Modificación Posición Vertical Unilinea (Centrado Panel) ---
 
                 charMesh.userData.isDynamicTextElement = true;
                 
-                // Mantener una referencia estable para evitar recreaciones innecesarias
-                textContainer.add(charMesh.clone());
+                // Optimización: reutilizar mesh directamente si es del cache, solo clonar si es necesario
+                if (charMesh.userData.isCached) {
+                    // Si viene del cache, ya es una copia, usar directamente
+                    textContainer.add(charMesh);
+                } else {
+                    // Solo clonar si no viene del cache
+                    textContainer.add(charMesh.clone());
+                }
             }
         }
         
@@ -718,7 +806,8 @@ export function createPanelText(panel, gridSize) {
             // Indicador de scroll arriba solo si hay espacio y es necesario
             if (state.scrollOffset > 0 && textAreaWidth > gridSize * 2 && textAreaHeight > gridSize) {
                 // Crear indicador de scroll más pequeño para asegurar que quepa
-                const upIndicator = createScrollIndicator('▲', gridSize * 0.7);
+                const scrollColor = state.useWhiteScrollIndicators ? '#ffffff' : '#aaaaaa';
+                const upIndicator = createScrollIndicator('▲', gridSize * 0.7, scrollColor);
                 // Asegurar que el indicador está completamente dentro del panel
                 const indicatorX = Math.min(textAreaWidth - upIndicator.geometry.parameters.width * 0.7, 
                           textAreaWidth - gridSize * 0.5);
@@ -736,7 +825,8 @@ export function createPanelText(panel, gridSize) {
             // Indicador de scroll abajo solo si hay espacio y es necesario
             if (endLineIndex < state.lines.length && textAreaHeight > gridSize * 2) {
                 // Crear indicador de scroll más pequeño para asegurar que quepa
-                const downIndicator = createScrollIndicator('▼', gridSize * 0.7);
+                const scrollColor = state.useWhiteScrollIndicators ? '#ffffff' : '#aaaaaa';
+                const downIndicator = createScrollIndicator('▼', gridSize * 0.7, scrollColor);
                 // Asegurar que el indicador está completamente dentro del panel
                 const indicatorX = Math.min(textAreaWidth - downIndicator.geometry.parameters.width * 0.7, 
                           textAreaWidth - gridSize * 0.5);
@@ -755,8 +845,10 @@ export function createPanelText(panel, gridSize) {
             }
         }
         
-        // Agregar el contenedor de texto al panel
-        panel.group.add(textContainer);
+        // El contenedor ya está agregado si fue reutilizado, solo agregar si es nuevo
+        if (!existingTextContainer) {
+            panel.group.add(textContainer);
+        }
         
         // Guardar una referencia a la gridSize en el panel para futuras actualizaciones
         panel.lastGridSize = gridSize;
@@ -787,7 +879,10 @@ export function createPanelText(panel, gridSize) {
         const maxVisibleLines = Math.max(1, Math.floor(textAreaHeight / (gridSize * TEXT_CONFIG.lineHeight)));
         
         // Calcular máximo de caracteres por línea basado en el ancho del panel
-        state.maxCharsPerLine = Math.floor(textAreaWidth / charWidth);
+        // Incluir el espaciado adicional (pixelSpacing) en el cálculo para mantener el wrapping correcto
+        const pixelSpacing = gridSize * 0.03; // Mismo valor usado en el posicionamiento
+        const totalCharWidth = charWidth + pixelSpacing; // Ancho total por carácter incluyendo espaciado
+        state.maxCharsPerLine = Math.max(1, Math.floor(textAreaWidth / totalCharWidth) - 1);
         
         // Procesar líneas para asegurar que estén dentro del ancho del panel
         for (let i = 0; i < state.lines.length; i++) {
@@ -798,9 +893,9 @@ export function createPanelText(panel, gridSize) {
                 let currentLine = line.substring(0, state.maxCharsPerLine);
                 let remainingText = line.substring(state.maxCharsPerLine);
                 
-                // Intentar dividir en un espacio
+                // Intentar dividir en un espacio (con umbral equilibrado)
                 const lastSpace = currentLine.lastIndexOf(' ');
-                if (lastSpace > state.maxCharsPerLine / 2) {
+                if (lastSpace > state.maxCharsPerLine / 2.5) { // Compromiso entre /2 y /3 para mejor equilibrio
                     currentLine = line.substring(0, lastSpace);
                     remainingText = line.substring(lastSpace + 1);
                 }
@@ -829,27 +924,67 @@ export function createPanelText(panel, gridSize) {
             const displayLineIndex = lineIndex - startLineIndex; // Índice relativo para visualización
             
             // Calcular el ancho de esta línea
-            // Usar la longitud real del texto, no el máximo disponible
-            const lineWidth = Math.min(line.length * charWidth, textAreaWidth);
+            // Incluir el espaciado adicional (pixelSpacing) en el cálculo para centrado correcto
+            const pixelSpacing = gridSize * 0.03; // Mismo valor usado en el posicionamiento
+            const totalCharWidth = charWidth + pixelSpacing; // Ancho total por carácter incluyendo espaciado
+            const lineWidth = Math.min(line.length * totalCharWidth - (line.length > 0 ? pixelSpacing : 0), textAreaWidth);
             
             // Calcular el desplazamiento horizontal para centrar esta línea
-            const horizontalOffset = 0; // <--- EMPEZAR DESDE LA IZQUIERDA para multilinea normal
+            let horizontalOffset = 0;
+            
+            // Aplicar alineación de texto
+            if (state.textAlign === 'center') {
+                // Centrar horizontalmente
+                horizontalOffset = (textAreaWidth - lineWidth) / 2;
+            } else if (state.textAlign === 'right') {
+                // Alinear a la derecha
+                horizontalOffset = textAreaWidth - lineWidth;
+            } else {
+                // Alinear a la izquierda (por defecto o explícito)
+                horizontalOffset = 0;
+            }
             
             // Para cada carácter en la línea
             for (let i = 0; i < line.length; i++) {
                 // Verificar que el carácter cabe en el ancho disponible
                 const char = line[i];
                 
-                // Obtener o crear mesh para el carácter
-                const charMesh = createCharacterMesh(char, gridSize);
+                // Obtener o crear mesh para el carácter (usar customFontSize si existe)
+                const charMesh = createCharacterMesh(char, gridSize, false, effectiveFontSize);
                 
                 // Posicionar el carácter con espaciado controlado y centrado
-                charMesh.position.x = horizontalOffset + (i * charWidth);
-                charMesh.position.y = -displayLineIndex * (gridSize * TEXT_CONFIG.lineHeight) - verticalOffset;
+                // Agregar separación adicional entre caracteres (aumentado para mejor legibilidad)
+                const pixelSpacing = gridSize * 0.03; // Espaciado aumentado para separar caracteres
+                charMesh.position.x = horizontalOffset + (i * charWidth) + (i * pixelSpacing);
+                
+                // Aplicar alineación vertical
+                if (state.verticalAlign === 'middle') {
+                    // Centrado vertical - calcular el centro del bloque de texto y posicionar desde ahí
+                    const visibleLineCount = endLineIndex - startLineIndex;
+                    const textBlockHeight = visibleLineCount * (gridSize * TEXT_CONFIG.lineHeight);
+                    const centeredBlockTopY = -(textAreaHeight / 2) + (textAreaHeight - textBlockHeight) / 2;
+                    const offsetToCurrentLineCenter = displayLineIndex * (gridSize * TEXT_CONFIG.lineHeight);
+                    charMesh.position.y = centeredBlockTopY - offsetToCurrentLineCenter;
+                } else if (state.verticalAlign === 'top') {
+                    // NUEVA: Alineación superior para párrafos
+                    // Empezar desde el borde superior del área de texto con un pequeño padding
+                    const topPadding = gridSize * 0.2; // Pequeño padding desde el borde superior
+                    charMesh.position.y = -(topPadding + displayLineIndex * (gridSize * TEXT_CONFIG.lineHeight));
+                } else {
+                    // Alineación normal desde arriba (legacy)
+                    charMesh.position.y = -displayLineIndex * (gridSize * TEXT_CONFIG.lineHeight) - verticalOffset;
+                }
+                
                 charMesh.userData.isDynamicTextElement = true;
                 
-                // Mantener una referencia estable para evitar recreaciones innecesarias
-                textContainer.add(charMesh.clone());
+                // Optimización: reutilizar mesh directamente si es del cache, solo clonar si es necesario
+                if (charMesh.userData.isCached) {
+                    // Si viene del cache, ya es una copia, usar directamente
+                    textContainer.add(charMesh);
+                } else {
+                    // Solo clonar si no viene del cache
+                    textContainer.add(charMesh.clone());
+                }
             }
         }
         
@@ -858,7 +993,8 @@ export function createPanelText(panel, gridSize) {
             // Indicador de scroll arriba
             if (state.scrollOffset > 0 && textAreaWidth > gridSize * 2 && textAreaHeight > gridSize) {
                 // Crear indicador de scroll más pequeño para asegurar que quepa
-                const upIndicator = createScrollIndicator('▲', gridSize * 0.7);
+                const scrollColor = state.useWhiteScrollIndicators ? '#ffffff' : '#aaaaaa';
+                const upIndicator = createScrollIndicator('▲', gridSize * 0.7, scrollColor);
                 // Asegurar que el indicador está completamente dentro del panel
                 const indicatorX = Math.min(textAreaWidth - upIndicator.geometry.parameters.width * 0.7, 
                           textAreaWidth - gridSize * 0.5);
@@ -876,7 +1012,8 @@ export function createPanelText(panel, gridSize) {
             // Indicador de scroll abajo
             if (endLineIndex < state.lines.length && textAreaHeight > gridSize * 2) {
                 // Crear indicador de scroll más pequeño para asegurar que quepa
-                const downIndicator = createScrollIndicator('▼', gridSize * 0.7);
+                const scrollColor = state.useWhiteScrollIndicators ? '#ffffff' : '#aaaaaa';
+                const downIndicator = createScrollIndicator('▼', gridSize * 0.7, scrollColor);
                 // Asegurar que el indicador está completamente dentro del panel
                 const indicatorX = Math.min(textAreaWidth - downIndicator.geometry.parameters.width * 0.7, 
                           textAreaWidth - gridSize * 0.5);
@@ -895,7 +1032,10 @@ export function createPanelText(panel, gridSize) {
             }
         }
         
-        panel.group.add(textContainer);
+        // El contenedor ya está agregado si fue reutilizado, solo agregar si es nuevo
+        if (!existingTextContainer) {
+            panel.group.add(textContainer);
+        }
         
         // Guardar una referencia a la gridSize en el panel para futuras actualizaciones
         panel.lastGridSize = gridSize;
@@ -938,6 +1078,7 @@ export function createPanelText(panel, gridSize) {
 // Crear un mesh para un carácter individual
 export function createCharacterMesh(char, gridSize, forCache = false, customFontSize = null) {
     // Para contenedores pequeños, usar un tamaño de fuente adaptado al tamaño del panel
+    // Si customFontSize es null, intentar obtenerlo del estado del panel si está disponible
     let fontSize = customFontSize || TEXT_CONFIG.fontSize;
     
     // Revisar si ya tenemos este carácter en cache
@@ -954,19 +1095,19 @@ export function createCharacterMesh(char, gridSize, forCache = false, customFont
     
     // Crear canvas para renderizar el carácter
     const canvas = document.createElement('canvas');
-    const size = 256; // Alta resolución para evitar pixelación
+    const size = 128; // Reducido de 256 a 128 para mejor rendimiento (suficiente para pixel art)
     canvas.width = size;
     canvas.height = size;
     
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: false }); // Optimización: no necesitamos leer frecuentemente
     ctx.fillStyle = '#ffffff';
     
     // Dibujar un carácter pixelado
     if (char === ' ') {
         // No dibujar nada para espacios
     } else {
-        // Estilo de fuente pixelada
-        ctx.font = 'bold 64px "Press Start 2P", "Courier New", monospace';
+        // Estilo de fuente pixelada - tamaño reducido proporcionalmente
+        ctx.font = 'bold 32px "Press Start 2P", "Courier New", monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(char, size/2, size/2);
@@ -975,6 +1116,8 @@ export function createCharacterMesh(char, gridSize, forCache = false, customFont
     // Crear textura a partir del canvas
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
+    texture.generateMipmaps = false; // Optimización: no generar mipmaps para texto
+    texture.minFilter = THREE.LinearFilter; // Usar LinearFilter en lugar de LinearMipmapLinearFilter
     
     // Crear material y geometría
     const material = new THREE.MeshBasicMaterial({
@@ -1004,9 +1147,9 @@ export function createCharacterMesh(char, gridSize, forCache = false, customFont
 }
 
 // Crear un indicador de desplazamiento (más pequeño para caber bien)
-function createScrollIndicator(symbol, size) {
-    // Revisar cache primero
-    const cacheKey = 'scroll-' + symbol + '-' + size;
+function createScrollIndicator(symbol, size, color = '#aaaaaa') {
+    // Revisar cache primero (incluir color en la clave para cachear diferentes colores)
+    const cacheKey = 'scroll-' + symbol + '-' + size + '-' + color;
     if (characterCache.has(cacheKey)) {
         return characterCache.get(cacheKey).clone();
     }
@@ -1017,7 +1160,7 @@ function createScrollIndicator(symbol, size) {
     canvas.height = canvasSize;
     
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#aaaaaa';
+    ctx.fillStyle = color;
     ctx.font = 'bold 32px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -1174,6 +1317,18 @@ export function handleTextInput(panel, event, gridSize) {
             }
             break;
             
+        case 'Tab':
+            // Alternar entre alineaciones: left -> center -> right -> left
+            if (state.textAlign === 'left' || !state.textAlign) {
+                state.textAlign = 'center';
+            } else if (state.textAlign === 'center') {
+                state.textAlign = 'right';
+            } else if (state.textAlign === 'right') {
+                state.textAlign = 'left';
+            }
+            textChanged = true;
+            break;
+            
         default:
             if (event.key.length === 1) {
                 // Si es modo contraseña, siempre insertar asterisco
@@ -1206,7 +1361,10 @@ export function startTextEditing(panel, cellSize) {
             maxCharsPerLine: 0,
             scrollOffset: 0,
             textMeshes: [],
-            isPassword: false
+            isPassword: false,
+            textAlign: 'center', // Centrar texto por defecto
+            verticalAlign: 'middle', // Centrar verticalmente por defecto
+            useWhiteScrollIndicators: false // Flag para usar indicadores de scroll blancos
         });
     }
     const freshState = panelTextState.get(panel);
@@ -1305,13 +1463,23 @@ export function setPanelText(panel, text, gridSize) {
             lines: [''],
             isEditing: false,
             maxCharsPerLine: 0,
-            scrollOffset: 0
+            scrollOffset: 0,
+            textAlign: 'center', // Centrar texto por defecto
+            verticalAlign: 'middle' // Centrar verticalmente por defecto
         });
     }
     
     const state = panelTextState.get(panel);
     state.lines = text.split('\n');
     state.cursorPosition = text.length;
+    
+    // Solo establecer alineación por defecto si no existe (preservar alineación de snapshots)
+    if (!state.textAlign) {
+        state.textAlign = 'center';
+    }
+    if (!state.verticalAlign) {
+        state.verticalAlign = 'middle';
+    }
     
     // Forzar la actualización del texto
     createPanelText(panel, gridSize);
@@ -1326,6 +1494,12 @@ function preventTerminalInput(event) {
             event.preventDefault();
             event.stopPropagation(); // Consumir el evento Escape aquí mismo.
             return false; 
+        }
+        
+        // Prevenir comportamiento por defecto de Tab (cambiar foco)
+        if (event.key === 'Tab') {
+            event.preventDefault();
+            event.stopPropagation();
         }
         
         // Para otras teclas, continuar con el manejo normal de entrada de texto
@@ -1491,11 +1665,16 @@ function manageCursor(panel, state, params) {
         // Calcular el ancho real de la línea actual con el ancho de carácter ajustado
         const lineWidth = Math.min(currentLine.length * adjustedCharWidth, params.textAreaWidth);
 
-        // Calcular el desplazamiento horizontal para centrar esta línea
-        // Usar textAreaWidth para centrar dentro del área de texto disponible
-        const horizontalOffset = isUniline ?
-            (params.textAreaWidth - lineWidth) / 2
-            : 0; // Multilinea empieza a la izquierda
+        // Calcular el desplazamiento horizontal según la alineación
+        let horizontalOffset = 0;
+        if (state.textAlign === 'center') {
+            horizontalOffset = (params.textAreaWidth - lineWidth) / 2;
+        } else if (state.textAlign === 'right') {
+            horizontalOffset = params.textAreaWidth - lineWidth;
+        } else {
+            // left o por defecto: empezar desde la izquierda
+            horizontalOffset = 0;
+        }
 
         // --- Inicio: Calcular Target Y para Cursor ---
         let targetCharCenterY;
@@ -1516,12 +1695,19 @@ function manageCursor(panel, state, params) {
                 textAreaWidth: params.textAreaWidth
             });
         } else {
-            // Centro vertical de la línea actual dentro del bloque centrado (igual que el charMesh)
-            const visibleLineCount = Math.min(params.endLineIndex - params.startLineIndex, params.maxVisibleLines);
-            const textBlockHeight = visibleLineCount * (params.gridSize * effectiveLineHeight);
-            const centeredBlockTopY = -(params.textAreaHeight / 2) + (textBlockHeight / 2);
-            const offsetToCurrentLineCenter = (visibleLineIndex + 0.5) * (params.gridSize * effectiveLineHeight);
-            targetCharCenterY = centeredBlockTopY - offsetToCurrentLineCenter;
+            // Calcular posición vertical del cursor según la alineación
+            if (state.verticalAlign === 'top') {
+                // NUEVA: Alineación superior para párrafos
+                const topPadding = isTooSmall ? params.gridSize * 0.15 : params.gridSize * 0.2;
+                targetCharCenterY = -(topPadding + visibleLineIndex * (params.gridSize * effectiveLineHeight));
+            } else {
+                // Centro vertical de la línea actual dentro del bloque centrado (igual que el charMesh)
+                const visibleLineCount = Math.min(params.endLineIndex - params.startLineIndex, params.maxVisibleLines);
+                const textBlockHeight = visibleLineCount * (params.gridSize * effectiveLineHeight);
+                const centeredBlockTopY = -(params.textAreaHeight / 2) + (textBlockHeight / 2);
+                const offsetToCurrentLineCenter = (visibleLineIndex + 0.5) * (params.gridSize * effectiveLineHeight);
+                targetCharCenterY = centeredBlockTopY - offsetToCurrentLineCenter;
+            }
 
             // Para multilínea, usar el ancho ajustado
             positionCursor(cursor, currentLinePosition, params.textContainer, {

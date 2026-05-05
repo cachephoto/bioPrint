@@ -58,7 +58,7 @@ import {
     panelTextState,
     TEXT_CONFIG
 } from './panelText.js';
-import { initBioFX, setColorEffect, render as renderBioFX, setBloomEffect } from './bioFX.js';
+import { initBioFX, setColorEffect, render as renderBioFX, setBloomEffect, setGlitchEffect, updateGlitchTime, setGlitchParameters, disableGlitch } from './bioFX.js';
 import { 
     loadModelToPanel, 
     toggleModelRotation, 
@@ -75,17 +75,113 @@ import {
     createKeyLabel,
     keyboardState // AÑADIR keyboardState
 } from './bioKeyb.js';
-import { handleLogoCommand, updateOnPanelMove } from './bioLOGO.js';
+import { handleLogoCommand, updateOnPanelMove, hasLogo, getLogoPanel, toggleLogo, createLogo, logoMeshExists } from './bioLOGO.js';
 import { loadCodonToPanel, animateCodons, cleanupCodonModels } from './codonModel.js';
 import { createProgressPanel, cleanupProgressPanel } from './bioLoad.js';
 import { createAppGrid } from './bioApps.js';
+import {
+    MAX_SLOTS,
+    loadSlotsFromLocalStorage,
+    persistSlotsToLocalStorage,
+    getSlots,
+    getCurrentSlotIndex,
+    setCurrentSlotIndex,
+    saveToSlot as bioSlotsSaveToSlot,
+    loadFromSlot as bioSlotsLoadFromSlot,
+    clearSlot as bioSlotsClearSlot,
+    navigateToNextSlot,
+    navigateToPreviousSlot,
+    hasSlotData,
+    getSlotInfo
+} from './bioSlots.js';
+import { 
+    initBioHUD, 
+    createHUD, 
+    destroyHUD, 
+    isHUDActive, 
+    getHUDScene, 
+    getHUDGrid, 
+    getHUDPanels, 
+    addHUDPanel, 
+    removeHUDPanel, 
+    clearHUDPanels, 
+    getHUDGridParams, 
+    updateHUDGrid, 
+    adjustHUDResolution, 
+    setUpdateHUDPanelsCallback, 
+    getHUDPlaneZ,
+    HUD_PLANE_Z,
+    updateDarkeningPlaneSize
+} from './bioHUD.js';
+import { 
+    handleModalCommand, 
+    updateModalPercentage, 
+    getModalState, 
+    cleanupModal, 
+    cleanupAllModals,
+    getModalBehaviorData,
+    restoreModalFromBehavior
+} from './bioModal.js';
+
+/**
+ * MÓDULO PRINCIPAL (main.js)
+ * -----------------------------------------------------------------------------
+ * Responsabilidad:
+ * - Punto de entrada de la aplicación
+ * - Gestión del ciclo de vida de la escena 3D (Scene, Camera, Renderer)
+ * - Orquestación de todos los subsistemas (Texto, Modelos, FX, Teclado)
+ * - Manejo de la terminal de comandos
+ * - Loop principal de renderizado
+ * 
+ * Conexiones:
+ * - Importa y coordina TODOS los módulos del sistema
+ * - panelText.js: Gestión de texto editable en paneles
+ * - panelModel.js: Carga y visualización de modelos 3D
+ * - bioFX.js: Efectos post-procesamiento (Glitch, Bloom, Color)
+ * - bioKeyb.js: Teclado virtual 3D
+ * - bioLoad.js: Indicadores de carga
+ * - bioApps.js: Grid de aplicaciones
+ * - genomModel.js / codonModel.js: Modelos biológicos específicos
+ * -----------------------------------------------------------------------------
+ */
 
 // Variables globales para controlar la visibilidad del teclado
 let bioKeybVisible = false; // Controla si el teclado está visible o no
 let bioKeybModuleInitialized = false; // NUEVA variable para rastrear la inicialización del módulo
 
+// Mapeo de nombres científicos para los modelos
+const modelScientificNames = {
+    corazon: "HOMO SAPIENS SAPIENS",
+    hueso: "BONE", 
+    axolotl: "AMBYSTOMA MEXICANUM",
+    discus: "DISK FISH",
+    dog: "CANIS LUPUS FAMILIARIS",
+    acot: "CRAY FISH",
+    tort: "TRACHEMYS SCRIPTA ELEGANS",
+    ham: "HAM",
+    pollo: "FRIED CHICKEN",
+    burg: "BURGUER MEAT"
+};
+
+// Variable global para controlar el estado de impresión
+let isPrintingActive = false; // Controla si el proceso de impresión está activo
+
 // Mapa para almacenar los intervalos de GATC
 const gatcIntervals = new Map(); // Para gestionar los intervalos de animación GATC
+
+// 🔥 CRITICAL FIX: Declarar variables del grid ANTES de usarlas
+// Variables para la animación del grid
+let gridAnimationInProgress = false;
+let gridAnimationStep = 0;
+let gridAnimationProgress = 0;
+let gridFlashCount = 0;
+let isFirstGridCreation = true; // Nueva variable para detectar primera creación
+let gridAnimationProps = {
+    targetScale: 1,
+    borderOpacity: 1,
+    linesOpacity: 0,
+    flashIntensity: 0
+};
 
 // Manejar el splash screen
 document.addEventListener('DOMContentLoaded', () => {
@@ -220,12 +316,47 @@ function startGridAnimation24Frames() {
             // Actualizar estado
             isFirstGridCreation = false;
 
-            // Cargar el bioKeyb y luego la configuración guardada
-            setTimeout(async () => {
-                await loadBioKeyb(true); // Cargar teclado sin guardar configuración
-                bioKeybVisible = true; // Asegurar que el teclado esté marcado como visible
-                loadConfiguration();
-            }, 100);
+            // 🔥 CRITICAL FIX: Esperar a que el grid esté completamente listo antes de cargar
+            // Esperar a que termine cualquier animación del grid y que esté en su escala correcta
+            const waitForGridReady = () => {
+                // Verificar que:
+                // 1. El grid existe
+                // 2. No hay animación en progreso
+                // 3. Las divisiones están en 48 (escala final)
+                // 4. El grid está en su escala final (scale = 1)
+                const gridIsReady = currentGrid && 
+                                   !gridAnimationInProgress && 
+                                   currentDivisions === 48 &&
+                                   Math.abs(currentGrid.scale.x - 1) < 0.01; // Escala final
+                
+                if (gridIsReady) {
+                    console.log("Grid completamente listo, cargando slot 0...");
+                    
+                    // HUD desactivado por defecto - se activa con tecla P
+                    
+                    // Cargar el bioKeyb y luego el slot 0
+                    setTimeout(async () => {
+                        await loadBioKeyb(true); // Cargar teclado sin guardar configuración
+                        bioKeybVisible = true; // Asegurar que el teclado esté marcado como visible
+                        
+                        // 🔥 Cargar estilo visual de bioFX (incluyendo resolución del grid)
+                        loadBioFXVisualStyle();
+                        
+                        // Cargar slot 0 por defecto
+                        const output = document.getElementById('terminal-output');
+                        if (output) {
+                            showInfo('Cargando slot 0 por defecto...', output);
+                        }
+                        loadFromSlot(0);
+                    }, 100);
+                } else {
+                    // Reintentar después de un breve delay
+                    setTimeout(waitForGridReady, 50);
+                }
+            };
+            
+            // Iniciar espera después de un pequeño delay para asegurar que el grid se haya actualizado
+            setTimeout(waitForGridReady, 200);
         }
     }, 50); // 50ms por cuadro = 1.2 segundos total
 }
@@ -421,6 +552,9 @@ const camera = new THREE.OrthographicCamera(
 camera.position.set(0, 0, 10);
 camera.lookAt(0, 0, 0);
 
+// Hacer la cámara accesible globalmente para ajustes de clip plane
+window.camera = camera;
+
 // Función para ajustar la cámara al tamaño del grid
 function adjustCameraToGrid() {
     if (!currentGrid) return;
@@ -451,17 +585,121 @@ function adjustCameraToGrid() {
 }
 
 // Configuración del renderizador
-const renderer = new THREE.WebGLRenderer({ 
-    antialias: true,
-    alpha: false
-});
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setClearColor(0x000000);
-document.body.appendChild(renderer.domElement);
-
-// Inicializar efectos bioFX
-initBioFX(renderer, scene, camera);
+// 🔥 CRITICAL FIX: Manejo de errores para WebGL context
+let renderer;
+try {
+    renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        alpha: false
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setClearColor(0x000000);
+    document.body.appendChild(renderer.domElement);
+    
+    // Inicializar efectos bioFX
+    initBioFX(renderer, scene, camera);
+    
+    // Inicializar módulo de HUD con referencias necesarias
+    // Función para actualizar paneles del HUD cuando cambia la resolución
+    function updateHUDPanelsAfterGridChange() {
+        const hudGridParams = getHUDGridParams();
+        if (!hudGridParams) {
+            console.warn('updateHUDPanelsAfterGridChange: No se pueden obtener parámetros del grid HUD');
+            return;
+        }
+        
+        const hudPanels = getHUDPanels();
+        console.log(`Actualizando ${hudPanels.length} paneles del HUD para la nueva resolución`);
+        
+        // Actualizar cada panel del HUD usando updatePanelGeometryAndPosition
+        hudPanels.forEach(panelData => {
+            if (panelData.group) {
+                // Guardar estados antes de actualizar
+                const wasSelected = panelData.selected;
+                const wasHovered = panelData.hovered;
+                
+                // Actualizar geometría y posición del panel con los nuevos parámetros del grid
+                updatePanelGeometryAndPosition(panelData, hudGridParams);
+                
+                // Asegurar que el panel esté en el hudScene y tenga la Z correcta
+                const hudScene = getHUDScene();
+                if (hudScene && panelData.group) {
+                    // Asegurar que el panel esté en hudScene
+                    if (!hudScene.children.includes(panelData.group)) {
+                        // Si está en scene principal, removerlo
+                        if (scene.children.includes(panelData.group)) {
+                            scene.remove(panelData.group);
+                        }
+                        hudScene.add(panelData.group);
+                    }
+                    
+                    // Asegurar posición Z correcta (relativa a hudScene)
+                    panelData.group.position.z = 0.02;
+                    // Asegurar renderOrder alto para que esté por encima de la cortina
+                    panelData.group.renderOrder = 200;
+                    panelData.group.traverse((child) => {
+                        // Asegurar que todos los hijos, especialmente los bordes, tengan renderOrder alto
+                        if (child.renderOrder !== undefined) {
+                            child.renderOrder = 200;
+                        }
+                    });
+                    // Asegurar explícitamente que los borderLines tengan renderOrder alto y posición Z correcta
+                    if (panelData.borderLines) {
+                        panelData.borderLines.forEach(borderLine => {
+                            borderLine.renderOrder = 200;
+                            borderLine.position.z = 0.1; // Posición Z mayor para estar por delante de la cortina (z=7)
+                        });
+                    }
+                }
+                
+                // Restaurar estados
+                panelData.selected = wasSelected;
+                panelData.hovered = wasHovered;
+                
+                // Actualizar color y etiqueta
+                updatePanelColor(panelData);
+                createPanelOrderLabel(panelData);
+            }
+        });
+        
+        console.log(`Paneles del HUD actualizados exitosamente`);
+    }
+    
+    initBioHUD({
+        scene: scene,
+        camera: camera,
+        createGridSimple: createGridSimple,
+        getCurrentGridParams: getCurrentGridParams,
+        calculateGridSize: calculateGridSize,
+        updatePanelGeometryAndPosition: updatePanelGeometryAndPosition,
+        updatePanelColor: updatePanelColor,
+        createPanelOrderLabel: createPanelOrderLabel
+    });
+    
+    // Configurar callback para actualizar paneles del HUD cuando cambia la resolución
+    setUpdateHUDPanelsCallback(updateHUDPanelsAfterGridChange);
+} catch (error) {
+    console.error('❌ Error crítico al crear WebGL Renderer:', error);
+    console.error('Posibles causas:');
+    console.error('1. WebGL no está disponible en este navegador');
+    console.error('2. El contexto WebGL se perdió');
+    console.error('3. Problemas con drivers de gráficos');
+    
+    // Mostrar mensaje de error al usuario
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,0,0,0.9); color: white; padding: 20px; border-radius: 8px; z-index: 10000; font-family: monospace; letter-spacing: 0.5px; text-align: center;';
+    errorDiv.innerHTML = `
+        <h2>❌ Error de WebGL</h2>
+        <p>No se pudo inicializar el renderizador WebGL.</p>
+        <p>Por favor, recarga la página o verifica que tu navegador soporte WebGL.</p>
+        <p style="font-size: 12px; margin-top: 10px;">Error: ${error.message}</p>
+    `;
+    document.body.appendChild(errorDiv);
+    
+    // Intentar crear un renderer básico como fallback (aunque probablemente no funcione)
+    throw error;
+}
 
 // Configuración del panel bioFX
 const bioFXPanel = document.getElementById('bioFX-panel');
@@ -503,6 +741,290 @@ glowSlider.addEventListener('input', updateBioFXEffect);
 glowRadiusSlider.addEventListener('input', updateBioFXEffect);
 glowThresholdSlider.addEventListener('input', updateBioFXEffect);
 
+// 🔥 NUEVO: Funciones para guardar y cargar estilo visual de bioFX
+function saveBioFXVisualStyle() {
+    try {
+        const visualStyle = {
+            color: colorPicker.value,
+            blendType: blendTypePicker.value,
+            intensity: intensitySlider.value,
+            glowIntensity: glowSlider.value,
+            glowRadius: glowRadiusSlider.value,
+            glowThreshold: glowThresholdSlider.value,
+            gridDivisions: currentDivisions, // 🔥 NUEVO: Incluir resolución del grid
+            timestamp: new Date().toISOString()
+        };
+        
+        localStorage.setItem('bioFX_visualStyle', JSON.stringify(visualStyle));
+        console.log('✅ Estilo visual de bioFX guardado en localStorage:', visualStyle);
+        
+        // Feedback visual en el botón
+        const saveButton = document.getElementById('bioFX-save-style');
+        if (saveButton) {
+            const originalText = saveButton.textContent;
+            saveButton.textContent = '✓ Guardado!';
+            saveButton.style.backgroundColor = '#0ff';
+            setTimeout(() => {
+                saveButton.textContent = originalText;
+                saveButton.style.backgroundColor = '#0f0';
+            }, 1500);
+        }
+    } catch (error) {
+        console.error('Error al guardar estilo visual de bioFX:', error);
+        const saveButton = document.getElementById('bioFX-save-style');
+        if (saveButton) {
+            const originalText = saveButton.textContent;
+            saveButton.textContent = '✗ Error';
+            saveButton.style.backgroundColor = '#f00';
+            setTimeout(() => {
+                saveButton.textContent = originalText;
+                saveButton.style.backgroundColor = '#0f0';
+            }, 1500);
+        }
+    }
+}
+
+function loadBioFXVisualStyle() {
+    try {
+        const savedStyle = localStorage.getItem('bioFX_visualStyle');
+        if (!savedStyle) {
+            console.log('No hay estilo visual guardado de bioFX');
+            return false;
+        }
+        
+        const visualStyle = JSON.parse(savedStyle);
+        console.log('Cargando estilo visual de bioFX desde localStorage:', visualStyle);
+        
+        // 🔥 NUEVO: Restaurar resolución del grid primero (si existe y es diferente)
+        // Solo actualizar si el grid ya está inicializado
+        if (visualStyle.gridDivisions && typeof visualStyle.gridDivisions === 'number' && currentGrid) {
+            const savedDivisions = visualStyle.gridDivisions;
+            // Validar que esté en rango válido (2-50)
+            if (savedDivisions >= 2 && savedDivisions <= 50 && savedDivisions !== currentDivisions) {
+                console.log(`Restaurando resolución del grid: ${currentDivisions} → ${savedDivisions}`);
+                currentDivisions = savedDivisions;
+                updateGrid(savedDivisions);
+            }
+        }
+        
+        // Aplicar valores guardados de bioFX
+        if (visualStyle.color) colorPicker.value = visualStyle.color;
+        if (visualStyle.blendType) blendTypePicker.value = visualStyle.blendType;
+        if (visualStyle.intensity) intensitySlider.value = visualStyle.intensity;
+        if (visualStyle.glowIntensity) glowSlider.value = visualStyle.glowIntensity;
+        if (visualStyle.glowRadius) glowRadiusSlider.value = visualStyle.glowRadius;
+        if (visualStyle.glowThreshold) glowThresholdSlider.value = visualStyle.glowThreshold;
+        
+        // Aplicar los efectos bioFX
+        updateBioFXEffect();
+        
+        console.log('✅ Estilo visual de bioFX (incluyendo resolución del grid) cargado exitosamente');
+        return true;
+    } catch (error) {
+        console.error('Error al cargar estilo visual de bioFX:', error);
+        return false;
+    }
+}
+
+// Event listener para el botón de guardar
+const saveStyleButton = document.getElementById('bioFX-save-style');
+if (saveStyleButton) {
+    saveStyleButton.addEventListener('click', saveBioFXVisualStyle);
+}
+
+// Cargar estilo visual automáticamente al inicio (después de que los elementos estén listos)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(loadBioFXVisualStyle, 100);
+    });
+} else {
+    setTimeout(loadBioFXVisualStyle, 100);
+}
+
+// 🔥 FUNCIONES DEL SISTEMA GLITCH
+function startGlitchEffect(panel) {
+    if (glitchActive) {
+        stopGlitchEffect(); // Detener glitch anterior si existe
+    }
+    
+    glitchActive = true;
+    glitchPanel = panel;
+    
+    // Guardar estado actual de los efectos bioFX
+    originalColorState = {
+        color: parseInt(colorPicker.value.substring(1), 16),
+        intensity: parseFloat(intensitySlider.value),
+        blendType: parseInt(blendTypePicker.value)
+    };
+    
+    console.log(`🔥 GLITCH ACTIVADO en panel #${panel.orderNumber}`);
+    console.log(`💾 Estado original guardado:`, originalColorState);
+    
+    // Crear efecto flash optimizado en el panel
+    startFlash(panel);
+    
+    // 🔥 CONFIGURAR PARÁMETROS DE REFRACCIÓN ROJA
+    setGlitchParameters({
+        rgbShift: 0.010,        // Desplazamiento RGB moderado
+        scanlines: 0.6,         // Scanlines moderadas
+        pixelation: 1.0,        // Sin pixelación, solo refracción
+        digitalNoise: 0.3,      // Ruido digital sutil
+        blockSize: 16.0,        // Bloques medianos para refracción
+        distortion: 0.15        // Distorsión horizontal moderada
+    });
+    
+    // Aplicar efecto rojo intenso constante
+    setColorEffect(0xff0000, 1.2, 1); // Rojo, intensidad alta, multiply
+    
+    // Iniciar glitch tradicional de post-procesado
+    let frameCount = 0;
+    let glitchTime = 0;
+    
+    glitchInterval = setInterval(() => {
+        frameCount++;
+        glitchTime += 0.033; // Incrementar tiempo para el shader
+        
+        // 🔥 INTENSIDAD ALTA PARA EFECTO BLOCKY
+        const baseIntensity = 0.8; // Aumentado para más blocky
+        const variation = Math.sin(frameCount * 0.05) * 0.3; // Variación más amplia
+        const currentIntensity = baseIntensity + variation;
+        
+        // 🔥 ACTUALIZAR TIEMPO DEL SHADER PARA ANIMACIONES
+        updateGlitchTime(glitchTime);
+        
+        // 🔥 ACTIVAR EFECTO GLITCH DE POST-PROCESADO
+        setGlitchEffect(currentIntensity, glitchTime);
+        
+        // 🔥 VARIAR PARÁMETROS PARA REFRACCIÓN DINÁMICA
+        if (frameCount % 90 === 0) { // Cada 3 segundos para variaciones suaves
+            // Cambiar intensidad de RGB shift aleatoriamente
+            const newRgbShift = 0.008 + Math.random() * 0.010; // 0.008 a 0.018
+            
+            // Mantener sin pixelación, solo refracción
+            const newPixelation = 1.0; // Sin pixelación
+            
+            // Cambiar tamaño de bloques de refracción
+            const newBlockSize = 12 + Math.random() * 16; // 12 a 28 para refracción
+            
+            setGlitchParameters({
+                rgbShift: newRgbShift,
+                pixelation: newPixelation,
+                blockSize: newBlockSize
+            });
+            
+            console.log(`🔥 GLITCH: Parámetros actualizados - RGB: ${newRgbShift.toFixed(3)}, Pixel: ${newPixelation.toFixed(1)}, Bloques: ${newBlockSize.toFixed(1)}`);
+        }
+        
+        // 🔥 PICOS DE DISTORSIÓN OCASIONALES
+        if (frameCount % 180 === 0) { // Cada 6 segundos
+            const spikeIntensity = 0.9 + Math.random() * 0.3; // 0.9 a 1.2
+            setGlitchEffect(spikeIntensity, glitchTime);
+            console.log(`🚨 PICO DE GLITCH - Intensidad: ${spikeIntensity.toFixed(2)}`);
+            
+            // Volver a normal después de 1 segundo
+            setTimeout(() => {
+                if (glitchActive) {
+                    setGlitchEffect(currentIntensity, glitchTime);
+                }
+            }, 1000);
+        }
+        
+        // 🔥 LOGS PERIÓDICOS (MENOS FRECUENTES)
+        if (frameCount % 300 === 0) { // Cada 10 segundos
+            console.log(`🔥 GLITCH TRADICIONAL Frame ${frameCount} - Post-procesado activo`);
+        }
+        
+    }, 33); // ~30 FPS para suavidad
+    
+    console.log(`🚨 GLITCH TRADICIONAL INICIADO - Panel #${panel.orderNumber} - Post-procesado con RGB shift, scanlines y corrupción digital`);
+}
+
+function stopGlitchEffect() {
+    if (!glitchActive) return;
+    
+    console.log(`🛑 DETENIENDO GLITCH CON ARTEFACTOS en panel #${glitchPanel?.orderNumber || 'desconocido'}`);
+    
+    glitchActive = false;
+    
+    // Detener el intervalo de glitch
+    if (glitchInterval) {
+        clearInterval(glitchInterval);
+        glitchInterval = null;
+    }
+    
+    // 🔥 DESACTIVAR EFECTO GLITCH DE POST-PROCESADO
+    disableGlitch();
+    
+    // Restaurar estado original de color
+    const colorHex = '#' + originalColorState.color.toString(16).padStart(6, '0');
+    colorPicker.value = colorHex;
+    blendTypePicker.value = originalColorState.blendType.toString();
+    intensitySlider.value = originalColorState.intensity.toString();
+    
+    // Aplicar efectos restaurados
+    setColorEffect(originalColorState.color, originalColorState.intensity, originalColorState.blendType);
+    updateBioFXEffect();
+    
+    console.log(`✅ Estado bioFX y geometría restaurados:`, originalColorState);
+    
+    // Limpiar referencia al panel
+    if (glitchPanel) {
+        // Detener flash del panel
+        glitchPanel.shouldFlash = false;
+        panelsFlashing.delete(glitchPanel);
+        glitchPanel = null;
+    }
+    
+    console.log(`🔄 Glitch tradicional desactivado - post-procesado restaurado a estado original`);
+}
+
+function handleGlitchCommand(output) {
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para preparar el efecto glitch', output);
+        return;
+    }
+    
+    if (selectedPanels.length > 1) {
+        showError('Seleccione solo un panel para el efecto glitch', output);
+        return;
+    }
+    
+    const panel = selectedPanels[0];
+    
+    if (panel.glitchReady) {
+        // Si el panel ya está preparado para glitch, desactivar
+        panel.glitchReady = false;
+        panel.shouldFlash = false;
+        panelsFlashing.delete(panel);
+        showSuccess(`Panel #${panel.orderNumber} - Glitch DESARMADO`, output);
+    } else {
+        // Preparar panel para glitch (modo durmiente)
+        panel.glitchReady = true;
+        
+        // Efecto visual sutil optimizado para indicar que está preparado
+        startFlash(panel);
+        
+        console.log(`🔥 Panel #${panel.orderNumber} PREPARADO para glitch (durmiente)`);
+        showSuccess(`Panel #${panel.orderNumber} - Glitch ARMADO y durmiente`, output);
+        
+        // Mostrar instrucciones
+        const instructionsDiv = document.createElement('div');
+        instructionsDiv.innerHTML = `
+            <br>🔥 <b>GLITCH DE REFRACCIÓN ROJA PREPARADO:</b>
+            <br>• <b>Activación:</b> Haz CLICK en el panel #${panel.orderNumber}
+            <br>• <b>Efecto:</b> Refracción en bloques + tinte rojo multiplicado
+            <br>• <b>Duración:</b> INFINITA hasta click externo
+            <br>• <b>Características:</b> Bloques que se desplazan, todo rojo, sin pixelación
+            <br>• <b>Desactivar:</b> Click fuera del panel o tecla
+            <br>• <b>Restauración:</b> Automática del post-procesado
+        `;
+        instructionsDiv.style.color = '#ff6666';
+        output.appendChild(instructionsDiv);
+    }
+}
+
 // Función para ocultar todos los menús
 function hideAllMenus() {
     const menus = [
@@ -518,7 +1040,7 @@ function hideAllMenus() {
 
 // Mostrar/ocultar paneles con la tecla V
 document.addEventListener('keydown', (event) => {
-    if (event.key.toLowerCase() === 'v') {
+    if (event.key && event.key.toLowerCase() === 'v') {
         toggleControlPanels();
     }
 });
@@ -559,17 +1081,23 @@ let panels = []; // Almacenar objetos de panel: { mesh, minCellIndex, maxCellInd
 const panelLineMaterialNormal = new THREE.LineBasicMaterial({ 
     color: 0xaaaaaa, // Gris medio
     linewidth: 1, // Nota: linewidth no funciona en WebGL
-    transparent: false // Los bordes no son transparentes
+    transparent: false, // Los bordes no son transparentes
+    depthTest: true, // Respetar depth buffer
+    depthWrite: true // Escribir en depth buffer para estar por encima
 });
 const panelLineMaterialHover = new THREE.LineBasicMaterial({ 
     color: 0xcccccc, // Gris claro
     linewidth: 1,
-    transparent: false
+    transparent: false,
+    depthTest: true,
+    depthWrite: true
 });
 const panelLineMaterialSelected = new THREE.LineBasicMaterial({ 
     color: 0xffffff, // Blanco
     linewidth: 2, // Más grueso al seleccionar
-    transparent: false
+    transparent: false,
+    depthTest: true,
+    depthWrite: true
 });
 
 // NUEVO: Materiales de RELLENO para los paneles (Escala de Grises con transparencia)
@@ -601,35 +1129,205 @@ const panelFillMaterialSelected = new THREE.MeshBasicMaterial({
 let pendingBoundingBox = null; // Para almacenar el bbox al cambiar resolución
 let currentlyHoveredPanel = null;
 
-// Variables para la animación del grid
-let gridAnimationInProgress = false;
-let gridAnimationStep = 0;
-let gridAnimationProgress = 0;
-let gridFlashCount = 0;
-let isFirstGridCreation = true; // Nueva variable para detectar primera creación
-let gridAnimationProps = {
-    targetScale: 1,
-    borderOpacity: 1,
-    linesOpacity: 0,
-    flashIntensity: 0
-};
+// Variables para la animación del grid (ya declaradas arriba al inicio del archivo)
 
 // Variables para la animación de paneles
 const panelsFlashing = new Set(); // Conjunto de paneles actualmente en animación flash
 const panelsResizing = new Set(); // Conjunto de paneles en animación de cambio de forma
 let doubleFlashPending = new Map(); // Map para controlar el doble flash
 
-// Función para iniciar un doble flash en un panel
-function startDoubleFlash(panelData) {
+// Función helper para iniciar flash (optimizada)
+function startFlash(panelData) {
+    if (!panelData) return;
     panelData.flashProgress = 0;
     panelData.shouldFlash = true;
-    doubleFlashPending.set(panelData, 1); // Indica que queda 1 flash adicional después del primero
+    panelData.flashMaterialsCloned = false; // Resetear flag al iniciar nuevo flash
     panelsFlashing.add(panelData);
+}
+
+// Función para iniciar un doble flash en un panel
+function startDoubleFlash(panelData) {
+    startFlash(panelData);
+    doubleFlashPending.set(panelData, 1); // Indica que queda 1 flash adicional después del primero
 }
 
 // Función para manejar doble click/tap en un panel
 function handlePanelDoubleClick(panelData) {
     if (panelData) {
+        // MANEJO DE BOTONES MODAL: + y - (doble click/tap)
+        if (panelData.isModalPlusButton || panelData.isModalMinusButton) {
+            const currentGridParams = getCurrentGridParams();
+            if (currentGridParams && panelData.containerPanel) {
+                // Buscar el panel de porcentaje correspondiente
+                const modalData = getModalState(panelData.containerPanel);
+                if (modalData && modalData.divisions[panelData.modalIndex]) {
+                    const percentagePanel = modalData.divisions[panelData.modalIndex].percentagePanel;
+                    if (percentagePanel) {
+                        // Determinar el cambio (+10 o -10)
+                        const delta = panelData.isModalPlusButton ? 10 : -10;
+                        updateModalPercentage(percentagePanel, delta, currentGridParams);
+                        
+                        // Flash visual SOLO en el botón clickeado (no en todos los paneles)
+                        panelData.flashProgress = 0;
+                        panelData.shouldFlash = true;
+                        panelsFlashing.add(panelData);
+                        
+                        return; // Salir inmediatamente para evitar cualquier otro procesamiento
+                    }
+                }
+            }
+        }
+        
+        // Handle print buttons double tap
+        if (panelData.isPrintButton && panelData.printButtonAction) {
+            panelData.printButtonAction();
+            return;
+        }
+        if (panelData.isPrintContinueButton && panelData.printButtonAction) {
+            panelData.printButtonAction();
+            return;
+        }
+        if (panelData.isPrintCancelButton && panelData.printButtonAction) {
+            panelData.printButtonAction();
+            return;
+        }
+        
+        // NUEVA FUNCIONALIDAD: Doble click en botón I AGREE avanza scroll
+        if (panelData.isAgreeButton && panelData.termsPanel) {
+            const termsPanel = panelData.termsPanel;
+            const textState = panelTextState.get(termsPanel);
+            if (textState && textState.useWhiteScrollIndicators) {
+                const currentGridParams = getCurrentGridParams();
+                if (currentGridParams) {
+                    // Calcular dimensiones del panel de términos
+                    const panelHeight = (termsPanel.maxCellIndex.y - termsPanel.minCellIndex.y + 1);
+                    const panelWidth = (termsPanel.maxCellIndex.x - termsPanel.minCellIndex.x + 1);
+                    const width = panelWidth * currentGridParams.cellSize;
+                    const height = panelHeight * currentGridParams.cellSize;
+                    const paddingSize = currentGridParams.cellSize;
+                    const textAreaHeight = height - (paddingSize * 2);
+                    
+                    // Calcular número máximo de líneas visibles
+                    const isUniline = panelHeight <= 3;
+                    const isTooSmall = textAreaHeight < (currentGridParams.cellSize * TEXT_CONFIG.fontSize * 0.8);
+                    
+                    let effectiveLineHeight;
+                    if (isTooSmall || isUniline) {
+                        effectiveLineHeight = panelHeight <= 1 ? TEXT_CONFIG.lineHeight * 0.2 :
+                                             panelHeight <= 2 ? TEXT_CONFIG.lineHeight * 0.3 :
+                                             panelHeight <= 3 ? TEXT_CONFIG.lineHeight * 0.4 :
+                                             TEXT_CONFIG.lineHeight;
+                    } else {
+                        effectiveLineHeight = TEXT_CONFIG.lineHeight;
+                    }
+                    
+                    const maxVisibleLines = isUniline ? 1 : Math.max(1, Math.floor(textAreaHeight / (currentGridParams.cellSize * effectiveLineHeight)));
+                    
+                    // Avanzar scrollOffset en una pantalla
+                    const newScrollOffset = Math.min(
+                        textState.scrollOffset + maxVisibleLines,
+                        Math.max(0, textState.lines.length - maxVisibleLines)
+                    );
+                    
+                    // 🔥 CRITICAL: Asegurar que el panel de términos NO flashee al actualizar texto
+                    const wasFlashing = termsPanel.shouldFlash;
+                    const wasInFlashingSet = panelsFlashing.has(termsPanel);
+                    
+                    if (newScrollOffset !== textState.scrollOffset) {
+                        textState.scrollOffset = newScrollOffset;
+                        createPanelText(termsPanel, currentGridParams.cellSize);
+                        console.log(`📜 Scroll de términos avanzado (doble click I AGREE): ${textState.scrollOffset}/${textState.lines.length - maxVisibleLines}`);
+                    } else {
+                        // Si ya está al final, volver al inicio
+                        textState.scrollOffset = 0;
+                        createPanelText(termsPanel, currentGridParams.cellSize);
+                        console.log(`📜 Scroll de términos reiniciado al inicio (doble click I AGREE)`);
+                    }
+                    
+                    // 🔥 CRITICAL: Flash visual en el botón I AGREE y el panel de términos
+                    // Solo estos dos paneles deben flashear, no todos los paneles
+                    startFlash(panelData);
+                    
+                    // También hacer flash en el panel de términos
+                    termsPanel.flashProgress = 0;
+                    termsPanel.shouldFlash = true;
+                    panelsFlashing.add(termsPanel);
+                    
+                    return; // Salir para evitar otros comportamientos
+                }
+            }
+        }
+        
+        // 🔥 NUEVA FUNCIONALIDAD: Doble click/tap en panel con modelo carga en viewer
+        if (panelData.modelData && panelData.modelData.url && 
+            !panelData.modelData.isViewer && !panelData.isViewer &&
+            !panelData.isKeyboardKey) {
+            
+            // Buscar paneles viewer activos
+            const viewerPanels = panels.filter(p => 
+                p !== panelData && 
+                p.isViewer && 
+                p.modelData && 
+                p.modelData.isViewer &&
+                !p.isKeyboardKey
+            );
+            
+            if (viewerPanels.length > 0) {
+                const viewerPanel = viewerPanels[0];
+                const sourceModelData = panelData.modelData;
+                const currentGridParams = getCurrentGridParams();
+                
+                if (currentGridParams && sourceModelData.url) {
+                    loadModelToPanel(viewerPanel, sourceModelData.url, currentGridParams.cellSize).then((success) => {
+                        if (success) {
+                            viewerPanel.modelData.name = sourceModelData.name;
+                            viewerPanel.modelData.url = sourceModelData.url;
+                            viewerPanel.modelData.isRotating = true;
+                            viewerPanel.modelData.rotationSpeed = sourceModelData.rotationSpeed || 0.005;
+                            viewerPanel.modelData.scientificName = sourceModelData.scientificName || modelScientificNames[sourceModelData.name] || null; // 🔥 NUEVO: Preservar o asignar nombre científico
+                            
+                            console.log(`🖼️ Modelo ${sourceModelData.name} cargado en viewer #${viewerPanel.orderNumber} (doble click/tap)`);
+                            
+                            // Flash visual en el panel con modelo y el viewer
+                            panelData.flashProgress = 0;
+                            panelData.shouldFlash = true;
+                            panelsFlashing.add(panelData);
+                            
+                            viewerPanel.flashProgress = 0;
+                            viewerPanel.shouldFlash = true;
+                            panelsFlashing.add(viewerPanel);
+                            
+                            // Mostrar nombre científico en el panel libre más cercano al viewer
+                            const closestFreePanel = findClosestFreePanel(viewerPanel);
+                            if (closestFreePanel) {
+                                const scientificName = modelScientificNames[sourceModelData.name];
+                                
+                                if (scientificName) {
+                                    closestFreePanel.hasText = true;
+                                    closestFreePanel.speciesPanel = true;
+                                    closestFreePanel.speciesName = scientificName;
+                                    createPanelText(closestFreePanel, currentGridParams.cellSize);
+                                    setPanelText(closestFreePanel, scientificName, currentGridParams.cellSize);
+                                    
+                                    // Flash visual en el panel de especie
+                                    closestFreePanel.flashProgress = 0;
+                                    closestFreePanel.shouldFlash = true;
+                                    panelsFlashing.add(closestFreePanel);
+                                    
+                                    console.log(`📄 Nombre científico "${scientificName}" mostrado en panel #${closestFreePanel.orderNumber} (doble click/tap, más cercano al viewer)`);
+                                }
+                            }
+                        }
+                    });
+                    
+                    return; // Salir para evitar otros comportamientos
+                }
+            } else {
+                // Si no hay viewer, mostrar mensaje en consola
+                console.log(`⚠️ No hay viewer activo. Usa el comando 'viewer' para crear uno.`);
+            }
+        }
+        
         // Si el panel está vacío y bioKeyb está visible, iniciar modo texto
         const isPanelTrulyEmpty = !panelData.hasText && 
                                  !panelData.modelData && 
@@ -663,6 +1361,30 @@ let dragStartTimer = null; // Temporizador para retrasar el inicio del arrastre
 const dragStartDelay = 500; // 0.5 segundos de retraso para iniciar arrastre
 let potentialDragPanel = null; // Panel potencial para arrastrar (durante el retraso)
 
+// Variables globales para mantener estado de teclas modificadoras durante selección
+let selectionModifierKeys = {
+    shiftKey: false,
+    ctrlKey: false,
+    altKey: false
+};
+
+// Variable global para almacenar el último modelo clickeado desde la rejilla de "models"
+let lastClickedModelFromGrid = {
+    name: 'corazon', // Modelo por defecto
+    url: './models/corazon.obj',
+    scientificName: 'HOMO SAPIENS'
+};
+
+// 🔥 SISTEMA DE GLITCH INTENSO
+let glitchActive = false;
+let glitchInterval = null;
+let glitchPanel = null;
+let originalColorState = {
+    color: 0x0096ff,
+    intensity: 1.0,
+    blendType: 1
+};
+
 // Variable para controlar la visibilidad de los controles
 let controlsVisible = true;
 
@@ -674,58 +1396,26 @@ let savedScreenStates = new Array(10).fill(null); // 10 slots para estados (0-9)
 let lastSavedStateIndex = -1; // Último estado guardado
 
 // NUEVAS variables y funciones para el sistema de SLOTS (Ctrl+Shift+Num y Ctrl+Num)
-const MAX_SLOTS = 10;
-let slots; // Declarar la variable de slots. Será inicializada por loadSlotsFromLocalStorage.
+// Ahora usando bioSlots.js - MAX_SLOTS aumentado a 30
+let slots; // Variable local que apunta a getSlots() del módulo
+let currentSlotIndex = 0; // Variable local sincronizada con el módulo
 
-// Función para guardar el array de slots completo en localStorage
-function persistSlotsToLocalStorage() {
-    try {
-        console.log('Intentando persistir slots. Contenido actual de slots antes de stringify:', slots);
-        const slotsJSON = JSON.stringify(slots);
-        console.log('Slots convertidos a JSON para localStorage:', slotsJSON);
-        localStorage.setItem('bioPrint_slots_data', slotsJSON);
-        console.log('Slots persistidos en localStorage.');
-    } catch (error) {
-        console.error('Error al persistir slots en localStorage:', error);
-        // Considerar informar al usuario si el guardado falla (ej. localStorage lleno)
+// Wrapper para obtener slots (compatibilidad con código existente)
+function getSlotsLocal() {
+    if (!slots) {
+        slots = getSlots();
     }
+    return slots;
 }
 
-// Función para cargar el array de slots desde localStorage al iniciar
-function loadSlotsFromLocalStorage() {
-    const storedSlotsData = localStorage.getItem('bioPrint_slots_data');
-    console.log('Datos crudos de slots leídos desde localStorage al iniciar:', storedSlotsData);
-    if (storedSlotsData) {
-        try {
-            const parsedSlots = JSON.parse(storedSlotsData);
-            // Validar que lo cargado es un array y tiene la longitud esperada
-            if (Array.isArray(parsedSlots) && parsedSlots.length === MAX_SLOTS) {
-                slots = parsedSlots;
-                console.log(`Slots cargados desde localStorage (${slots.filter(s => s !== null).length} slots con datos).`);
-            } else {
-                console.warn('Los datos de slots en localStorage son inválidos o tienen una longitud incorrecta. Se usarán slots vacíos por defecto.');
-                slots = new Array(MAX_SLOTS).fill(null);
-            }
-        } catch (error) {
-            console.error('Error al parsear slots desde localStorage. Se usarán slots vacíos por defecto:', error);
-            slots = new Array(MAX_SLOTS).fill(null);
-        }
-    } else {
-        // No hay datos guardados, inicializar con slots vacíos
-        console.log('No se encontraron slots persistidos en localStorage. Inicializando slots vacíos.');
-        slots = new Array(MAX_SLOTS).fill(null);
-    }
-}
-
-// Cargar slots persistentes al iniciar la aplicación
+// Cargar slots persistentes al iniciar la aplicación (migración automática incluida)
 loadSlotsFromLocalStorage();
+slots = getSlots(); // Inicializar variable local
+currentSlotIndex = getCurrentSlotIndex(); // Sincronizar índice
 
 // Función para guardar el estado en un slot (Ctrl+Shift+Numero)
+// Ahora usando bioSlots.js
 async function saveToSlot(slotIndex) {
-    if (slotIndex < 0 || slotIndex >= MAX_SLOTS) {
-        console.error(`Slot ${slotIndex} inválido.`);
-        return;
-    }
     const config = getSerializableConfig();
     if (!config) {
         console.error('Error Crítico: getSerializableConfig() devolvió null. No se guardará nada en el slot.');
@@ -737,31 +1427,31 @@ async function saveToSlot(slotIndex) {
         return;
     }
     
-    console.log(`Intentando guardar en Slot ${slotIndex}. Configuración obtenida:`, JSON.parse(JSON.stringify(config)));
-
-    slots[slotIndex] = JSON.stringify(config); 
-    
-    persistSlotsToLocalStorage(); 
-
-    // Flash de confirmación visual
+    // Función para trigger flash
+    const triggerFlash = () => {
     gridAnimationInProgress = true;
     gridAnimationStep = 2; 
     gridAnimationProgress = 0;
     gridFlashCount = 0;
-
-    updateSlotsPanelUI(); // Actualizar la UI después de todas las operaciones
+    };
+    
+    // Guardar usando el módulo bioSlots.js
+    const success = bioSlotsSaveToSlot(slotIndex, config, updateSlotsPanelUI, triggerFlash);
+    
+    if (success) {
+        slots = getSlots(); // Actualizar referencia local
+    }
 }
 
 // Función para cargar el estado desde un slot (Ctrl+Numero)
+// Ahora usando bioSlots.js con soporte para popups
 async function loadFromSlot(slotIndex) {
-    if (slotIndex < 0 || slotIndex >= MAX_SLOTS) {
-        console.error(`Slot ${slotIndex} inválido.`);
-        return;
-    }
-    const slotDataString = slots[slotIndex];
-    if (!slotDataString) {
+    // Cargar configuración usando el módulo bioSlots.js
+    const config = bioSlotsLoadFromSlot(slotIndex);
+    
+    if (!config) {
         console.warn(`Slot ${slotIndex} está vacío.`);
-        // Podríamos añadir una indicación visual en el panel de slots si se intenta cargar uno vacío.
+        // Indicación visual en el panel de slots
         const slotEntry = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
         if (slotEntry) {
             const originalText = slotEntry.textContent;
@@ -775,16 +1465,17 @@ async function loadFromSlot(slotIndex) {
         }
         return;
     }
+    
     try {
-        const config = JSON.parse(slotDataString);
         console.log(`Cargando configuración desde Slot ${slotIndex}:`, JSON.parse(JSON.stringify(config)));
         
-        // Limpiar la escena y aplicar la nueva configuración
-        // La función applyConfigurationFromData se encargará de limpiar paneles, etc.
+        // Cargar como configuración normal en grid principal
         const success = await applyConfigurationFromData(config); 
 
         if (success) {
-            console.log(`Ctrl+${slotIndex}: Estado cargado y aplicado desde Slot ${slotIndex}.`);
+            setCurrentSlotIndex(slotIndex);
+            currentSlotIndex = slotIndex;
+            console.log(`Slot ${slotIndex}: Estado cargado y aplicado desde Slot ${slotIndex}.`);
             // Flash de confirmación visual
             gridAnimationInProgress = true;
             gridAnimationStep = 2; // Solo paso de flash
@@ -793,8 +1484,7 @@ async function loadFromSlot(slotIndex) {
             updateSlotsPanelUI(); // Asegurar que la UI refleje el estado cargado (por si hay fechas, etc)
         } else {
             console.error(`Error al aplicar la configuración del Slot ${slotIndex}.`);
-            // Considerar mostrar un error en la UI del slot
-             const slotEntryStatus = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
+            const slotEntryStatus = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
             if (slotEntryStatus) {
                 slotEntryStatus.textContent = 'Error al Aplicar';
                 slotEntryStatus.title = 'Hubo un problema al aplicar los datos de este slot.';
@@ -803,7 +1493,377 @@ async function loadFromSlot(slotIndex) {
 
     } catch (error) {
         console.error(`Error al cargar datos del Slot ${slotIndex}:`, error);
-        // Considerar mostrar un error en la UI del slot
+        const slotEntryStatus = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
+        if (slotEntryStatus) {
+            slotEntryStatus.textContent = 'Error de Carga';
+            slotEntryStatus.title = `Error: ${error.message}`;
+        }
+    }
+}
+
+// Función para cargar el estado desde un slot en el HUD (Ctrl+Numero con HUD activo)
+async function loadFromSlotToHUD(slotIndex) {
+    // Cargar configuración usando el módulo bioSlots.js
+    const config = bioSlotsLoadFromSlot(slotIndex);
+    
+    if (!config) {
+        console.warn(`Slot ${slotIndex} está vacío.`);
+        // Indicación visual en el panel de slots
+        const slotEntry = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
+        if (slotEntry) {
+            const originalText = slotEntry.textContent;
+            slotEntry.textContent = 'Vacío (No se puede cargar)';
+            slotEntry.style.color = '#ff8800'; // Naranja para advertencia
+            setTimeout(() => {
+                slotEntry.textContent = originalText;
+                slotEntry.style.color = ''; // Restaurar color original
+                updateSlotsPanelUI(); // Re-actualizar para asegurar estado correcto
+            }, 2000);
+        }
+        return;
+    }
+    
+    try {
+        console.log(`Cargando configuración en HUD desde Slot ${slotIndex}:`, JSON.parse(JSON.stringify(config)));
+        
+        // Limpiar paneles anteriores antes de cargar nuevo slot
+        clearHUDPanels((panel) => {
+                cleanupPanelText(panel);
+                cleanupPanelModels(panel);
+                cleanupGenomModels(panel);
+                cleanupCodonModels(panel);
+            });
+            
+        // IMPORTANTE: Ajustar el grid del HUD a las divisiones del slot guardado PRIMERO
+        // y esperar a que esté completamente actualizado antes de cargar paneles
+        const slotDivisions = config.grid?.divisions || currentDivisions;
+        const currentHUDDivisions = getHUDGridParams()?.cellsX || currentDivisions;
+        
+        if (slotDivisions !== currentHUDDivisions) {
+            console.log(`Ajustando grid HUD: ${currentHUDDivisions} → ${slotDivisions} divisiones (del slot)`);
+            updateHUDGrid(slotDivisions);
+            // Esperar múltiples frames para asegurar que el grid esté completamente actualizado
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            
+            // Verificar que el grid se actualizó correctamente
+            const updatedGridParams = getHUDGridParams();
+            if (updatedGridParams && updatedGridParams.cellsX === slotDivisions) {
+                console.log(`Grid HUD verificado: ${updatedGridParams.cellsX} divisiones`);
+            } else {
+                console.warn(`Grid HUD puede no haberse actualizado correctamente. Esperado: ${slotDivisions}, Obtenido: ${updatedGridParams?.cellsX}`);
+                // Esperar otro frame por si acaso
+                await new Promise(resolve => requestAnimationFrame(resolve));
+            }
+        }
+        
+        // Obtener parámetros del grid HUD DESPUÉS de asegurar que está actualizado
+        const hudGridParams = getHUDGridParams();
+        if (!hudGridParams) {
+            console.error('No se pueden obtener parámetros del grid HUD después de actualizarlo');
+            return;
+        }
+        console.log(`Parámetros del grid HUD obtenidos: ${hudGridParams.cellsX} divisiones, cellSize: ${hudGridParams.cellSize}`);
+        
+        // Cargar paneles del slot - REPLICAR EXACTAMENTE EL COMPORTAMIENTO DEL GRID ORIGINAL
+        if (config.panels && Array.isArray(config.panels)) {
+            for (const panelInfo of config.panels) {
+                // IMPORTANTE: Usar los parámetros que ya obtuvimos, no volver a obtenerlos
+                if (!hudGridParams) {
+                    console.error('No se pueden obtener parámetros del grid HUD');
+                    continue;
+                }
+                
+                // Asegurar que el número de orden es un entero válido (igual que en applyConfigurationFromData)
+                const orderNumber = parseInt(panelInfo.orderNumber);
+                if (isNaN(orderNumber)) {
+                    console.warn('PanelInfo con número de orden inválido, omitiendo:', panelInfo.orderNumber);
+                    continue;
+                }
+                
+                // CRÍTICO: Usar los MISMOS índices de celda que el slot guardado
+                // NO convertir índices - dejar que updatePanelGeometryAndPosition calcule las posiciones
+                // usando los parámetros del grid del HUD (igual que en el grid original)
+                const panelData = {
+                    group: null,
+                    minCellIndex: panelInfo.minCellIndex, // USAR ÍNDICES ORIGINALES SIN CONVERSIÓN
+                    maxCellIndex: panelInfo.maxCellIndex, // USAR ÍNDICES ORIGINALES SIN CONVERSIÓN
+                    orderNumber: orderNumber,
+                    showOrderNumber: panelInfo.showOrderNumber !== undefined ? panelInfo.showOrderNumber : false,
+                    hasText: panelInfo.behavior?.hasText || false,
+                    selected: panelInfo.selected || false,
+                    hovered: false,
+                    borderLines: []
+                };
+                
+                console.log(`Panel P${panelData.orderNumber}: Usando índices originales (${panelInfo.minCellIndex.x},${panelInfo.minCellIndex.y})-(${panelInfo.maxCellIndex.x},${panelInfo.maxCellIndex.y}) con parámetros HUD: cellSize=${hudGridParams.cellSize}, cellsX=${hudGridParams.cellsX}, halfWidth=${hudGridParams.halfWidth}, halfHeight=${hudGridParams.halfHeight}`);
+                
+                // IMPORTANTE: Actualizar geometría y posición usando los parámetros del HUD
+                // Esto calculará las posiciones correctas basándose en los índices y los parámetros del grid
+                updatePanelGeometryAndPosition(panelData, hudGridParams);
+                
+                if (panelData && panelData.group) {
+                    // Ajustar posición Z al plano HUD (relativo al hudScene que ya está en HUD_PLANE_Z)
+                    panelData.group.position.z = 0.02;
+                    
+                    // Asegurar que todos los hijos tengan Z relativo correcto
+                    panelData.group.traverse((child) => {
+                        if (child.position && child !== panelData.group) {
+                            // Los hijos deben tener Z relativo al grupo, no absoluto
+                            if (Math.abs(child.position.z - HUD_PLANE_Z) < 0.1) {
+                                child.position.z = 0;
+                            }
+                        }
+                    });
+                    
+                    // Añadir directamente al HUD (no a la escena principal)
+                    const hudScene = getHUDScene();
+                    if (hudScene) {
+                        // Asegurar que no esté en la escena principal
+                        if (scene.children.includes(panelData.group)) {
+                            scene.remove(panelData.group);
+                        }
+                        hudScene.add(panelData.group);
+                        addHUDPanel(panelData);
+                        console.log(`Panel P${panelData.orderNumber} añadido directamente al HUD con parámetros: cellSize=${hudGridParams.cellSize}, halfWidth=${hudGridParams.halfWidth}, halfHeight=${hudGridParams.halfHeight}`);
+                    } else {
+                        console.error('No se pudo obtener hudScene para añadir panel');
+                        continue;
+                    }
+                    
+                    // Restaurar comportamiento
+                    if (panelInfo.behavior) {
+                        await restorePanelBehaviorFromData(panelData, panelInfo.behavior, hudGridParams);
+                    }
+                    
+                    updatePanelColor(panelData);
+                    createPanelOrderLabel(panelData);
+                } else {
+                    console.error('Error: panelData o panelData.group es null después de updatePanelGeometryAndPosition');
+                }
+            }
+            
+        setCurrentSlotIndex(slotIndex);
+        currentSlotIndex = slotIndex;
+        console.log(`Ctrl+${slotIndex}: HUD cargado desde Slot ${slotIndex}.`);
+        // Flash de confirmación visual
+        gridAnimationInProgress = true;
+        gridAnimationStep = 2;
+        gridAnimationProgress = 0;
+        gridFlashCount = 0;
+        updateSlotsPanelUI();
+            // IMPORTANTE: Usar cellsX del hudGridParams, que debería ser igual a las divisiones del slot
+            // NO usar currentDivisions como fallback, usar las divisiones del slot
+            const popupDivisions = hudGridParams.cellsX || slotDivisions;
+            
+            console.log(`Divisiones: Slot original=${originalDivisions}, Popup=${popupDivisions}, Grid principal=${currentDivisions}`);
+            
+            // CRÍTICO: Si el popup y el grid principal tienen las mismas divisiones,
+            // NO debemos convertir índices, incluso si el slot tiene divisiones diferentes.
+            // En su lugar, usamos los índices originales y el cellSize del popup se ajustará automáticamente.
+            const shouldConvertIndices = (popupDivisions !== currentDivisions) && (originalDivisions !== popupDivisions);
+            
+            // Función para convertir índices de celda del grid original al grid popup
+            const convertCellIndices = (minIndex, maxIndex, fromDivisions, toDivisions) => {
+                if (!shouldConvertIndices || fromDivisions === toDivisions) {
+                    console.log(`  No conversión necesaria: divisiones iguales o popup=principal (${fromDivisions}→${toDivisions})`);
+                    return { min: minIndex, max: maxIndex };
+                }
+                const ratio = toDivisions / fromDivisions;
+                const newMin = Math.round(minIndex * ratio);
+                const newMax = Math.round(maxIndex * ratio);
+                console.log(`  Conversión: ratio=${ratio.toFixed(2)}, ${minIndex}-${maxIndex} → ${newMin}-${newMax}`);
+                // Asegurar que los índices estén dentro de los límites del grid popup
+                const clampedMin = Math.max(0, Math.min(toDivisions - 1, newMin));
+                const clampedMax = Math.max(0, Math.min(toDivisions - 1, newMax));
+                if (clampedMin !== newMin || clampedMax !== newMax) {
+                    console.log(`  Ajustado por límites: ${newMin}-${newMax} → ${clampedMin}-${clampedMax}`);
+                }
+                return { min: clampedMin, max: clampedMax };
+            };
+            
+            if (shouldConvertIndices) {
+                console.log(`Ajustando resolución: Grid original ${originalDivisions} divisiones → Popup ${popupDivisions} divisiones`);
+            } else {
+                console.log(`Sin conversión: Popup y grid principal tienen las mismas divisiones (${popupDivisions}), usando índices originales del slot`);
+            }
+            
+            // Cargar paneles en el popup usando los parámetros del grid popup actual
+            // Los paneles se escalarán/adaptarán al grid del popup
+            // REFACTORIZADO: Seguir el mismo patrón que applyConfigurationFromData
+            if (config.panels && Array.isArray(config.panels)) {
+                for (const panelInfo of config.panels) {
+                    try {
+                        // Convertir índices de celda del grid original al grid popup
+                        const convertedX = convertCellIndices(
+                            panelInfo.minCellIndex.x,
+                            panelInfo.maxCellIndex.x,
+                            originalDivisions,
+                            popupDivisions
+                        );
+                        const convertedY = convertCellIndices(
+                            panelInfo.minCellIndex.y,
+                            panelInfo.maxCellIndex.y,
+                            originalDivisions,
+                            popupDivisions
+                        );
+                        
+                        console.log(`Panel P${panelInfo.orderNumber}: Índices originales (${panelInfo.minCellIndex.x},${panelInfo.minCellIndex.y})-(${panelInfo.maxCellIndex.x},${panelInfo.maxCellIndex.y}) → Convertidos (${convertedX.min},${convertedY.min})-(${convertedX.max},${convertedY.max})`);
+                        console.log(`  - Tamaño original: ${panelInfo.maxCellIndex.x - panelInfo.minCellIndex.x + 1}x${panelInfo.maxCellIndex.y - panelInfo.minCellIndex.y + 1} celdas`);
+                        console.log(`  - Tamaño convertido: ${convertedX.max - convertedX.min + 1}x${convertedY.max - convertedY.min + 1} celdas`);
+                        console.log(`  - cellSize popup: ${hudGridParams.cellSize}, cellSize principal: ${getCurrentGridParams()?.cellSize}`);
+                        
+                        // Crear panel base (igual que en applyConfigurationFromData)
+                        const orderNumber = parseInt(panelInfo.orderNumber);
+                        if (isNaN(orderNumber)) {
+                            console.warn('PanelInfo con número de orden inválido, omitiendo:', panelInfo.orderNumber);
+                            continue;
+                        }
+                        
+                        const panel = {
+                            group: null,
+                            minCellIndex: { x: convertedX.min, y: convertedY.min },
+                            maxCellIndex: { x: convertedX.max, y: convertedY.max },
+                            orderNumber: orderNumber,
+                            showOrderNumber: panelInfo.showOrderNumber !== undefined ? panelInfo.showOrderNumber : false,
+                            hasText: panelInfo.behavior?.hasText || false,
+                            selected: panelInfo.selected || false,
+                            isModelingPanel: panelInfo.isModelingPanel || false,
+                            navigateToSlot: typeof panelInfo.navigateToSlot === 'number' ? panelInfo.navigateToSlot : undefined,
+                            loadToHUDSlot: typeof panelInfo.loadToHUDSlot === 'number' ? panelInfo.loadToHUDSlot : undefined, // 🔥 NUEVO: Restaurar trigger HUD
+                            speciesPanel: panelInfo.behavior?.isSpeciesPanel || false,
+                            speciesName: panelInfo.behavior?.speciesName || null
+                        };
+                        
+                        // Usar updatePanelGeometryAndPosition para crear la geometría (igual que applyConfigurationFromData)
+                        // IMPORTANTE: updatePanelGeometryAndPosition puede añadir el panel a scene, así que lo removemos después
+                        updatePanelGeometryAndPosition(panel, hudGridParams);
+                        
+                        // Ajustar posición Z al plano popup
+                        if (panel.group) {
+                            // IMPORTANTE: hudScene ya está en Z=HUD_PLANE_Z.
+                            // Los hijos deben estar en Z=0 (o ligeramente elevados) relativo al padre.
+                            // La posición X e Y ya está calculada correctamente por updatePanelGeometryAndPosition
+                            // Solo ajustamos Z
+                            panel.group.position.z = 0.02; // Ligeramente por encima del grid del popup (que está en 0 relativo)
+                            
+                            panel.group.traverse((child) => {
+                                if (child.position) {
+                                    // No cambiar la Z de los hijos si ya es relativa correcta
+                                    // Solo asegurar que no tengan Z=HUD_PLANE_Z acumulado
+                                    // child.position.z = 0; 
+                                }
+                            });
+                            
+                            // Añadir al popup en lugar del grid principal
+                            const hudScene = getHUDScene();
+                            if (hudScene) {
+                                // Verificar que el hudScene esté visible
+                                if (!hudScene.visible) {
+                                    console.warn(`HUDScene no está visible, activándolo...`);
+                                    hudScene.visible = true;
+                                }
+                                
+                                // Remover de la escena principal si se añadió ahí (updatePanelGeometryAndPosition puede haberlo añadido)
+                                if (scene.children.includes(panel.group)) {
+                                    scene.remove(panel.group);
+                                }
+                                
+                                // Añadir al popup
+                                if (!hudScene.children.includes(panel.group)) {
+                                    hudScene.add(panel.group);
+                                    console.log(`Panel P${panel.orderNumber} añadido al hudScene (${hudScene.children.length} hijos totales)`);
+                                }
+                                
+                                // Asegurar que el panel.group sea visible
+                                panel.group.visible = true;
+                                // Asegurar renderOrder alto para que esté por encima de la cortina
+                                panel.group.renderOrder = 200;
+                                panel.group.traverse((child) => {
+                                    child.visible = true;
+                                    if (child.renderOrder !== undefined) {
+                                        child.renderOrder = 200;
+                                    }
+                                });
+                                
+                                addHUDPanel(panel);
+                                
+                                // 🔥 CRITICAL: Actualizar materiales de las líneas de borde después de añadir al HUD
+                                if (panel.borderLines && panel.borderLines.length > 0) {
+                                    panel.borderLines.forEach(borderLine => {
+                                        // Crear material brillante para HUD
+                                        const hudMaterial = panelLineMaterialNormal.clone();
+                                        hudMaterial.color.setHex(0xffffff);
+                                        hudMaterial.depthTest = false;
+                                        hudMaterial.depthWrite = false;
+                                        hudMaterial.transparent = false;
+                                        borderLine.material = hudMaterial;
+                                        borderLine.renderOrder = 200;
+                                        borderLine.position.z = 0.1; // Posición Z mayor para estar por delante de la cortina
+                                        borderLine.visible = true;
+                                    });
+                                }
+                                
+                                // Actualizar color del panel para asegurar materiales correctos
+                                updatePanelColor(panel);
+                                
+                                // 🔥 CRITICAL: Actualizar materiales de las líneas de borde después de añadir al HUD
+                                if (panel.borderLines && panel.borderLines.length > 0) {
+                                    panel.borderLines.forEach(borderLine => {
+                                        // Crear material brillante para HUD
+                                        const hudMaterial = panelLineMaterialNormal.clone();
+                                        hudMaterial.color.setHex(0xffffff);
+                                        hudMaterial.depthTest = false;
+                                        hudMaterial.depthWrite = false;
+                                        hudMaterial.transparent = false;
+                                        borderLine.material = hudMaterial;
+                                        borderLine.renderOrder = 200;
+                                        borderLine.position.z = 0.1; // Posición Z mayor para estar por delante de la cortina
+                                        borderLine.visible = true;
+                                    });
+                                }
+                                
+                                // Actualizar color del panel para asegurar materiales correctos
+                                updatePanelColor(panel);
+                                
+                                console.log(`Panel P${panel.orderNumber} añadido al HUD en Z local=0.02 (Mundo=${HUD_PLANE_Z}), visible: ${panel.group.visible}`);
+                            } else {
+                                console.error('No se pudo obtener hudScene para añadir panel');
+                                continue;
+                            }
+                            
+                            // Restaurar comportamiento del panel
+                            if (panelInfo.behavior) {
+                                await restorePanelBehaviorFromData(panel, panelInfo.behavior, hudGridParams);
+                            }
+                            
+                            // Actualizar colores
+                            updatePanelColor(panel);
+                            
+                            // Crear etiqueta con número de orden
+                            createPanelOrderLabel(panel);
+                        } else {
+                            console.error('Error: panel.group es null después de updatePanelGeometryAndPosition');
+                        }
+                    } catch (error) {
+                        console.error('Error al restaurar panel en popup:', error);
+                    }
+                }
+            }
+            
+            setCurrentSlotIndex(slotIndex);
+            currentSlotIndex = slotIndex;
+            console.log(`Ctrl+${slotIndex}: Configuración cargada en popup desde Slot ${slotIndex}.`);
+            // Flash de confirmación visual
+            gridAnimationInProgress = true;
+            gridAnimationStep = 2;
+            gridAnimationProgress = 0;
+            gridFlashCount = 0;
+            updateSlotsPanelUI();
+        }
+
+    } catch (error) {
+        console.error(`Error al cargar datos del Slot ${slotIndex} en popup:`, error);
         const slotEntryStatus = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
         if (slotEntryStatus) {
             slotEntryStatus.textContent = 'Error de Carga';
@@ -825,12 +1885,34 @@ function assignPanelToSlotNavigation(panelData, slotIndex) {
 
     panelData.navigateToSlot = slotIndex;
     console.log(`Shift+${slotIndex}: Panel P${panelData.orderNumber} asignado para navegar al Slot ${slotIndex} al hacer click.`);
-    // Podrías añadir una indicación visual al panel (ej. un pequeño ícono o cambio de color sutil)
-    // Por ahora, solo un log.
     // Efecto flash para confirmar
     panelData.flashProgress = 0;
     panelData.shouldFlash = true;
     panelsFlashing.add(panelData);
+}
+
+// Función para navegar al siguiente slot (avanzar)
+// Ahora usando bioSlots.js
+function navigateToNextSlotLocal() {
+    const nextSlot = navigateToNextSlot((slotIndex) => {
+        loadFromSlot(slotIndex);
+    });
+    if (nextSlot !== null) {
+        currentSlotIndex = nextSlot;
+        setCurrentSlotIndex(nextSlot);
+    }
+}
+
+// Función para navegar al slot anterior (retroceder)
+// Ahora usando bioSlots.js
+function navigateToPreviousSlotLocal() {
+    const prevSlot = navigateToPreviousSlot((slotIndex) => {
+        loadFromSlot(slotIndex);
+    });
+    if (prevSlot !== null) {
+        currentSlotIndex = prevSlot;
+        setCurrentSlotIndex(prevSlot);
+    }
 }
 
 // Función para calcular el tamaño del grid basado en el aspecto del canvas
@@ -851,6 +1933,78 @@ function calculateGridSize() {
             height: maxSize / aspect
         };
     }
+}
+
+// Función para identificar paneles libres o reutilizables para especies
+function findFreePanels() {
+    // Primero buscar paneles de especies existentes (reutilizables)
+    const speciesPanels = panels.filter(panel => {
+        return panel.speciesPanel && panel.hasText && !panel.isKeyboardKey;
+    });
+    
+    // Si hay paneles de especies, devolver el primero
+    if (speciesPanels.length > 0) {
+        return speciesPanels;
+    }
+    
+    // Si no hay paneles de especies, buscar paneles completamente libres
+    return panels.filter(panel => {
+        // Excluir paneles del teclado
+        if (panel.isKeyboardKey) return false;
+        
+        // Excluir paneles con modelos (incluyendo viewers)
+        if (panel.modelData && (panel.modelData.isModelButton || panel.modelData.isModelDisplay || panel.modelData.isViewer)) return false;
+        
+        // Excluir paneles viewer
+        if (panel.isViewer) return false;
+        
+        // Excluir paneles con texto (que no sean de especies)
+        if (panel.hasText && !panel.speciesPanel) return false;
+        
+        // Excluir paneles con genomas
+        if (panel.genomData) return false;
+        
+        // Excluir paneles con codones
+        if (panel.codonData) return false;
+        
+        // Excluir paneles con navegación asignada
+        if (panel.navigateToSlot) return false;
+        
+        // Excluir paneles con comportamientos especiales
+        if (panel.behavior && (panel.behavior.hasText || panel.behavior.isGATCActive)) return false;
+        
+        // Es un panel libre
+        return true;
+    });
+}
+
+// 🔥 NUEVA FUNCIÓN: Encontrar el panel libre más cercano a un panel de referencia
+function findClosestFreePanel(referencePanel) {
+    if (!referencePanel || !referencePanel.group) return null;
+    
+    const freePanels = findFreePanels();
+    if (freePanels.length === 0) return null;
+    
+    const referencePos = referencePanel.group.position;
+    let closestPanel = null;
+    let minDistance = Infinity;
+    
+    freePanels.forEach(panel => {
+        if (!panel.group) return;
+        
+        const panelPos = panel.group.position;
+        const dx = panelPos.x - referencePos.x;
+        const dy = panelPos.y - referencePos.y;
+        const dz = panelPos.z - referencePos.z;
+        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestPanel = panel;
+        }
+    });
+    
+    return closestPanel;
 }
 
 // Función para crear el grid con biseles (Escala de Grises)
@@ -1199,8 +2353,16 @@ let touchEndPoint = { x: 0, y: 0 };
 // Variables para detectar doble tap
 let lastTapTime = 0;
 const DOUBLE_TAP_DELAY = 300; // milisegundos entre taps para considerarlo doble tap
+let doubleTapDetected = false; // 🔥 CRITICAL: Bandera para prevenir que el segundo tap se procese como single tap
 
 renderer.domElement.addEventListener('touchstart', (event) => {
+    // 🔥 DETENER GLITCH AL HACER TOUCH EN PANTALLA
+    if (glitchActive) {
+        stopGlitchEffect();
+        event.preventDefault();
+        return; // Salir temprano para evitar otras acciones mientras el glitch está activo
+    }
+    
     event.preventDefault();
     const currentTime = Date.now();
     
@@ -1228,12 +2390,34 @@ renderer.domElement.addEventListener('touchstart', (event) => {
         
         raycaster.setFromCamera(mouseForRaycast, camera);
         
-        const allSelectable = [];
-        const allFillMeshes = panels.map(p => p.fillMesh).filter(Boolean);
-        const allBorderLines = panels.flatMap(p => p.borderLines || []).filter(Boolean);
-        allSelectable.push(...allFillMeshes, ...allBorderLines);
+        // PRIORIDAD ABSOLUTA: Si el HUD está activo, verificar solo paneles del HUD primero
+        let intersects = [];
         
-        const intersects = raycaster.intersectObjects(allSelectable, false);
+        if (isHUDActive()) {
+            // Cuando el HUD está activo, solo permitir clics en elementos del HUD
+            // NO permitir clics en elementos del fondo
+            const hudPanelsList = getHUDPanels();
+            const hudFillMeshes = hudPanelsList.map(p => p.fillMesh).filter(Boolean);
+            const hudBorderLines = hudPanelsList.flatMap(p => p.borderLines || []).filter(Boolean);
+            const hudSelectable = [...hudFillMeshes, ...hudBorderLines];
+            intersects = raycaster.intersectObjects(hudSelectable, false);
+            // NO verificar grid principal cuando HUD está activo - elementos del fondo no son clicables
+        } else {
+            const allSelectable = [];
+            panels.forEach(panel => {
+                if (panel.fillMesh && (!panel.fillMesh.userData || !panel.fillMesh.userData.ignoreRaycast)) {
+                    allSelectable.push(panel.fillMesh);
+                }
+                if (panel.borderLines) {
+                    panel.borderLines.forEach(line => {
+                        if (!line.userData || !line.userData.ignoreRaycast) {
+                            allSelectable.push(line);
+                        }
+                    });
+                }
+            });
+            intersects = raycaster.intersectObjects(allSelectable, false);
+        }
         
         if (intersects.length > 0) {
             let panelData = null;
@@ -1247,7 +2431,22 @@ renderer.domElement.addEventListener('touchstart', (event) => {
             }
             
             if (panelData) {
+                // 🔥 CRITICAL: Marcar que se detectó un double tap para prevenir que el segundo tap se procese como single tap
+                doubleTapDetected = true;
+                
+                // 🔥 CRITICAL: Prevenir que el double tap cause que todos los paneles flasheen
+                // Solo ejecutar handlePanelDoubleClick sin crear eventos sintéticos
                 handlePanelDoubleClick(panelData);
+                event.preventDefault();
+                lastTapTime = 0; // Resetear para evitar triple tap
+                
+                // 🔥 CRITICAL: Resetear la bandera después de un delay para permitir que el touchend se procese correctamente
+                // Aumentar el delay para asegurar que cubra todo el ciclo del doble tap y prevenga que todos los paneles flasheen
+                setTimeout(() => {
+                    doubleTapDetected = false;
+                }, 400); // Aumentado de 100ms a 400ms para cubrir todo el ciclo del doble tap
+                
+                return;
             }
         }
         lastTapTime = 0; // Resetear para evitar triple tap
@@ -1273,15 +2472,50 @@ renderer.domElement.addEventListener('touchstart', (event) => {
     raycaster.setFromCamera(mouse, camera);
     
     // Recopilar todos los objetos seleccionables
-    const allSelectable = [];
-    const allFillMeshes = panels.map(p => p.fillMesh).filter(Boolean);
-    const allBorderLines = panels.flatMap(p => p.borderLines || []).filter(Boolean);
-    allSelectable.push(...allFillMeshes, ...allBorderLines);
+    // PRIORIDAD ABSOLUTA: Si el HUD está activo, verificar solo paneles del HUD primero
+    let intersects = [];
     
-    const intersects = raycaster.intersectObjects(allSelectable, false);
+    if (isHUDActive()) {
+        // Cuando el HUD está activo, solo permitir clics en elementos del HUD
+        // NO permitir clics en elementos del fondo
+        const hudPanelsList = getHUDPanels();
+        const hudFillMeshes = hudPanelsList.map(p => p.fillMesh).filter(Boolean);
+        const hudBorderLines = hudPanelsList.flatMap(p => p.borderLines || []).filter(Boolean);
+        const hudSelectable = [...hudFillMeshes, ...hudBorderLines];
+        intersects = raycaster.intersectObjects(hudSelectable, false);
+        // NO verificar grid principal cuando HUD está activo - elementos del fondo no son clicables
+    } else {
+            const allSelectable = [];
+            panels.forEach(panel => {
+                if (panel.fillMesh && (!panel.fillMesh.userData || !panel.fillMesh.userData.ignoreRaycast)) {
+                    allSelectable.push(panel.fillMesh);
+                }
+                if (panel.borderLines) {
+                    panel.borderLines.forEach(line => {
+                        if (!line.userData || !line.userData.ignoreRaycast) {
+                            allSelectable.push(line);
+                        }
+                    });
+                }
+            });
+        intersects = raycaster.intersectObjects(allSelectable, false);
+    }
+    
+    // 🔥 CRITICAL: Guardar si hay intersección para usar en touchend
+    const hasIntersection = intersects.length > 0;
     
     if (intersects.length === 0 && !event.touches[1]) {
         // Si no hay intersección con paneles existentes, iniciar selección
+        // 🔥 CRITICAL: Deseleccionar todos los paneles existentes al iniciar selección (igual que con ratón)
+        let deselectedSomething = false;
+        panels.forEach(p => {
+            if (p.selected) {
+                p.selected = false;
+                updatePanelColor(p);
+                deselectedSomething = true;
+            }
+        });
+        
         isTouchSelecting = true;
         touchStartPoint = { ...touchStartPosition };
         touchEndPoint = { ...touchStartPosition };
@@ -1298,16 +2532,24 @@ renderer.domElement.addEventListener('touchstart', (event) => {
         selectionBox.style.display = 'none';
     }
     
-    // Simular mousedown para la interacción con paneles existentes
-    const mouseDownEvent = new MouseEvent('mousedown', {
-        clientX: touchStartPosition.x,
-        clientY: touchStartPosition.y,
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        button: 0
-    });
-    event.target.dispatchEvent(mouseDownEvent);
+    // 🔥 CRITICAL: NO crear evento mousedown sintético si hay intersección con un panel
+    // Esto evita que se ejecute código que actualiza todos los paneles
+    // El evento mousedown sintético solo se necesita para interacciones que no son con paneles
+    if (!hasIntersection) {
+        // Simular mousedown solo si NO hay intersección con paneles
+        // 🔥 CRITICAL: Marcar como touch para que sea ignorado por listeners de mouse
+        const mouseDownEvent = new MouseEvent('mousedown', {
+            clientX: touchStartPosition.x,
+            clientY: touchStartPosition.y,
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            button: 0
+        });
+        // Establecer pointerType manualmente ya que MouseEvent no lo soporta directamente
+        Object.defineProperty(mouseDownEvent, 'pointerType', { value: 'touch', writable: false });
+        event.target.dispatchEvent(mouseDownEvent);
+    }
 }, { passive: false });
 
 renderer.domElement.addEventListener('touchmove', (event) => {
@@ -1351,6 +2593,7 @@ renderer.domElement.addEventListener('touchmove', (event) => {
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     
     // Simular mousemove para interacción con paneles existentes
+    // 🔥 CRITICAL: Marcar como touch para que sea ignorado por listeners de mouse
     if (distance > 0) {
         const mouseMoveEvent = new MouseEvent('mousemove', {
             clientX: currentPosition.x,
@@ -1359,6 +2602,8 @@ renderer.domElement.addEventListener('touchmove', (event) => {
             cancelable: true,
             view: window
         });
+        // Establecer pointerType manualmente ya que MouseEvent no lo soporta directamente
+        Object.defineProperty(mouseMoveEvent, 'pointerType', { value: 'touch', writable: false });
         event.target.dispatchEvent(mouseMoveEvent);
     }
     
@@ -1403,6 +2648,8 @@ renderer.domElement.addEventListener('touchend', (event) => {
             Math.pow(touchEndPoint.y - touchStartPoint.y, 2)
         );
         
+        // 🔥 CRITICAL: Solo procesar selección si realmente hubo un arrastre significativo
+        // (no un tap simple que podría tener un pequeño movimiento)
         if (dragDistance > TOUCH_CLICK_THRESHOLD) {
             // Calcular los límites del área de selección en coordenadas de pantalla
             const left = Math.min(touchStartPoint.x, touchEndPoint.x);
@@ -1429,46 +2676,272 @@ renderer.domElement.addEventListener('touchend', (event) => {
                 if (panelX + halfSize > left && panelX - halfSize < right &&
                     panelY + halfSize > top && panelY - halfSize < bottom) {
                     panel.selected = true;
-                    updatePanelColor(panel);
                     panelsInSelection = true;
                 } else if (!event.shiftKey) {
                     // Deseleccionar si no se presiona Shift
                     panel.selected = false;
-                    updatePanelColor(panel);
                 }
             });
+            
+            // 🔥 CRITICAL: Solo refrescar colores si realmente hubo una selección de área significativa
+            // (no en taps simples que podrían tener movimiento mínimo)
+            if (panelsInSelection || dragDistance > TOUCH_CLICK_THRESHOLD * 2) {
+                refreshAllPanelColors();
+            }
             
             // Si no hay paneles en la selección, crear uno nuevo
             if (!panelsInSelection && start3D && end3D) {
                 createPanelFromSelection(start3D, end3D);
             }
+        } else {
+            // 🔥 CRITICAL: Si fue un tap simple (dragDistance <= threshold), no refrescar todos los paneles
+            // Solo deseleccionar si no hay intersección con ningún panel
         }
         
         isTouchSelecting = false;
     }
     
     // Procesar click normal si fue un toque rápido
+    // 🔥 CRITICAL: Ignorar si se detectó un double tap (el segundo tap no debe procesarse como single tap)
+    if (doubleTapDetected) {
+        doubleTapDetected = false; // Resetear la bandera
+        touchStartTime = 0;
+        return; // Salir para evitar procesar el segundo tap del double tap como single tap
+    }
+    
+    // 🔥 CRITICAL: Asegurar que isTouchSelecting se haya desactivado antes de procesar el tap
+    const wasTouchSelecting = isTouchSelecting;
+    isTouchSelecting = false; // Desactivar antes de procesar el tap
+    
     const touchDuration = Date.now() - touchStartTime;
-    if (touchDuration < TOUCH_CLICK_TIME && touchStartTime !== 0) {
-        const mouseUpEvent = new MouseEvent('mouseup', {
-            clientX: touchStartPosition.x,
-            clientY: touchStartPosition.y,
-            bubbles: true,
-            cancelable: true,
-            view: window,
-            button: 0
-        });
-        event.target.dispatchEvent(mouseUpEvent);
+    if (touchDuration < TOUCH_CLICK_TIME && touchStartTime !== 0 && !wasTouchSelecting) {
+        // 🔥 CRITICAL: Detectar panel tocado para botón I AGREE (touch)
+        const touch = event.changedTouches[0] || { clientX: touchStartPosition.x, clientY: touchStartPosition.y };
+        const mouseForRaycast = new THREE.Vector2(
+            (touch.clientX / window.innerWidth) * 2 - 1,
+            -(touch.clientY / window.innerHeight) * 2 + 1
+        );
         
-        const clickEvent = new MouseEvent('click', {
-            clientX: touchStartPosition.x,
-            clientY: touchStartPosition.y,
-            bubbles: true,
-            cancelable: true,
-            view: window,
-            button: 0
-        });
-        event.target.dispatchEvent(clickEvent);
+        raycaster.setFromCamera(mouseForRaycast, camera);
+        
+        let intersects = [];
+        if (isHUDActive()) {
+            // Cuando el HUD está activo, solo permitir clics en elementos del HUD
+            // NO permitir clics en elementos del fondo
+            const hudPanelsList = getHUDPanels();
+            const hudFillMeshes = hudPanelsList.map(p => p.fillMesh).filter(Boolean);
+            const hudBorderLines = hudPanelsList.flatMap(p => p.borderLines || []).filter(Boolean);
+            const hudSelectable = [...hudFillMeshes, ...hudBorderLines];
+            intersects = raycaster.intersectObjects(hudSelectable, false);
+        } else {
+            const allSelectable = [];
+            panels.forEach(panel => {
+                if (panel.fillMesh && (!panel.fillMesh.userData || !panel.fillMesh.userData.ignoreRaycast)) {
+                    allSelectable.push(panel.fillMesh);
+                }
+                if (panel.borderLines) {
+                    panel.borderLines.forEach(line => {
+                        if (!line.userData || !line.userData.ignoreRaycast) {
+                            allSelectable.push(line);
+                        }
+                    });
+                }
+            });
+            intersects = raycaster.intersectObjects(allSelectable, false);
+        }
+        
+        if (intersects.length > 0) {
+            let panelData = null;
+            let currentObject = intersects[0].object;
+            while (currentObject && !panelData) {
+                if (currentObject.userData && currentObject.userData.panelDataRef) {
+                    panelData = currentObject.userData.panelDataRef;
+                    break;
+                }
+                currentObject = currentObject.parent;
+            }
+            
+            // 🔥 CRITICAL: Si se detectó un panel, NO crear eventos sintéticos para evitar que se ejecute
+            // código que actualiza todos los paneles. Manejar el panel directamente aquí.
+            if (panelData) {
+                // 🔥 CRITICAL: Manejar botones modal PRIMERO, antes de cualquier otra lógica
+                // Esto previene que se ejecute código adicional que pueda causar que todos los paneles flasheen
+                if (panelData.isModalPlusButton || panelData.isModalMinusButton) {
+                    const currentGridParams = getCurrentGridParams();
+                    if (currentGridParams && panelData.containerPanel) {
+                        // Buscar el panel de porcentaje correspondiente
+                        const modalData = getModalState(panelData.containerPanel);
+                        if (modalData && modalData.divisions[panelData.modalIndex]) {
+                            const percentagePanel = modalData.divisions[panelData.modalIndex].percentagePanel;
+                            if (percentagePanel) {
+                                // Determinar el cambio (+10 o -10)
+                                const delta = panelData.isModalPlusButton ? 10 : -10;
+                                updateModalPercentage(percentagePanel, delta, currentGridParams);
+                                
+                                // Flash visual SOLO en el botón clickeado (no en todos los paneles)
+                                panelData.flashProgress = 0;
+                                panelData.shouldFlash = true;
+                                panelsFlashing.add(panelData);
+                                
+                                event.preventDefault();
+                                touchStartTime = 0;
+                                return; // Salir inmediatamente para evitar cualquier otro procesamiento
+                            }
+                        }
+                    }
+                }
+                // 🔥 NUEVA FUNCIONALIDAD: Avanzar scroll de términos al hacer tap en botón AGREE (touch)
+                if (panelData.isAgreeButton && panelData.termsPanel) {
+                    const termsPanel = panelData.termsPanel;
+                    const textState = panelTextState.get(termsPanel);
+                    if (textState && textState.useWhiteScrollIndicators) {
+                        // Este es el botón AGREE, avanzar scroll del panel de términos
+                        const currentGridParams = getCurrentGridParams();
+                        if (currentGridParams) {
+                            // Calcular dimensiones del panel de términos
+                            const panelHeight = (termsPanel.maxCellIndex.y - termsPanel.minCellIndex.y + 1);
+                            const panelWidth = (termsPanel.maxCellIndex.x - termsPanel.minCellIndex.x + 1);
+                            const width = panelWidth * currentGridParams.cellSize;
+                            const height = panelHeight * currentGridParams.cellSize;
+                            const paddingSize = currentGridParams.cellSize;
+                            const textAreaHeight = height - (paddingSize * 2);
+                            
+                            // Calcular número máximo de líneas visibles
+                            const isUniline = panelHeight <= 3;
+                            const isTooSmall = textAreaHeight < (currentGridParams.cellSize * TEXT_CONFIG.fontSize * 0.8);
+                            
+                            let effectiveLineHeight;
+                            if (isTooSmall || isUniline) {
+                                effectiveLineHeight = panelHeight <= 1 ? TEXT_CONFIG.lineHeight * 0.2 :
+                                                     panelHeight <= 2 ? TEXT_CONFIG.lineHeight * 0.3 :
+                                                     panelHeight <= 3 ? TEXT_CONFIG.lineHeight * 0.4 :
+                                                     TEXT_CONFIG.lineHeight;
+                            } else {
+                                effectiveLineHeight = TEXT_CONFIG.lineHeight;
+                            }
+                            
+                            const maxVisibleLines = isUniline ? 1 : Math.max(1, Math.floor(textAreaHeight / (currentGridParams.cellSize * effectiveLineHeight)));
+                            
+                            // Avanzar scrollOffset en una pantalla
+                            const newScrollOffset = Math.min(
+                                textState.scrollOffset + maxVisibleLines,
+                                Math.max(0, textState.lines.length - maxVisibleLines)
+                            );
+                            
+                            // Actualizar el texto del panel de términos
+                            if (newScrollOffset !== textState.scrollOffset) {
+                                textState.scrollOffset = newScrollOffset;
+                                createPanelText(termsPanel, currentGridParams.cellSize);
+                                console.log(`📜 Scroll de términos avanzado (AGREE touch): ${textState.scrollOffset}/${textState.lines.length - maxVisibleLines}`);
+                            } else {
+                                // Si ya está al final, volver al inicio
+                                textState.scrollOffset = 0;
+                                createPanelText(termsPanel, currentGridParams.cellSize);
+                                console.log(`📜 Scroll de términos reiniciado al inicio (AGREE touch)`);
+                            }
+                            
+                            // 🔥 CRITICAL: Flash visual SOLO en el botón I AGREE y el panel de términos
+                            // NO actualizar otros paneles para evitar que todos flasheen
+                            panelData.flashProgress = 0;
+                            panelData.shouldFlash = true;
+                            panelsFlashing.add(panelData);
+                            
+                            // También hacer flash en el panel de términos
+                            termsPanel.flashProgress = 0;
+                            termsPanel.shouldFlash = true;
+                            panelsFlashing.add(termsPanel);
+                            
+                            // 🔥 CRITICAL: Asegurar que NO se ejecute código adicional que actualice otros paneles
+                            // Retornar inmediatamente después de configurar el flash
+                            
+                            event.preventDefault();
+                            touchStartTime = 0;
+                            return; // Salir para evitar crear eventos sintéticos
+                        }
+                    }
+                }
+                
+                // MANEJO DE BOTONES MODAL: + y - (touch)
+                if (panelData.isModalPlusButton || panelData.isModalMinusButton) {
+                    const currentGridParams = getCurrentGridParams();
+                    if (currentGridParams && panelData.containerPanel) {
+                        // Buscar el panel de porcentaje correspondiente
+                        const modalData = getModalState(panelData.containerPanel);
+                        if (modalData && modalData.divisions[panelData.modalIndex]) {
+                            const percentagePanel = modalData.divisions[panelData.modalIndex].percentagePanel;
+                            if (percentagePanel) {
+                            // Determinar el cambio (+10 o -10)
+                            const delta = panelData.isModalPlusButton ? 10 : -10;
+                            updateModalPercentage(percentagePanel, delta, currentGridParams);
+                            
+                            // Flash visual SOLO en el botón clickeado (no en todos los paneles)
+                            panelData.flashProgress = 0;
+                            panelData.shouldFlash = true;
+                            panelsFlashing.add(panelData);
+                            
+                            // NO agregar el panel de porcentaje al flash, solo el botón
+                            
+                            event.preventDefault();
+                            touchStartTime = 0;
+                            return; // Salir inmediatamente para evitar cualquier otro procesamiento
+                            }
+                        }
+                    }
+                }
+                
+                // 🔥 CRITICAL: Para cualquier otro panel tocado, manejar la selección (single tap)
+                // Similar a como lo hace el click de mouse, pero sin crear eventos sintéticos
+                // 🔥 CRITICAL: NO ejecutar selección si el panel es un botón modal y el tiempo desde el último tap es corto
+                // (esto previene que el primer tap del doble tap ejecute selección cuando se hace doble tap en botones modal)
+                const timeSinceLastTap = Date.now() - lastTapTime;
+                const isPotentialDoubleTap = timeSinceLastTap < DOUBLE_TAP_DELAY && (panelData.isModalPlusButton || panelData.isModalMinusButton);
+                
+                if (!panelData.isAgreeButton && !panelData.isModalPlusButton && !panelData.isModalMinusButton && !isPotentialDoubleTap) {
+                    // Seleccionar el panel (single tap = selección)
+                    // Deseleccionar todos los demás paneles
+                    panels.forEach(p => {
+                        if (p !== panelData && p.selected) {
+                            p.selected = false;
+                            updatePanelColor(p);
+                        }
+                    });
+                    
+                    // Seleccionar el panel tocado
+                    panelData.selected = true;
+                    updatePanelColor(panelData);
+                    
+                    console.log(`✅ Panel P${panelData.orderNumber} seleccionado (touch)`);
+                }
+                
+                event.preventDefault();
+                touchStartTime = 0;
+                return; // Salir para evitar crear eventos sintéticos
+            }
+        }
+        
+        // 🔥 CRITICAL: Si NO se detectó ningún panel, deseleccionar todos los paneles (tap en el grid)
+        // Esto evita que se ejecute código que actualiza todos los paneles cuando se toca un panel específico
+        if (intersects.length === 0) {
+            // Tap en el grid (fondo) - deseleccionar todos los paneles
+            let deselectedSomething = false;
+            panels.forEach(p => {
+                if (p.selected) {
+                    p.selected = false;
+                    updatePanelColor(p);
+                    deselectedSomething = true;
+                }
+            });
+            
+            if (deselectedSomething) {
+                console.log(`✋ Todos los paneles deseleccionados (tap en grid)`);
+            }
+            
+            // NO crear eventos sintéticos para evitar que se ejecute código adicional
+            // que podría causar problemas
+            event.preventDefault();
+            touchStartTime = 0;
+            return;
+        }
     }
     
     touchStartTime = 0;
@@ -1577,6 +3050,8 @@ function movePanel(panel, dx, dy, gridParams) {
     panel.maxCellIndex.y += dy;
 
     // Actualizar geometría y posición
+    // 🔥 CRITICAL FIX: updatePanelGeometryAndPosition ahora preserva automáticamente las UVs personalizadas
+    // y restaura la textura correctamente, por lo que no necesitamos código adicional aquí
     updatePanelGeometryAndPosition(panel, gridParams);
 
     return true;
@@ -1604,6 +3079,12 @@ function toggleControlsVisibility() {
 
 // Control de teclado
 document.addEventListener('keydown', (event) => {
+    // 🔥 DETENER GLITCH AL PRESIONAR CUALQUIER TECLA
+    if (glitchActive) {
+        stopGlitchEffect();
+        return; // Salir temprano para evitar otras acciones mientras el glitch está activo
+    }
+    
     const key = event.key;
     const activelyWritingText = keyboardState.isWriting; // Cachear para consistencia en esta ejecución
 
@@ -1615,7 +3096,7 @@ document.addEventListener('keydown', (event) => {
         //    y también llama a event.stopPropagation() para el Escape.
         // 2. Para otras teclas que NO son Escape Y NO tienen modificadores Ctrl/Alt/Meta Y NO son F-keys,
         //    hacemos un return aquí para asegurar que se deleguen al input de texto y no activen atajos globales.
-        if (key !== 'Escape' && !event.ctrlKey && !event.altKey && !event.metaKey && !key.startsWith("F")) {
+        if (key && key !== 'Escape' && !event.ctrlKey && !event.altKey && !event.metaKey && !key.startsWith("F")) {
             // DEBUG: console.log(`Modo Escritura (main.js): Tecla '${key}' delegada. Atajo global prevenido.`);
         return;
         }
@@ -1643,6 +3124,29 @@ document.addEventListener('keydown', (event) => {
     
     // DEBUG: console.log(`Procesando Atajo Global para Tecla: '${key}' (activelyWritingText: ${activelyWritingText}, terminalIsEffectivelyActive: ${terminalIsEffectivelyActive})`);
 
+    // IMPORTANTE: Permitir que las teclas de resolución del HUD funcionen incluso en modo escritura
+    // para que el usuario pueda controlar las resoluciones independientemente
+    // Solo procesar si no estamos escribiendo texto y el HUD está activo
+    if ((key === 'm' || key === 'M' || key === 'n' || key === 'N') && !activelyWritingText && !terminalIsEffectivelyActive) {
+        if (isHUDActive()) {
+            if (key === 'm' || key === 'M') {
+                console.log('Tecla M presionada: Aumentando resolución del HUD');
+                const success = adjustHUDResolution(1);
+                if (success) {
+                    event.preventDefault();
+                    return;
+                }
+            } else if (key === 'n' || key === 'N') {
+                console.log('Tecla N presionada: Disminuyendo resolución del HUD');
+                const success = adjustHUDResolution(-1);
+                if (success) {
+                    event.preventDefault();
+                    return;
+                }
+            }
+        }
+    }
+
     // Atajos Globales
     let newDivisions = currentDivisions;
     let resolutionChanged = false;
@@ -1652,13 +3156,19 @@ document.addEventListener('keydown', (event) => {
     switch (key) {
         case '+':
         case '=':
+            // Ajustar resolución del grid base - INDEPENDIENTE del popup
+            if (!activelyWritingText && !terminalIsEffectivelyActive) {
             newDivisions = Math.min(currentDivisions + 1, 50);
             resolutionChanged = true;
+            }
             break;
         case '-':
         case '_':
+            // Ajustar resolución del grid base - INDEPENDIENTE del popup
+            if (!activelyWritingText && !terminalIsEffectivelyActive) {
             newDivisions = Math.max(currentDivisions - 1, 2);
             resolutionChanged = true;
+            }
             break;
         case 'ArrowUp':
             moveDelta.dy = 1;
@@ -1672,6 +3182,20 @@ document.addEventListener('keydown', (event) => {
         case 'ArrowRight':
             moveDelta.dx = 1;
             break;
+        case 'PageUp':
+            // Navegar al slot anterior
+            if (!activelyWritingText && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+                navigateToPreviousSlotLocal();
+                event.preventDefault();
+            }
+            return;
+        case 'PageDown':
+            // Navegar al siguiente slot
+            if (!activelyWritingText && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+                navigateToNextSlotLocal();
+                event.preventDefault();
+            }
+            return;
         case 'x':
         case 'X':
             deleteTriggered = true;
@@ -1691,7 +3215,27 @@ document.addEventListener('keydown', (event) => {
             return;
         case 'v':
         case 'V':
-            toggleControlsVisibility();
+            toggleControlPanels(); // Restaurar función original: mostrar/ocultar panel de slots
+            return;
+        case 'p':
+        case 'P':
+            // Toggle HUD: si está activo, destruirlo; si no, crearlo
+            if (isHUDActive()) {
+                destroyHUD();
+                console.log('HUD desactivado');
+            } else {
+                // IMPORTANTE: El HUD debe mantener su propia resolución independiente del grid base
+                // Si hay un slot cargado, usar su resolución; si no, usar una resolución por defecto
+                // NO usar currentDivisions para evitar que se sincronice con el grid base
+                const hudDivisions = currentSlotIndex >= 0 ? 
+                    (bioSlotsLoadFromSlot(currentSlotIndex)?.grid?.divisions || 24) : 24;
+                const success = createHUD(hudDivisions);
+                if (success) {
+                    console.log(`HUD activado con ${hudDivisions} divisiones (independiente del grid base)`);
+                } else {
+                    console.error('Error al activar HUD');
+                }
+            }
             return;
         case 't':
         case 'T':
@@ -1719,9 +3263,81 @@ document.addEventListener('keydown', (event) => {
                 panels.forEach(p => {
                     if (p.selected) {
                         p.selected = false;
-                        updatePanelColor(p);
                     }
                 });
+                // 🔥 REFRESCAR TODOS LOS COLORES DESPUÉS DE DESELECCIONAR
+                refreshAllPanelColors();
+            }
+            return;
+        // 🔥 NUEVO: Cargar slots con números del teclado (0-9)
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+                const slotIndex = parseInt(key);
+            
+            // Ctrl+Numero: SIEMPRE cargar slot en HUD (activar HUD si no está activo)
+            if (!activelyWritingText && event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+                // Función async interna para manejar la carga
+                (async () => {
+                    // Si el HUD no está activo, activarlo primero
+                    if (!isHUDActive()) {
+                        console.log(`Ctrl+${slotIndex}: HUD no está activo, activándolo primero...`);
+                        // IMPORTANTE: Obtener las divisiones del slot antes de crear el HUD
+                        const slotConfig = bioSlotsLoadFromSlot(slotIndex);
+                        const slotDivisions = slotConfig?.grid?.divisions || currentDivisions;
+                        console.log(`Ctrl+${slotIndex}: Creando HUD con ${slotDivisions} divisiones del slot`);
+                        const hudCreated = createHUD(slotDivisions);
+                        if (!hudCreated) {
+                            console.error('Error al crear HUD. Cargando en grid principal como fallback.');
+                            loadFromSlot(slotIndex);
+                            return;
+                        }
+                        // Esperar un frame para asegurar que el HUD esté completamente inicializado
+                        await new Promise(resolve => requestAnimationFrame(resolve));
+                    }
+                    
+                    // Verificar que el HUD esté activo y visible antes de cargar
+                    const hudScene = getHUDScene();
+                    if (hudScene) {
+                        hudScene.visible = true;
+                        hudScene.traverse((child) => {
+                            child.visible = true;
+                        });
+                        console.log(`Ctrl+${slotIndex}: HUDScene verificado, visible: ${hudScene.visible}, hijos: ${hudScene.children.length}`);
+                    }
+                    
+                    console.log(`Ctrl+${slotIndex}: Cargando slot ${slotIndex} en HUD`);
+                    loadFromSlotToHUD(slotIndex);
+                })();
+                event.preventDefault();
+                return;
+            }
+            
+            // Alt+Numero: cargar slot desde el 10 en adelante (Alt+0 = slot 10, Alt+1 = slot 11, etc.)
+            if (!activelyWritingText && event.altKey && !event.ctrlKey && !event.shiftKey && !event.metaKey) {
+                const altSlotIndex = slotIndex + 10; // Alt+0 = slot 10, Alt+1 = slot 11, etc.
+                if (altSlotIndex < MAX_SLOTS) {
+                    console.log(`Alt+${slotIndex}: Cargando slot ${altSlotIndex} desde teclado numérico`);
+                    loadFromSlot(altSlotIndex);
+                } else {
+                    console.warn(`Alt+${slotIndex}: Slot ${altSlotIndex} está fuera del rango (máximo: ${MAX_SLOTS - 1})`);
+                }
+                event.preventDefault();
+                return;
+            }
+            
+            // Solo número sin modificadores: cargar en grid principal
+            if (!activelyWritingText && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+                console.log(`Cargando slot ${slotIndex} desde teclado numérico`);
+                loadFromSlot(slotIndex);
+                event.preventDefault();
             }
             return;
     }
@@ -1828,6 +3444,9 @@ function handleResize() {
     // Ajustar la cámara ortográfica al nuevo tamaño
     adjustCameraToGrid();
     
+    // Actualizar el tamaño del plano de oscurecimiento si existe
+    updateDarkeningPlaneSize();
+    
     // Actualizar el grid y adaptar paneles existentes
     updateGrid(currentDivisions);
 }
@@ -1840,8 +3459,8 @@ document.addEventListener('fullscreenchange', handleResize);
 // Exportar funciones para controlar el grid desde la consola
 window.updateGrid = updateGrid;
 
-// Función para obtener la posición 3D en el plano del grid
-function get3DPointOnGrid(event) {
+// Función para obtener la posición 3D en el plano del grid o popup
+function get3DPointOnGrid(event, usePopup = false) {
     // Calcular coordenadas precisas del mouse
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -1849,8 +3468,12 @@ function get3DPointOnGrid(event) {
     // Configurar raycaster con la cámara y las coordenadas del mouse
     raycaster.setFromCamera(mouse, camera);
     
-    // Crear un plano imaginario en z=0 para la intersección
-    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+    // Si el HUD está activo, siempre usar HUD (a menos que se presione Shift para forzar grid principal)
+    const shouldUseHUD = usePopup || (isHUDActive() && !(event && event.shiftKey));
+    const planeZ = shouldUseHUD ? HUD_PLANE_Z : 0;
+    
+    // Crear un plano imaginario en z correspondiente para la intersección
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -planeZ);
     const intersectionPoint = new THREE.Vector3();
     
     // Calcular intersección con mayor precisión
@@ -1861,20 +3484,25 @@ function get3DPointOnGrid(event) {
         // Mantener 4 decimales de precisión
         intersectionPoint.x = Math.round(intersectionPoint.x * 10000) / 10000;
         intersectionPoint.y = Math.round(intersectionPoint.y * 10000) / 10000;
-        intersectionPoint.z = 0; // Asegurar que Z es exactamente 0
+        intersectionPoint.z = planeZ; // Asegurar que Z es exactamente el plano correspondiente
     }
     
     return intersectionPoint;
 }
 
-// Función para crear paneles
+// Función para crear paneles (en HUD si está activo, sino en grid principal)
 function createPanelFromSelection(start3D, end3D) {
-    const currentGridParams = getCurrentGridParams();
-    if (!currentGridParams) return;
-    const { cellSize, cellsX, cellsY, halfWidth, halfHeight } = currentGridParams;
+    // Si el HUD está activo, siempre crear en HUD (a menos que se presione Shift)
+    // Verificar si el punto está cerca del HUD o si el HUD está activo
+    const createInHUD = isHUDActive() && (Math.abs(start3D.z - HUD_PLANE_Z) < 0.1 || Math.abs(end3D.z - HUD_PLANE_Z) < 0.1);
+    const gridParams = createInHUD ? getHUDGridParams() : getCurrentGridParams();
+    
+    if (!gridParams) return;
+    const { cellSize, cellsX, cellsY, halfWidth, halfHeight } = gridParams;
 
-    // Deseleccionar todos los paneles existentes
-    panels.forEach(panel => {
+    // Deseleccionar todos los paneles existentes (del contexto correspondiente)
+    const panelsToDeselect = createInHUD ? getHUDPanels() : panels;
+    panelsToDeselect.forEach(panel => {
         if (panel.selected) {
             panel.selected = false;
             updatePanelColor(panel);
@@ -1956,26 +3584,76 @@ function createPanelFromSelection(start3D, end3D) {
         return;
     }
 
-    // *** Inicio: Comprobación de conflictos ***
-    for (const existingPanel of panels) {
+    // *** NUEVA LÓGICA: Detección de conflictos para selección inteligente ***
+    const conflictingPanels = [];
+    
+    // Si estamos creando en popup, verificar conflictos con paneles del popup
+    // Si estamos creando en grid principal, verificar conflictos con paneles del grid principal
+    const panelsToCheck = createInHUD ? getHUDPanels() : panels;
+    
+    for (const existingPanel of panelsToCheck) {
         const eMinX = existingPanel.minCellIndex.x;
         const eMaxX = existingPanel.maxCellIndex.x;
         const eMinY = existingPanel.minCellIndex.y;
         const eMaxY = existingPanel.maxCellIndex.y;
 
-        // Comprobar si los rectángulos de índices (con margen de 1 celda) se solapan
-        const conflictX = !(pMaxX < eMinX - 1 || pMinX > eMaxX + 1);
-        const conflictY = !(pMaxY < eMinY - 1 || pMinY > eMaxY + 1);
+        // Comprobar si los rectángulos de índices se solapan (sin margen para detección más precisa)
+        const conflictX = !(pMaxX < eMinX || pMinX > eMaxX);
+        const conflictY = !(pMaxY < eMinY || pMinY > eMaxY);
 
         if (conflictX && conflictY) {
-            console.warn("Creación de panel cancelada: Conflicto con panel existente.");
-            return; // Detener la creación si hay conflicto
+            conflictingPanels.push(existingPanel);
         }
     }
-    // *** Fin: Comprobación de conflictos ***
+    
+    // Si hay paneles en conflicto, seleccionarlos en lugar de crear nuevo panel
+    if (conflictingPanels.length > 0) {
+        console.log(`🎯 Selección inteligente: ${conflictingPanels.length} panel(es) detectado(s) en el área`);
+        
+        // 🔥 USAR ESTADO CAPTURADO DE TECLAS MODIFICADORAS
+        const maintainSelection = selectionModifierKeys.shiftKey || selectionModifierKeys.ctrlKey;
+        
+        console.log(`🎯 Selección inteligente - Teclas: Shift=${selectionModifierKeys.shiftKey}, Ctrl=${selectionModifierKeys.ctrlKey}, Alt=${selectionModifierKeys.altKey}`);
+        
+        if (!maintainSelection) {
+            // Sin Shift/Ctrl: Deseleccionar todos los demás paneles (del contexto correspondiente)
+            panelsToCheck.forEach(panel => {
+                if (!conflictingPanels.includes(panel) && panel.selected) {
+                    panel.selected = false;
+                    updatePanelColor(panel);
+                }
+            });
+        }
+        
+        // Seleccionar los paneles en conflicto
+        conflictingPanels.forEach(panel => {
+            if (maintainSelection) {
+                // Con Shift/Ctrl: Alternar selección
+                panel.selected = !panel.selected;
+            } else {
+                // Sin Shift/Ctrl: Seleccionar siempre
+                panel.selected = true;
+            }
+        });
+        
+        // 🔥 ACTUALIZAR VISUAL DE TODOS LOS PANELES SELECCIONADOS
+        refreshSelectedPanelsColors();
+        
+        // Mostrar información sobre la selección
+        const selectedPanels = conflictingPanels.filter(p => p.selected);
+        if (selectedPanels.length > 0) {
+            const panelNumbers = selectedPanels.map(p => `P${p.orderNumber}`).join(', ');
+            console.log(`✅ Panel(es) seleccionado(s): ${panelNumbers}`);
+        }
+        
+        return; // Salir sin crear panel nuevo
+    }
+    // *** Fin: Nueva lógica de selección inteligente ***
 
     // Asegurar que el número de orden sea el siguiente disponible
-    const maxCurrentNumber = Math.max(...panels.map(p => parseInt(p.orderNumber) || 0), 0);
+    // Considerar paneles del contexto correspondiente (popup o grid principal)
+    const panelsForOrder = createInHUD ? getHUDPanels() : panels;
+    const maxCurrentNumber = Math.max(...panelsForOrder.map(p => parseInt(p.orderNumber) || 0), 0);
     panelOrderCounter = Math.max(panelOrderCounter, maxCurrentNumber + 1);
 
     // Crear el objeto panel con el siguiente número
@@ -1990,14 +3668,71 @@ function createPanelFromSelection(start3D, end3D) {
     };
 
     // Calcular y asignar geometría/posición inicial
-    updatePanelGeometryAndPosition(panelData, currentGridParams);
+    updatePanelGeometryAndPosition(panelData, gridParams);
+    
+    // Ajustar posición Z según si es popup o grid principal
+    if (createInHUD) {
+        panelData.group.position.z = HUD_PLANE_Z;
+        // Asegurar que todos los hijos también estén en el plano popup
+        panelData.group.traverse((child) => {
+            if (child.position) {
+                child.position.z = HUD_PLANE_Z;
+            }
+        });
+    } else {
+        panelData.group.position.z = 0;
+    }
 
     if(panelData.group) {
+        if (createInHUD) {
+            // Añadir al popup
+            const hudScene = getHUDScene();
+            if (hudScene) {
+                // Asegurar renderOrder alto para que esté por encima de la cortina
+                panelData.group.renderOrder = 200;
+                panelData.group.traverse((child) => {
+                    if (child.renderOrder !== undefined) {
+                        child.renderOrder = 200;
+                    }
+                });
+                // Asegurar explícitamente que los borderLines tengan renderOrder alto
+                if (panelData.borderLines) {
+                    panelData.borderLines.forEach(borderLine => {
+                        borderLine.renderOrder = 200;
+                    });
+                }
+                hudScene.add(panelData.group);
+                addHUDPanel(panelData);
+                
+                // 🔥 CRITICAL: Actualizar materiales de las líneas de borde después de añadir al HUD
+                if (panelData.borderLines && panelData.borderLines.length > 0) {
+                    panelData.borderLines.forEach(borderLine => {
+                        // Crear material brillante para HUD
+                        const hudMaterial = panelLineMaterialNormal.clone();
+                        hudMaterial.color.setHex(0xffffff);
+                        hudMaterial.depthTest = false; // Desactivar depth test para estar siempre visible
+                        hudMaterial.depthWrite = false; // No escribir en depth buffer
+                        hudMaterial.transparent = false;
+                        borderLine.material = hudMaterial;
+                        borderLine.renderOrder = 200;
+                        borderLine.position.z = 0.1; // Posición Z mayor para estar por delante de la cortina
+                        borderLine.visible = true;
+                    });
+                }
+                
+                // Actualizar color del panel para asegurar materiales correctos
+                updatePanelColor(panelData);
+            }
+        } else {
+            // Añadir al grid principal
         scene.add(panelData.group);
         panels.push(panelData);
+        }
         
-        // Reindexar después de añadir
+        // Reindexar después de añadir (solo para grid principal)
+        if (!createInHUD) {
         reindexPanels();
+        }
         
         // Seleccionar el nuevo panel
         panelData.selected = true;
@@ -2088,6 +3823,35 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
     const hasText = panelData.hasText !== undefined ? panelData.hasText : false;
     const behavior = panelData.behavior; // Preservar el behavior
 
+    // 🔥 CRITICAL FIX: Preservar información de textura y UVs personalizadas
+    let preservedTextureInfo = null;
+    if (panelData.hasTexture && panelData.fillMesh && panelData.fillMesh.geometry) {
+        const oldGeometry = panelData.fillMesh.geometry;
+        const oldUVs = oldGeometry.attributes.uv;
+        const texture = panelData.fillMesh.material?.map;
+        
+        if (oldUVs && oldUVs.count > 0 && texture) {
+            // Guardar las UVs actuales
+            const savedUVs = [];
+            for (let i = 0; i < oldUVs.count; i++) {
+                savedUVs.push({
+                    u: oldUVs.getX(i),
+                    v: oldUVs.getY(i)
+                });
+            }
+            
+            preservedTextureInfo = {
+                hasTexture: true,
+                textureType: panelData.textureType || 'unknown',
+                texturePath: panelData.texturePath || null,
+                savedUVs: savedUVs,
+                imageAspect: texture.image ? (texture.image.width / texture.image.height) : null,
+                material: panelData.fillMesh.material, // Preservar referencia al material
+                textureMaterials: panelData.textureMaterials // Preservar materiales de estados
+            };
+        }
+    }
+
     // Preservar el modelo si existe
     const modelData = preserveModel(panelData);
 
@@ -2098,8 +3862,28 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
     const panelHeight = panelCellsY * cellSize;
     
     // Calcular centro basado en índices y tamaño de celda actual
+    // IMPORTANTE: Esta fórmula calcula el centro del panel basándose en:
+    // - halfWidth/halfHeight: mitad del ancho/alto total del grid
+    // - minCellIndex: índice de la celda más a la izquierda/abajo
+    // - panelCellsX/panelCellsY: número de celdas que ocupa el panel
+    // - cellSize: tamaño de cada celda
     const panelCenterX = -halfWidth + (minCellIndex.x + panelCellsX / 2) * cellSize;
     const panelCenterY = -halfHeight + (minCellIndex.y + panelCellsY / 2) * cellSize;
+    
+    // Debug: Log para paneles en popup
+    if (panelData.group && panelData.group.parent && panelData.group.parent.userData && panelData.group.parent.userData.isPopup) {
+        console.log(`Panel P${panelData.orderNumber} centro calculado:`, {
+            panelCenterX,
+            panelCenterY,
+            halfWidth,
+            halfHeight,
+            minCellIndex: `${minCellIndex.x},${minCellIndex.y}`,
+            maxCellIndex: `${maxCellIndex.x},${maxCellIndex.y}`,
+            panelCellsX,
+            panelCellsY,
+            cellSize
+        });
+    }
 
     const panelHalfWidth = panelWidth / 2;
     const panelHalfHeight = panelHeight / 2;
@@ -2158,7 +3942,10 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
 
     const fillGeometry = new THREE.ShapeGeometry(shape);
     
-    // Generar UVs que cubran todo el panel uniformemente
+    // 🔥 CRITICAL FIX: Solo generar UVs por defecto si NO hay textura personalizada
+    // Si hay textura personalizada, preservaremos las UVs originales para mantener la escala
+    if (!preservedTextureInfo || !preservedTextureInfo.savedUVs) {
+        // Generar UVs que cubran todo el panel uniformemente (solo para paneles sin textura)
     const uvs = fillGeometry.attributes.uv;
     const positions = fillGeometry.attributes.position;
     for (let i = 0; i < positions.count; i++) {
@@ -2171,12 +3958,91 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
         
         uvs.setXY(i, u, v);
     }
-    
     fillGeometry.attributes.uv.needsUpdate = true;
-    panelData.fillMesh = new THREE.Mesh(fillGeometry, panelFillMaterialNormal);
+    }
+    
+    // 🔥 CRITICAL FIX: Restaurar textura y UVs personalizadas si existían
+    let fillMaterial = panelFillMaterialNormal;
+    if (preservedTextureInfo && preservedTextureInfo.material) {
+        // Usar el material preservado (que tiene la textura)
+        fillMaterial = preservedTextureInfo.material;
+        panelData.hasTexture = true;
+        panelData.textureType = preservedTextureInfo.textureType;
+        panelData.texturePath = preservedTextureInfo.texturePath;
+        panelData.textureMaterials = preservedTextureInfo.textureMaterials;
+    }
+    
+    panelData.fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
     panelData.fillMesh.userData.panelDataRef = panelData;
     panelData.fillMesh.userData.isPanel = true;
+    panelData.fillMesh.renderOrder = 0; // Renderizar primero (debajo)
     panelData.group.add(panelData.fillMesh);
+    
+    // 🔥 CRITICAL FIX: Restaurar UVs personalizadas si existían
+    // IMPORTANTE: Preservar las UVs originales para mantener la escala de la textura
+    // cuando cambia el tamaño del panel (por cambio de escala del grid)
+    if (preservedTextureInfo && preservedTextureInfo.savedUVs) {
+        const uvAttribute = fillGeometry.attributes.uv;
+        const savedUVs = preservedTextureInfo.savedUVs;
+        
+        // Si el número de vértices coincide, restaurar directamente las UVs originales
+        if (uvAttribute.count === savedUVs.length) {
+            for (let i = 0; i < savedUVs.length; i++) {
+                uvAttribute.setXY(i, savedUVs[i].u, savedUVs[i].v);
+            }
+            uvAttribute.needsUpdate = true;
+            console.log(`✅ UVs personalizadas restauradas para panel P${orderNumber} (escala preservada)`);
+        } else {
+            // Si el número de vértices cambió (geometría diferente), intentar mapear proporcionalmente
+            // pero manteniendo la escala relativa de la textura
+            console.warn(`⚠️ Número de vértices cambió para panel P${orderNumber} (${savedUVs.length} -> ${uvAttribute.count}). Intentando preservar escala...`);
+            
+            // Si la geometría cambió significativamente, usar las UVs por defecto pero ajustadas
+            // para mantener la proporción de la textura original
+            const texture = preservedTextureInfo.material?.map;
+            if (texture && texture.image && preservedTextureInfo.imageAspect) {
+                // Calcular las UVs basándose en la proporción original de la textura
+                // pero aplicadas a la nueva geometría
+                const imageAspect = preservedTextureInfo.imageAspect;
+                const panelAspect = panelWidth / panelHeight;
+                const ratio = panelAspect / imageAspect;
+                
+                // Usar las UVs por defecto de la nueva geometría como base
+                const positions = fillGeometry.attributes.position;
+                for (let i = 0; i < uvAttribute.count; i++) {
+                    const x = positions.getX(i);
+                    const y = positions.getY(i);
+                    
+                    // Calcular UVs base (0-1)
+                    let u = (x + panelHalfWidth) / panelWidth;
+                    let v = (y + panelHalfHeight) / panelHeight;
+                    
+                    // Aplicar el mismo ajuste "contain" que tenía la textura original
+                    // para mantener la proporción
+                    if (ratio < 1) {
+                        v = 0.5 + (v - 0.5) / ratio;
+                    } else {
+                        u = 0.5 + (u - 0.5) * ratio;
+                    }
+                    
+                    uvAttribute.setXY(i, u, v);
+                }
+                uvAttribute.needsUpdate = true;
+                console.log(`✅ UVs ajustadas para preservar proporción de textura en panel P${orderNumber}`);
+            } else {
+                // Si no hay información de textura, usar UVs por defecto
+                const positions = fillGeometry.attributes.position;
+                for (let i = 0; i < uvAttribute.count; i++) {
+                    const x = positions.getX(i);
+                    const y = positions.getY(i);
+                    const u = (x + panelHalfWidth) / panelWidth;
+                    const v = (y + panelHalfHeight) / panelHeight;
+                    uvAttribute.setXY(i, u, v);
+                }
+                uvAttribute.needsUpdate = true;
+            }
+        }
+    }
 
     // --- Crear Líneas de Borde (una única línea) --- 
     const borderPoints = [];
@@ -2203,10 +4069,52 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
     borderGeometry.computeBoundingSphere();
     
     // Crear SOLO UNA línea de borde
-    const borderLine = new THREE.Line(borderGeometry, panelLineMaterialNormal);
+    // 🔥 CRITICAL: Verificar si el panel está en el HUD de múltiples maneras
+    // 1. Verificar por parent
+    let isInHUD = panelData.group && panelData.group.parent && 
+                  panelData.group.parent.userData && panelData.group.parent.userData.isHUD;
+    // 2. Verificar si el panel está en la lista de paneles del HUD
+    if (!isInHUD) {
+        const hudPanelsList = getHUDPanels();
+        isInHUD = hudPanelsList.includes(panelData);
+    }
+    
+    // Para paneles del HUD, usar materiales más brillantes para que no se vean apagados
+    let borderMaterial = panelLineMaterialNormal;
+    if (isInHUD) {
+        // Crear un material más brillante para los bordes del HUD
+        borderMaterial = panelLineMaterialNormal.clone();
+        borderMaterial.color.setHex(0xffffff); // Blanco brillante para HUD
+        borderMaterial.depthTest = false; // Desactivar depth test para estar siempre visible
+        borderMaterial.depthWrite = false; // No escribir en depth buffer
+        borderMaterial.transparent = false; // Asegurar que no sea transparente
+    }
+    
+    const borderLine = new THREE.Line(borderGeometry, borderMaterial);
     // Mejorar la detección para raycasting
     borderLine.userData.isPanel = true; // Marcador para identificar líneas de panel
     borderLine.userData.panelDataRef = panelData; // Referencia al panel
+    
+    // 🔥 CRITICAL: Si el panel está en el HUD, usar renderOrder alto y posición Z mayor para estar por encima de la cortina
+    borderLine.renderOrder = isInHUD ? 200 : 10; // 200 para HUD, 10 para grid principal
+    
+    // Para HUD, posicionar las líneas más adelante para estar definitivamente por encima de la cortina (z=7)
+    // El HUD está en z=8, así que las líneas deben estar en al menos z=8.1 o más para estar por delante
+    borderLine.position.z = isInHUD ? 0.1 : 0.02; // 0.1 para HUD (absoluto: 8.1), 0.02 para grid principal
+    borderLine.visible = true; // Asegurar que sea visible
+    
+    // Debug: Log para verificar que las líneas se están creando correctamente
+    if (isInHUD) {
+        console.log(`Línea de borde creada para panel HUD P${panelData.orderNumber}:`, {
+            renderOrder: borderLine.renderOrder,
+            positionZ: borderLine.position.z,
+            materialColor: borderMaterial.color.getHexString(),
+            visible: borderLine.visible,
+            depthTest: borderMaterial.depthTest,
+            depthWrite: borderMaterial.depthWrite
+        });
+    }
+    
     panelData.group.add(borderLine);
     panelData.borderLines.push(borderLine);
     
@@ -2278,8 +4186,28 @@ function createPanelFromBoundingBox(bboxIndices, gridParams) {
 }
 
 // Función helper para actualizar el color del panel (AHORA PARA LÍNEAS Y RELLENO)
+// 🔥 FUNCIÓN AUXILIAR PARA REFRESCAR TODOS LOS ESTADOS VISUALES
+function refreshAllPanelColors() {
+    panels.forEach(panel => {
+        updatePanelColor(panel);
+    });
+}
+
+// 🔥 FUNCIÓN AUXILIAR PARA REFRESCAR SOLO PANELES SELECCIONADOS
+function refreshSelectedPanelsColors() {
+    panels.forEach(panel => {
+        if (panel.selected) {
+            updatePanelColor(panel);
+        }
+    });
+}
+
 function updatePanelColor(panelData) {
     if (!panelData || !panelData.group) return;
+    
+    // 🔥 CRITICAL: Verificar si el panel está en el HUD
+    const isInHUD = panelData.group && panelData.group.parent && 
+                    panelData.group.parent.userData && panelData.group.parent.userData.isHUD;
     
     let targetLineMaterial;
     let targetFillMaterial;
@@ -2294,30 +4222,80 @@ function updatePanelColor(panelData) {
             targetFillMaterial = panelData.textureMaterials.normal;
         }
         
-        // Para las líneas usar los materiales normales
-        if (panelData.selected) {
-            targetLineMaterial = panelLineMaterialSelected;
-        } else if (panelData.hovered && !('ontouchstart' in window)) {
-            targetLineMaterial = panelLineMaterialHover;
+        // Para las líneas usar los materiales normales, pero más brillantes si está en HUD
+        if (isInHUD) {
+            // Para HUD, usar materiales más brillantes
+            if (panelData.selected) {
+                targetLineMaterial = panelLineMaterialSelected.clone();
+                targetLineMaterial.color.setHex(0xffffff); // Blanco brillante
+                targetLineMaterial.depthTest = false;
+                targetLineMaterial.depthWrite = false;
+            } else if (panelData.hovered && !('ontouchstart' in window)) {
+                targetLineMaterial = panelLineMaterialHover.clone();
+                targetLineMaterial.color.setHex(0xffffff); // Blanco brillante
+                targetLineMaterial.depthTest = false;
+                targetLineMaterial.depthWrite = false;
+            } else {
+                targetLineMaterial = panelLineMaterialNormal.clone();
+                targetLineMaterial.color.setHex(0xffffff); // Blanco brillante
+                targetLineMaterial.depthTest = false;
+                targetLineMaterial.depthWrite = false;
+            }
         } else {
-            targetLineMaterial = panelLineMaterialNormal;
+            // Para grid principal, usar materiales normales
+            if (panelData.selected) {
+                targetLineMaterial = panelLineMaterialSelected;
+            } else if (panelData.hovered && !('ontouchstart' in window)) {
+                targetLineMaterial = panelLineMaterialHover;
+            } else {
+                targetLineMaterial = panelLineMaterialNormal;
+            }
         }
     } else {
         // Comportamiento normal para paneles sin textura
-        if (panelData.selected) {
-            targetLineMaterial = panelLineMaterialSelected;
-            targetFillMaterial = panelFillMaterialSelected;
-        } else if (panelData.hovered && !('ontouchstart' in window)) {
-            targetLineMaterial = panelLineMaterialHover;
-            targetFillMaterial = panelFillMaterialHover;
-            
-            // Imprimir el carácter en la consola cuando se hace hover
-            if (panelData.behavior && panelData.behavior.character) {
-                console.log(`Tecla: ${panelData.behavior.character}`);
+        if (isInHUD) {
+            // Para HUD, usar materiales más brillantes
+            if (panelData.selected) {
+                targetLineMaterial = panelLineMaterialSelected.clone();
+                targetLineMaterial.color.setHex(0xffffff); // Blanco brillante
+                targetLineMaterial.depthTest = false;
+                targetLineMaterial.depthWrite = false;
+                targetFillMaterial = panelFillMaterialSelected;
+            } else if (panelData.hovered && !('ontouchstart' in window)) {
+                targetLineMaterial = panelLineMaterialHover.clone();
+                targetLineMaterial.color.setHex(0xffffff); // Blanco brillante
+                targetLineMaterial.depthTest = false;
+                targetLineMaterial.depthWrite = false;
+                targetFillMaterial = panelFillMaterialHover;
+                
+                // Imprimir el carácter en la consola cuando se hace hover
+                if (panelData.behavior && panelData.behavior.character) {
+                    console.log(`Tecla: ${panelData.behavior.character}`);
+                }
+            } else {
+                targetLineMaterial = panelLineMaterialNormal.clone();
+                targetLineMaterial.color.setHex(0xffffff); // Blanco brillante
+                targetLineMaterial.depthTest = false;
+                targetLineMaterial.depthWrite = false;
+                targetFillMaterial = panelFillMaterialNormal;
             }
         } else {
-            targetLineMaterial = panelLineMaterialNormal;
-            targetFillMaterial = panelFillMaterialNormal;
+            // Para grid principal, usar materiales normales
+            if (panelData.selected) {
+                targetLineMaterial = panelLineMaterialSelected;
+                targetFillMaterial = panelFillMaterialSelected;
+            } else if (panelData.hovered && !('ontouchstart' in window)) {
+                targetLineMaterial = panelLineMaterialHover;
+                targetFillMaterial = panelFillMaterialHover;
+                
+                // Imprimir el carácter en la consola cuando se hace hover
+                if (panelData.behavior && panelData.behavior.character) {
+                    console.log(`Tecla: ${panelData.behavior.character}`);
+                }
+            } else {
+                targetLineMaterial = panelLineMaterialNormal;
+                targetFillMaterial = panelFillMaterialNormal;
+            }
         }
     }
 
@@ -2346,13 +4324,35 @@ renderer.domElement.addEventListener('dblclick', (event) => {
     
     raycaster.setFromCamera(mouse, camera);
     
-    // Recopilar todos los objetos seleccionables
-    const allSelectable = [];
-    const allFillMeshes = panels.map(p => p.fillMesh).filter(Boolean);
-    const allBorderLines = panels.flatMap(p => p.borderLines || []).filter(Boolean);
-    allSelectable.push(...allFillMeshes, ...allBorderLines);
+    // PRIORIDAD ABSOLUTA: Si el HUD está activo, verificar solo paneles del HUD primero
+    let intersects = [];
     
-    const intersects = raycaster.intersectObjects(allSelectable, false);
+    if (isHUDActive()) {
+        // Cuando el HUD está activo, solo permitir clics en elementos del HUD
+        // NO permitir clics en elementos del fondo
+        const hudPanelsList = getHUDPanels();
+        const hudFillMeshes = hudPanelsList.map(p => p.fillMesh).filter(Boolean);
+        const hudBorderLines = hudPanelsList.flatMap(p => p.borderLines || []).filter(Boolean);
+        const hudSelectable = [...hudFillMeshes, ...hudBorderLines];
+        intersects = raycaster.intersectObjects(hudSelectable, false);
+        // NO verificar grid principal cuando HUD está activo - elementos del fondo no son clicables
+    } else {
+        // Si el HUD no está activo, verificar solo grid principal
+        const allSelectable = [];
+        panels.forEach(panel => {
+            if (panel.fillMesh && (!panel.fillMesh.userData || !panel.fillMesh.userData.ignoreRaycast)) {
+                allSelectable.push(panel.fillMesh);
+            }
+            if (panel.borderLines) {
+                panel.borderLines.forEach(line => {
+                    if (!line.userData || !line.userData.ignoreRaycast) {
+                        allSelectable.push(line);
+                    }
+                });
+            }
+        });
+        intersects = raycaster.intersectObjects(allSelectable, false);
+    }
     
     if (intersects.length > 0) {
         let panelData = null;
@@ -2372,6 +4372,12 @@ renderer.domElement.addEventListener('dblclick', (event) => {
 });
 
 renderer.domElement.addEventListener('mousedown', (event) => {
+    // 🔥 DETENER GLITCH AL HACER CLICK EN PANTALLA
+    if (glitchActive) {
+        stopGlitchEffect();
+        return; // Salir temprano para evitar otras acciones mientras el glitch está activo
+    }
+    
     // Ignorar eventos táctiles
     if (event.pointerType === 'touch') return;
     
@@ -2384,20 +4390,37 @@ renderer.domElement.addEventListener('mousedown', (event) => {
         raycaster.setFromCamera(mouse, camera);
 
         // --- Raycast contra BORDES Y RELLENO --- 
-        // Recopilar todos los objetos seleccionables (bordes y rellenos)
-        const allSelectable = [];
+        // PRIORIDAD ABSOLUTA: Si el HUD está activo, solo verificar paneles del HUD primero
+        let intersects = [];
         
-        // Añadir todos los meshes de relleno (fillMesh)
-        const allFillMeshes = panels.map(p => p.fillMesh).filter(Boolean);
-        allSelectable.push(...allFillMeshes);
-        
-        // Añadir también las líneas de borde para mantener la selección precisa
-        const allBorderLines = panels.flatMap(p => p.borderLines || []).filter(Boolean);
-        allSelectable.push(...allBorderLines);
-        
-        // Ordenar por distancia más cercana primero
-        const intersects = raycaster.intersectObjects(allSelectable, false)
-            .sort((a, b) => a.distance - b.distance);
+        if (isHUDActive()) {
+            // PRIMERO: Verificar solo paneles del HUD
+            const hudPanelsList = getHUDPanels();
+            const hudFillMeshes = hudPanelsList.map(p => p.fillMesh).filter(Boolean);
+            const hudBorderLines = hudPanelsList.flatMap(p => p.borderLines || []).filter(Boolean);
+            const hudSelectable = [...hudFillMeshes, ...hudBorderLines];
+            
+            intersects = raycaster.intersectObjects(hudSelectable, false)
+                .sort((a, b) => a.distance - b.distance);
+            // NO verificar grid principal cuando HUD está activo - elementos del fondo no son clicables
+        } else {
+            // Si el HUD no está activo, verificar solo grid principal
+            const allSelectable = [];
+            panels.forEach(panel => {
+                if (panel.fillMesh && (!panel.fillMesh.userData || !panel.fillMesh.userData.ignoreRaycast)) {
+                    allSelectable.push(panel.fillMesh);
+                }
+                if (panel.borderLines) {
+                    panel.borderLines.forEach(line => {
+                        if (!line.userData || !line.userData.ignoreRaycast) {
+                            allSelectable.push(line);
+                        }
+                    });
+                }
+            });
+            intersects = raycaster.intersectObjects(allSelectable, false)
+                .sort((a, b) => a.distance - b.distance);
+        }
 
         if (intersects.length > 0) {
             // --- Se hizo click sobre un panel (borde o relleno) --- 
@@ -2426,6 +4449,44 @@ renderer.domElement.addEventListener('mousedown', (event) => {
             
             if (clickedPanelData) {
                 // NUEVA LÓGICA: Verificar si el panel está asignado para navegar a un slot
+                // 🔥 NUEVO: Cargar slot en HUD si el panel tiene loadToHUDSlot asignado
+                if (!clickedPanelData.isKeyboardKey && typeof clickedPanelData.loadToHUDSlot === 'number') {
+                    console.log(`Panel P${clickedPanelData.orderNumber} clickeado. Cargando Slot ${clickedPanelData.loadToHUDSlot} en HUD.`);
+                    (async () => {
+                        // Si el HUD no está activo, activarlo primero
+                        if (!isHUDActive()) {
+                            console.log(`HUD no está activo, activándolo primero...`);
+                            const slotConfig = bioSlotsLoadFromSlot(clickedPanelData.loadToHUDSlot);
+                            const slotDivisions = slotConfig?.grid?.divisions || currentDivisions;
+                            console.log(`Creando HUD con ${slotDivisions} divisiones del slot`);
+                            const hudCreated = createHUD(slotDivisions);
+                            if (!hudCreated) {
+                                console.error('Error al crear HUD. Cargando en grid principal como fallback.');
+                                loadFromSlot(clickedPanelData.loadToHUDSlot);
+                                return;
+                            }
+                            // Esperar un frame para asegurar que el HUD esté completamente inicializado
+                            await new Promise(resolve => requestAnimationFrame(resolve));
+                        }
+                        
+                        // Verificar que el HUD esté activo y visible antes de cargar
+                        const hudScene = getHUDScene();
+                        if (hudScene) {
+                            hudScene.visible = true;
+                            hudScene.traverse((child) => {
+                                child.visible = true;
+                            });
+                        }
+                        
+                        // Cargar el slot en el HUD
+                        await loadFromSlotToHUD(clickedPanelData.loadToHUDSlot);
+                    })();
+                    // Deseleccionar el panel después de la carga
+                    clickedPanelData.selected = false;
+                    updatePanelColor(clickedPanelData);
+                    return; // Terminar el procesamiento aquí para no interferir con la selección normal
+                }
+                
                 if (!clickedPanelData.isKeyboardKey && typeof clickedPanelData.navigateToSlot === 'number') {
                     console.log(`Panel P${clickedPanelData.orderNumber} clickeado. Navegando a Slot ${clickedPanelData.navigateToSlot}.`);
                     loadFromSlot(clickedPanelData.navigateToSlot);
@@ -2443,6 +4504,7 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                         
                         // Asegurar que no quede seleccionada
                         clickedPanelData.selected = false;
+                        updatePanelColor(clickedPanelData);
                         
                         // Efecto visual de flash
                         clickedPanelData.flashProgress = 0;
@@ -2450,19 +4512,351 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                         panelsFlashing.add(clickedPanelData);
                     }
                 } else {
-                    // Comportamiento normal para paneles regulares
-                if (event.shiftKey) {
+                    // NUEVA FUNCIONALIDAD: Detectar click en BOTÓN de models y cargar en panel de DISPLAY
+                    if (clickedPanelData.modelData && 
+                        clickedPanelData.modelData.isModelButton && 
+                        clickedPanelData.modelData.isFromModelsGrid) {
+                        
+                        // Este es un botón de la rejilla 3x3, buscar paneles de DISPLAY
+                        const displayPanels = panels.filter(p => 
+                            p !== clickedPanelData && 
+                            p.modelData && 
+                            p.modelData.isModelDisplay &&
+                            p.modelData.isFromModelCommand &&
+                            p.group && 
+                            p.group.children.some(child => child.userData && child.userData.isModel)
+                        );
+                        
+                        if (displayPanels.length > 0) {
+                            // Encontramos paneles de DISPLAY, usar el primero
+                            const targetDisplayPanel = displayPanels[0];
+                            const sourceModelData = clickedPanelData.modelData;
+                            
+                            console.log(`Transfiriendo modelo ${sourceModelData.name} del BOTÓN #${clickedPanelData.orderNumber} al DISPLAY #${targetDisplayPanel.orderNumber}`);
+                            
+                            // 🔥 ACTUALIZAR EL ÚLTIMO MODELO CLICKEADO PARA EL COMANDO PRINT
+                            lastClickedModelFromGrid = {
+                                name: sourceModelData.name,
+                                url: sourceModelData.url,
+                                scientificName: modelScientificNames[sourceModelData.name] || 'MODELO DESCONOCIDO'
+                            };
+                            console.log(`📋 Último modelo para print actualizado: ${lastClickedModelFromGrid.name} (${lastClickedModelFromGrid.scientificName})`);
+                            
+                            // 🔥 BUSCAR Y ACTUALIZAR PANELES DE ESTADÍSTICAS GENÓMICAS (STATG)
+                            const statgPanels = panels.filter(p => p.isStatgPanel && !p.isKeyboardKey);
+                            if (statgPanels.length > 0) {
+                                const currentGridParams = getCurrentGridParams();
+                                if (currentGridParams) {
+                                    statgPanels.forEach(statgPanel => {
+                                        const updated = updateStatgPanelWithModel(statgPanel, sourceModelData.name, currentGridParams);
+                                        if (updated) {
+                                            console.log(`📊 Panel STATG #${statgPanel.orderNumber} actualizado con modelo ${sourceModelData.name}`);
+                                        }
+                                    });
+                                    
+                                    if (statgPanels.length > 0) {
+                                        console.log(`🔄 ${statgPanels.length} panel(es) de estadísticas genómicas actualizados automáticamente`);
+                                    }
+                                }
+                            }
+                            
+                            // Mostrar información en terminal solo si está disponible
+                            const terminalOutput = document.querySelector('.terminal-output');
+                            if (terminalOutput) {
+                                showInfo(`Modelo ${lastClickedModelFromGrid.name} seleccionado para print`, terminalOutput);
+                            }
+                            
+                            // Cargar el modelo del botón en el panel de display
+                            loadModelToPanel(targetDisplayPanel, sourceModelData.url, currentGrid.userData.cellSize).then((success) => {
+                                if (success) {
+                                    // Actualizar datos del modelo en el panel de display (mantener que es display)
+                                    targetDisplayPanel.modelData = {
+                                        name: sourceModelData.name,
+                                        url: sourceModelData.url,
+                                        isRotating: true,
+                                        rotationSpeed: sourceModelData.rotationSpeed || 0.005,
+                                        isModelDisplay: true, // Mantener como display
+                                        isFromModelCommand: true, // Mantener origen
+                                        scientificName: sourceModelData.scientificName || modelScientificNames[sourceModelData.name] || null // 🔥 NUEVO: Preservar o asignar nombre científico
+                                    };
+                                    
+                                    console.log(`Modelo ${sourceModelData.name} transferido exitosamente al DISPLAY #${targetDisplayPanel.orderNumber}`);
+                                    
+                                    // Flash visual en el panel de display para indicar la transferencia
+                                    targetDisplayPanel.flashProgress = 0;
+                                    targetDisplayPanel.shouldFlash = true;
+                                    panelsFlashing.add(targetDisplayPanel);
+                                } else {
+                                    console.error(`Error al transferir modelo ${sourceModelData.name} al DISPLAY #${targetDisplayPanel.orderNumber}`);
+                                }
+                            }).catch(error => {
+                                console.error(`Error al cargar modelo en panel destino:`, error);
+                            });
+                            
+                            // Deseleccionar el panel de models después de la transferencia
+                            clickedPanelData.selected = false;
+                            updatePanelColor(clickedPanelData);
+                            
+                            // NUEVA FUNCIONALIDAD: Buscar panel libre para cargar nombre científico
+                            const freePanels = findFreePanels();
+                            console.log(`🔍 Buscando panel libre para nombre científico. Paneles libres encontrados: ${freePanels.length}`);
+                            
+                            if (freePanels.length > 0) {
+                                const freePanel = freePanels[0];
+                                const scientificName = modelScientificNames[sourceModelData.name];
+                                
+                                console.log(`📄 Modelo: ${sourceModelData.name}, Nombre científico: ${scientificName}`);
+                                
+                                if (scientificName) {
+                                    // Marcar el panel como contenedor de especie (reutilizable)
+                                    freePanel.hasText = true;
+                                    freePanel.speciesPanel = true; // NUEVO: Marcar como panel de especie
+                                    freePanel.speciesName = scientificName; // NUEVO: Guardar nombre de especie
+                                    createPanelText(freePanel, currentGrid.userData.cellSize);
+                                    setPanelText(freePanel, scientificName, currentGrid.userData.cellSize);
+                                    
+                                    console.log(`✅ Nombre científico "${scientificName}" cargado en panel de especie #${freePanel.orderNumber}`);
+                                    
+                                    // Flash visual en el panel de especie para indicar la carga
+                                    freePanel.flashProgress = 0;
+                                    freePanel.shouldFlash = true;
+                                    panelsFlashing.add(freePanel);
+                                } else {
+                                    console.warn(`⚠️ No se encontró nombre científico para el modelo: ${sourceModelData.name}`);
+                                }
+                            } else {
+                                console.warn(`⚠️ No hay paneles libres disponibles para mostrar el nombre científico`);
+                            }
+                            
+                            return; // Salir temprano para evitar el comportamiento normal de selección
+                        }
+                    }
+
+                    // NUEVA FUNCIONALIDAD: Avanzar scroll de términos al hacer click en botón AGREE
+                    if (clickedPanelData.isAgreeButton && clickedPanelData.termsPanel) {
+                        const termsPanel = clickedPanelData.termsPanel;
+                        const textState = panelTextState.get(termsPanel);
+                        if (textState && textState.useWhiteScrollIndicators) {
+                            // Este es el botón AGREE, avanzar scroll del panel de términos
+                            const currentGridParams = getCurrentGridParams();
+                            if (currentGridParams) {
+                                // Calcular dimensiones del panel de términos
+                                const panelHeight = (termsPanel.maxCellIndex.y - termsPanel.minCellIndex.y + 1);
+                                const panelWidth = (termsPanel.maxCellIndex.x - termsPanel.minCellIndex.x + 1);
+                                const width = panelWidth * currentGridParams.cellSize;
+                                const height = panelHeight * currentGridParams.cellSize;
+                                const paddingSize = currentGridParams.cellSize;
+                                const textAreaHeight = height - (paddingSize * 2);
+                                
+                                // Calcular número máximo de líneas visibles
+                                const isUniline = panelHeight <= 3;
+                                const isTooSmall = textAreaHeight < (currentGridParams.cellSize * TEXT_CONFIG.fontSize * 0.8);
+                                
+                                let effectiveLineHeight;
+                                if (isTooSmall || isUniline) {
+                                    effectiveLineHeight = panelHeight <= 1 ? TEXT_CONFIG.lineHeight * 0.2 :
+                                                         panelHeight <= 2 ? TEXT_CONFIG.lineHeight * 0.3 :
+                                                         panelHeight <= 3 ? TEXT_CONFIG.lineHeight * 0.4 :
+                                                         TEXT_CONFIG.lineHeight;
+                                } else {
+                                    effectiveLineHeight = TEXT_CONFIG.lineHeight;
+                                }
+                                
+                                const maxVisibleLines = isUniline ? 1 : Math.max(1, Math.floor(textAreaHeight / (currentGridParams.cellSize * effectiveLineHeight)));
+                                
+                                // Avanzar scrollOffset en una pantalla
+                                const newScrollOffset = Math.min(
+                                    textState.scrollOffset + maxVisibleLines,
+                                    Math.max(0, textState.lines.length - maxVisibleLines)
+                                );
+                                
+                                // 🔥 CRITICAL: Asegurar que el panel de términos NO flashee al actualizar texto
+                                const wasFlashing = termsPanel.shouldFlash;
+                                const wasInFlashingSet = panelsFlashing.has(termsPanel);
+                                
+                                if (newScrollOffset !== textState.scrollOffset) {
+                                    textState.scrollOffset = newScrollOffset;
+                                    createPanelText(termsPanel, currentGridParams.cellSize);
+                                    console.log(`📜 Scroll de términos avanzado (AGREE): ${textState.scrollOffset}/${textState.lines.length - maxVisibleLines}`);
+                                } else {
+                                    // Si ya está al final, volver al inicio
+                                    textState.scrollOffset = 0;
+                                    createPanelText(termsPanel, currentGridParams.cellSize);
+                                    console.log(`📜 Scroll de términos reiniciado al inicio (AGREE)`);
+                                }
+                                
+                                // 🔥 CRITICAL: Flash visual en el botón I AGREE y el panel de términos
+                                // Solo estos dos paneles deben flashear, no todos los paneles
+                                startFlash(clickedPanelData);
+                                
+                                // También hacer flash en el panel de términos
+                                termsPanel.flashProgress = 0;
+                                termsPanel.shouldFlash = true;
+                                panelsFlashing.add(termsPanel);
+                                
+                                return; // Salir para evitar selección normal
+                            }
+                        }
+                    }
+                    
+                    // 🔥 PRIORIDAD MÁXIMA: ACTIVAR GLITCH SI EL PANEL ESTÁ PREPARADO
+                    if (clickedPanelData.glitchReady) {
+                        console.log(`🔥 GLITCH ACTIVADO! Panel #${clickedPanelData.orderNumber} clickeado`);
+                        startGlitchEffect(clickedPanelData);
+                        
+                        // Desmarcar el panel como preparado para glitch
+                        clickedPanelData.glitchReady = false;
+                        clickedPanelData.shouldFlash = false;
+                        panelsFlashing.delete(clickedPanelData);
+                        
+                        return; // ¡IMPORTANTE! Salir para evitar selección normal
+                    }
+                    
+                    // 🔥 COMPORTAMIENTO MEJORADO DE MULTISELECCIÓN
+                    if (event.shiftKey || event.ctrlKey) {
+                        // Con Shift/Ctrl: Alternar selección (multiselección)
                     clickedPanelData.selected = !clickedPanelData.selected; 
+                        
+                        // 🔥 ACTUALIZAR VISUAL DE TODOS LOS PANELES SELECCIONADOS
+                        refreshSelectedPanelsColors();
+                        
+                        const selectedCount = panels.filter(p => p.selected).length;
+                        const selectedNumbers = panels.filter(p => p.selected).map(p => `P${p.orderNumber}`).join(', ');
+                        console.log(`🔄 Multiselección: Panel P${clickedPanelData.orderNumber} ${clickedPanelData.selected ? 'seleccionado' : 'deseleccionado'}. Total seleccionados: ${selectedCount} (${selectedNumbers})`);
+                        
+                        // Añadir efecto flash para confirmar la acción
+                        clickedPanelData.flashProgress = 0;
+                        clickedPanelData.shouldFlash = true;
+                        panelsFlashing.add(clickedPanelData);
+                        
+                        // 🔥 NUEVA FUNCIONALIDAD: Si el panel seleccionado tiene modelo y hay un viewer activo, cargarlo en el viewer
+                        if (clickedPanelData.selected && clickedPanelData.modelData && clickedPanelData.modelData.url && 
+                            !clickedPanelData.modelData.isViewer && !clickedPanelData.isViewer) {
+                            
+                            // Buscar paneles viewer activos
+                            const viewerPanels = panels.filter(p => 
+                                p !== clickedPanelData && 
+                                p.isViewer && 
+                                p.modelData && 
+                                p.modelData.isViewer &&
+                                !p.isKeyboardKey
+                            );
+                            
+                            if (viewerPanels.length > 0) {
+                                const viewerPanel = viewerPanels[0];
+                                const sourceModelData = clickedPanelData.modelData;
+                                const currentGridParams = getCurrentGridParams();
+                                
+                                if (currentGridParams && sourceModelData.url) {
+                                    loadModelToPanel(viewerPanel, sourceModelData.url, currentGridParams.cellSize).then((success) => {
+                                        if (success) {
+                                            viewerPanel.modelData.name = sourceModelData.name;
+                                            viewerPanel.modelData.url = sourceModelData.url;
+                                            viewerPanel.modelData.isRotating = true;
+                                            viewerPanel.modelData.rotationSpeed = sourceModelData.rotationSpeed || 0.005;
+                                            viewerPanel.modelData.scientificName = sourceModelData.scientificName || modelScientificNames[sourceModelData.name] || null; // 🔥 NUEVO: Preservar o asignar nombre científico
+                                            
+                                            console.log(`🖼️ Modelo ${sourceModelData.name} cargado en viewer #${viewerPanel.orderNumber} (multiselección)`);
+                                            
+                                            // Mostrar nombre científico en el panel libre más cercano al viewer
+                                            const closestFreePanel = findClosestFreePanel(viewerPanel);
+                                            if (closestFreePanel) {
+                                                const scientificName = modelScientificNames[sourceModelData.name];
+                                                
+                                                if (scientificName) {
+                                                    closestFreePanel.hasText = true;
+                                                    closestFreePanel.speciesPanel = true;
+                                                    closestFreePanel.speciesName = scientificName;
+                                                    createPanelText(closestFreePanel, currentGridParams.cellSize);
+                                                    setPanelText(closestFreePanel, scientificName, currentGridParams.cellSize);
+                                                    
+                                                    // Flash visual en el panel de especie
+                                                    closestFreePanel.flashProgress = 0;
+                                                    closestFreePanel.shouldFlash = true;
+                                                    panelsFlashing.add(closestFreePanel);
+                                                    
+                                                    console.log(`📄 Nombre científico "${scientificName}" mostrado en panel #${closestFreePanel.orderNumber} (multiselección, más cercano al viewer)`);
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
                 } else {
                     // --- Click Normal: Deseleccionar todos y seleccionar solo este --- 
+                        let deselectedPanels = [];
                     panels.forEach(p => {
                         if (p !== clickedPanelData && p.selected) {
                             p.selected = false;
                             updatePanelColor(p);
+                                deselectedPanels.push(`P${p.orderNumber}`);
                         }
                     });
+                        
                        clickedPanelData.selected = true; 
                        updatePanelColor(clickedPanelData);
+                        
+                        if (deselectedPanels.length > 0) {
+                            console.log(`✋ Selección única: Deseleccionados ${deselectedPanels.join(', ')}, seleccionado P${clickedPanelData.orderNumber}`);
+                        } else {
+                            console.log(`✅ Panel P${clickedPanelData.orderNumber} seleccionado`);
+                        }
+                        
+                        // 🔥 NUEVA FUNCIONALIDAD: Si el panel seleccionado tiene modelo y hay un viewer activo, cargarlo en el viewer
+                        if (clickedPanelData.modelData && clickedPanelData.modelData.url && 
+                            !clickedPanelData.modelData.isViewer && !clickedPanelData.isViewer) {
+                            
+                            // Buscar paneles viewer activos
+                            const viewerPanels = panels.filter(p => 
+                                p !== clickedPanelData && 
+                                p.isViewer && 
+                                p.modelData && 
+                                p.modelData.isViewer &&
+                                !p.isKeyboardKey
+                            );
+                            
+                            if (viewerPanels.length > 0) {
+                                const viewerPanel = viewerPanels[0];
+                                const sourceModelData = clickedPanelData.modelData;
+                                const currentGridParams = getCurrentGridParams();
+                                
+                                if (currentGridParams && sourceModelData.url) {
+                                    loadModelToPanel(viewerPanel, sourceModelData.url, currentGridParams.cellSize).then((success) => {
+                                        if (success) {
+                                            viewerPanel.modelData.name = sourceModelData.name;
+                                            viewerPanel.modelData.url = sourceModelData.url;
+                                            viewerPanel.modelData.isRotating = true;
+                                            viewerPanel.modelData.rotationSpeed = sourceModelData.rotationSpeed || 0.005;
+                                            viewerPanel.modelData.scientificName = sourceModelData.scientificName || modelScientificNames[sourceModelData.name] || null; // 🔥 NUEVO: Preservar o asignar nombre científico
+                                            
+                                            console.log(`🖼️ Modelo ${sourceModelData.name} cargado en viewer #${viewerPanel.orderNumber}`);
+                                            
+                                            // Mostrar nombre científico en el panel libre más cercano al viewer
+                                            const closestFreePanel = findClosestFreePanel(viewerPanel);
+                                            if (closestFreePanel) {
+                                                const scientificName = modelScientificNames[sourceModelData.name];
+                                                
+                                                if (scientificName) {
+                                                    closestFreePanel.hasText = true;
+                                                    closestFreePanel.speciesPanel = true;
+                                                    closestFreePanel.speciesName = scientificName;
+                                                    createPanelText(closestFreePanel, currentGridParams.cellSize);
+                                                    setPanelText(closestFreePanel, scientificName, currentGridParams.cellSize);
+                                                    
+                                                    // Flash visual en el panel de especie
+                                                    closestFreePanel.flashProgress = 0;
+                                                    closestFreePanel.shouldFlash = true;
+                                                    panelsFlashing.add(closestFreePanel);
+                                                    
+                                                    console.log(`📄 Nombre científico "${scientificName}" mostrado en panel #${closestFreePanel.orderNumber} (más cercano al viewer)`);
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
                 }
                 }
             }
@@ -2473,16 +4867,26 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                 panels.forEach(p => {
                     if (p.selected) {
                         p.selected = false;
-                        updatePanelColor(p);
                         deselectedSomething = true;
                     }
                 });
+                
+                // 🔥 REFRESCAR VISUAL DESPUÉS DE DESELECCIONAR
+                if (deselectedSomething) {
+                    refreshAllPanelColors();
+                }
     
                 // Iniciar selección por arrastre
                     isSelecting = true;
                     controls.enabled = false; 
                     startPoint = { x: event.clientX, y: event.clientY };
                     endPoint = { x: event.clientX, y: event.clientY };
+                    
+                    // 🔥 CAPTURAR ESTADO DE TECLAS MODIFICADORAS AL INICIO DE LA SELECCIÓN
+                    selectionModifierKeys.shiftKey = event.shiftKey;
+                    selectionModifierKeys.ctrlKey = event.ctrlKey;
+                    selectionModifierKeys.altKey = event.altKey;
+                    
                     selectionBox.style.left = `${startPoint.x}px`;
                     selectionBox.style.top = `${startPoint.y}px`;
                     selectionBox.style.width = '0px';
@@ -2558,20 +4962,34 @@ renderer.domElement.addEventListener('mousemove', (event) => {
         // Configurar raycaster con posición precisa
         raycaster.setFromCamera(mouse, camera);
 
-        // Recopilar todos los objetos para hover (igual que en mousedown)
-        const allHoverables = [];
+        // PRIORIDAD ABSOLUTA: Si el HUD está activo, verificar solo paneles del HUD primero
+        let intersects = [];
         
-        // Añadir todos los meshes de relleno
-        const allFillMeshes = panels.map(p => p.fillMesh).filter(Boolean);
-        allHoverables.push(...allFillMeshes);
-        
-        // Añadir también líneas de borde
-        const allBorderLines = panels.flatMap(p => p.borderLines || []).filter(Boolean);
-        allHoverables.push(...allBorderLines);
-        
-        // Ordenar por distancia
-        const intersects = raycaster.intersectObjects(allHoverables, false)
-            .sort((a, b) => a.distance - b.distance);
+        if (isHUDActive()) {
+            const hudPanelsList = getHUDPanels();
+            const hudFillMeshes = hudPanelsList.map(p => p.fillMesh).filter(Boolean);
+            const hudBorderLines = hudPanelsList.flatMap(p => p.borderLines || []).filter(Boolean);
+            const hudHoverables = [...hudFillMeshes, ...hudBorderLines];
+            intersects = raycaster.intersectObjects(hudHoverables, false)
+                .sort((a, b) => a.distance - b.distance);
+            // NO verificar grid principal cuando HUD está activo - elementos del fondo no son hoverables
+        } else {
+            const allHoverables = [];
+            panels.forEach(panel => {
+                if (panel.fillMesh && (!panel.fillMesh.userData || !panel.fillMesh.userData.ignoreRaycast)) {
+                    allHoverables.push(panel.fillMesh);
+                }
+                if (panel.borderLines) {
+                    panel.borderLines.forEach(line => {
+                        if (!line.userData || !line.userData.ignoreRaycast) {
+                            allHoverables.push(line);
+                        }
+                    });
+                }
+            });
+            intersects = raycaster.intersectObjects(allHoverables, false)
+                .sort((a, b) => a.distance - b.distance);
+        }
 
         let newHoveredPanelData = null;
         if (intersects.length > 0) {
@@ -2805,6 +5223,76 @@ function getSerializableConfig() {
                 const currentText = panel.hasText ? 
                     (textState && textState.isPassword ? textState.realText : getPanelText(panel)) : '';
                 
+                // 🔥 CRITICAL FIX: Detectar y guardar información de texturas (logo, apps)
+                let textureInfo = null;
+                if (panel.hasTexture && panel.fillMesh && panel.fillMesh.material && panel.fillMesh.material.map) {
+                    const texture = panel.fillMesh.material.map;
+                    // Intentar determinar el tipo de textura y su ruta
+                    // Para logo: siempre es './public/img/bioprint_logo.png'
+                    // Para apps: necesitamos guardar el índice del icono o la ruta completa
+                    // Por ahora, guardamos la ruta si está disponible o inferimos del tipo
+                    
+                    // Guardar UVs personalizadas si existen (para logo con "contain")
+                    const geometry = panel.fillMesh.geometry;
+                    const uvAttribute = geometry.attributes.uv;
+                    let customUVs = null;
+                    if (uvAttribute && uvAttribute.count > 0) {
+                        // Guardar solo si los UVs no son estándar (0-1 stretch)
+                        // Verificamos si hay transformación "contain" aplicada
+                        const firstU = uvAttribute.getX(0);
+                        const firstV = uvAttribute.getY(1);
+                        // Si los UVs están fuera del rango 0-1 o centrados, son custom
+                        if (firstU < 0 || firstU > 1 || firstV < 0 || firstV > 1 || 
+                            (Math.abs(firstU - 0.5) > 0.1 && Math.abs(firstV - 0.5) > 0.1)) {
+                            customUVs = [];
+                            for (let i = 0; i < uvAttribute.count; i++) {
+                                customUVs.push({
+                                    u: uvAttribute.getX(i),
+                                    v: uvAttribute.getY(i)
+                                });
+                            }
+                        }
+                    }
+                    
+                    // Determinar tipo de textura
+                    // Verificar si el panel tiene logo activo usando la función exportada
+                    const hasLogoActive = hasLogo(panel);
+                    let textureType = panel.textureType || 'unknown';
+                    let texturePath = panel.texturePath || null;
+                    
+                    // Si tiene logo activo, marcar como logo
+                    if (hasLogoActive) {
+                        textureType = 'logo';
+                        texturePath = './public/img/bioprint_logo.png';
+                    } else if (panel.textureType === 'app' || texturePath?.includes('apps.png')) {
+                        // Para apps, necesitamos guardar el índice del icono si está disponible
+                        textureType = 'app';
+                        texturePath = texturePath || './img/apps.png';
+                        // Intentar inferir el índice del icono desde las UVs si es posible
+                        // (esto se puede mejorar más adelante)
+                    }
+                    
+                    textureInfo = {
+                        hasTexture: true,
+                        textureType: textureType, // 'logo', 'app', 'custom'
+                        texturePath: texturePath, // Ruta de la textura
+                        customUVs: customUVs, // UVs personalizadas para "contain" o mapeo de apps
+                        // Guardar dimensiones de imagen para recalcular aspect ratio
+                        imageAspect: texture.image ? (texture.image.width / texture.image.height) : null,
+                        hasLogoActive: hasLogoActive // 🔥 NUEVO: Guardar si tiene logo activo
+                    };
+                } else if (hasLogo(panel)) {
+                    // Si no tiene textura en fillMesh pero tiene logo activo, guardar info de logo
+                    textureInfo = {
+                        hasTexture: true,
+                        textureType: 'logo',
+                        texturePath: './public/img/bioprint_logo.png',
+                        customUVs: null,
+                        imageAspect: null,
+                        hasLogoActive: true
+                    };
+                }
+                
                 // Crear un objeto simple serializable
                 const serializedPanel = {
                     minCellIndex: { 
@@ -2818,19 +5306,56 @@ function getSerializableConfig() {
                     orderNumber: typeof panel.orderNumber === 'number' ? panel.orderNumber : 0,
                     showOrderNumber: !!panel.showOrderNumber,
                     selected: !!panel.selected,
+                    isModelingPanel: !!panel.isModelingPanel, // Marcar paneles de modeling
+                    pendingModelingCommand: !!panel.pendingModelingCommand, // Guardar comando modeling pendiente
+                    pendingPrintCommand: !!panel.pendingPrintCommand, // Guardar comando print pendiente
+                    printCommandArgs: Array.isArray(panel.printCommandArgs) ? [...panel.printCommandArgs] : [], // Guardar argumentos del comando print
+                    pendingPrintSimpleCommand: !!panel.pendingPrintSimpleCommand, // Guardar comando print simple pendiente
+                    pendingPrintPercentCommand: !!panel.pendingPrintPercentCommand, // Guardar comando print percent pendiente
+                    printPercentDuration: typeof panel.printPercentDuration === 'number' ? panel.printPercentDuration : undefined, // Guardar duración en milisegundos
+                    navigateToSlot: typeof panel.navigateToSlot === 'number' ? panel.navigateToSlot : undefined, // Guardar navegación a slot
+                    loadToHUDSlot: typeof panel.loadToHUDSlot === 'number' ? panel.loadToHUDSlot : undefined, // 🔥 NUEVO: Guardar trigger HUD
             behavior: {
                         hasText: !!panel.hasText,
                         textContent: typeof currentText === 'string' ? currentText : '',
                         messageBuffer: Array.isArray(textState?.lines) ? [...textState.lines] : [],
                         maxLines: typeof textState?.maxCharsPerLine === 'number' ? textState.maxCharsPerLine : 0,
                         isPassword: !!textState?.isPassword,
+                        textAlign: textState?.textAlign || 'center', // Guardar alineación de texto
+                        verticalAlign: textState?.verticalAlign || 'middle', // Guardar alineación vertical
+                        useWhiteScrollIndicators: !!textState?.useWhiteScrollIndicators, // 🔥 NUEVO: Guardar indicadores de scroll blancos (para términos)
                 isGATCActive: gatcIntervals.has(panel),
+                        isSpeciesPanel: !!panel.speciesPanel, // NUEVO: Guardar si es panel de especie
+                        speciesName: panel.speciesName || null, // NUEVO: Guardar nombre de especie
                 modelData: panel.modelData ? {
                             modelUrl: typeof panel.modelData.url === 'string' ? panel.modelData.url : '',
+                            modelName: typeof panel.modelData.name === 'string' ? panel.modelData.name : '', // 🔥 NUEVO: Guardar nombre del modelo
                             isRotating: !!panel.modelData.isRotating,
-                            rotationSpeed: typeof panel.modelData.rotationSpeed === 'number' ? panel.modelData.rotationSpeed : 0.005
-                } : null,
-                    genomData: panel.genomData || null
+                            rotationSpeed: typeof panel.modelData.rotationSpeed === 'number' ? panel.modelData.rotationSpeed : 0.005,
+                            isModelButton: !!panel.modelData.isModelButton, // Guardar tipo botón
+                            isFromModelsGrid: !!panel.modelData.isFromModelsGrid, // Guardar origen rejilla
+                            isModelDisplay: !!panel.modelData.isModelDisplay, // Guardar tipo display
+                            isFromModelCommand: !!panel.modelData.isFromModelCommand, // Guardar origen comando
+                            isViewer: !!panel.modelData.isViewer || !!panel.isViewer, // 🔥 NUEVO: Guardar tipo viewer (también desde panel.isViewer)
+                            scientificName: typeof panel.modelData.scientificName === 'string' ? panel.modelData.scientificName : null // 🔥 NUEVO: Guardar nombre científico si existe
+                } : (panel.isViewer ? {
+                            // 🔥 NUEVO: Si el panel es viewer pero no tiene modelData, guardar la identidad de viewer
+                            modelUrl: '',
+                            modelName: '',
+                            isRotating: false,
+                            rotationSpeed: 0.005,
+                            isModelButton: false,
+                            isFromModelsGrid: false,
+                            isModelDisplay: false,
+                            isFromModelCommand: false,
+                            isViewer: true,
+                            scientificName: null
+                } : null),
+                    genomData: panel.genomData || null,
+                    textureInfo: textureInfo, // 🔥 NUEVO: Guardar información de texturas
+                    isAgreeButton: !!panel.isAgreeButton, // Guardar si es botón I AGREE
+                    termsPanelOrderNumber: panel.isAgreeButton && panel.termsPanel ? panel.termsPanel.orderNumber : null, // Guardar referencia al panel de términos
+                    modalData: getModalBehaviorData(panel) // 🔥 NUEVO: Guardar información del modal
                 }
             };
                 
@@ -2967,9 +5492,9 @@ function saveConfiguration() {
 
 function loadConfiguration() {
     try {
-        // No cargar si la animación inicial aún está en progreso
-        if (isFirstGridCreation) {
-            console.log('Esperando a que termine la animación inicial...');
+        // 🔥 CRITICAL FIX: No cargar si la animación inicial aún está en progreso o el grid no está listo
+        if (isFirstGridCreation || gridAnimationInProgress || !currentGrid) {
+            console.log('Esperando a que termine la animación inicial y el grid esté listo...');
             return;
         }
 
@@ -3036,6 +5561,9 @@ function loadConfiguration() {
 
         // Limpiar TODOS los paneles (incluyendo teclado)
         clearAllPanels(true, true);
+        
+        // Reiniciar estado de modeling si estaba activo
+        isPrintingActive = false;
 
         // Restaurar configuración de bioFX si existe
         if (config.bioFX) {
@@ -3091,15 +5619,44 @@ function loadConfiguration() {
                 return;
             }
 
-            // Cargar solo los paneles que NO son teclas del teclado
+            // Separar paneles de modeling del resto
+            const modelingPanels = [];
+            const regularPanels = [];
+            
             config.panels.forEach(panelInfo => {
+                if (panelInfo.isModelingPanel) {
+                    modelingPanels.push(panelInfo);
+                } else {
+                    regularPanels.push(panelInfo);
+                }
+            });
+            
+            // Si hay paneles de modeling, restaurar la interfaz completa desde 0
+            if (modelingPanels.length > 0) {
+                console.log(`Detectados ${modelingPanels.length} paneles de modeling, restaurando interfaz completa desde 0`);
+                restoreModelingInterface(modelingPanels, currentGridParams);
+            }
+            
+            // Cargar solo los paneles que NO son teclas del teclado y NO son paneles de modeling
+            regularPanels.forEach(panelInfo => {
+                
                 const panelData = {
                     group: null,
                     minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
                     maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
                     orderNumber: panelInfo.orderNumber,
                     showOrderNumber: panelInfo.showOrderNumber,
-                    hasText: panelInfo.behavior?.hasText || false
+                    hasText: panelInfo.behavior?.hasText || false,
+                    // 🔥 NUEVO: Restaurar propiedades de identidad del panel ANTES de restaurar comportamiento
+                    isModelingPanel: !!panelInfo.isModelingPanel,
+                    pendingModelingCommand: !!panelInfo.pendingModelingCommand,
+                    pendingPrintCommand: !!panelInfo.pendingPrintCommand,
+                    printCommandArgs: Array.isArray(panelInfo.printCommandArgs) ? [...panelInfo.printCommandArgs] : [],
+                    pendingPrintSimpleCommand: !!panelInfo.pendingPrintSimpleCommand,
+                    pendingPrintPercentCommand: !!panelInfo.pendingPrintPercentCommand,
+                    printPercentDuration: typeof panelInfo.printPercentDuration === 'number' ? panelInfo.printPercentDuration : undefined,
+                    navigateToSlot: typeof panelInfo.navigateToSlot === 'number' ? panelInfo.navigateToSlot : undefined, // Restaurar navegación a slot
+                    loadToHUDSlot: typeof panelInfo.loadToHUDSlot === 'number' ? panelInfo.loadToHUDSlot : undefined // 🔥 NUEVO: Restaurar trigger HUD
                 };
 
                 updatePanelGeometryAndPosition(panelData, currentGridParams);
@@ -3107,6 +5664,15 @@ function loadConfiguration() {
                 if(panelData.group) {
                     scene.add(panelData.group);
                     panels.push(panelData);
+
+                    // 🔥 NUEVO: Restaurar identidad de viewer incluso sin modelo cargado
+                    if (panelInfo.behavior && panelInfo.behavior.modelData && panelInfo.behavior.modelData.isViewer) {
+                        if (!panelData.modelData) {
+                            panelData.modelData = {};
+                        }
+                        panelData.modelData.isViewer = true;
+                        panelData.isViewer = true;
+                    }
 
                     // Restaurar comportamiento del panel
                     if (panelInfo.behavior) {
@@ -3120,7 +5686,10 @@ function loadConfiguration() {
                                 isEditing: false,
                                 scrollOffset: 0,
                                 isPassword: panelInfo.behavior.isPassword || false,
-                                realText: panelInfo.behavior.isPassword ? panelInfo.behavior.textContent : ''
+                                realText: panelInfo.behavior.isPassword ? panelInfo.behavior.textContent : '',
+                                textAlign: panelInfo.behavior.textAlign || 'center', // Restaurar alineación de texto
+                                verticalAlign: panelInfo.behavior.verticalAlign || 'middle', // Restaurar alineación vertical
+                                useWhiteScrollIndicators: !!panelInfo.behavior.useWhiteScrollIndicators // 🔥 NUEVO: Restaurar indicadores de scroll blancos (para términos)
                             };
                             panelTextState.set(panelData, textState);
                             
@@ -3129,6 +5698,26 @@ function loadConfiguration() {
                                 setPanelText(panelData, '*'.repeat(textState.realText.length), currentGridParams.cellSize);
                             } else {
                                 setPanelText(panelData, panelInfo.behavior.textContent, currentGridParams.cellSize);
+                            }
+                            
+                            // Restaurar botón I AGREE si existe
+                            if (panelInfo.behavior.isAgreeButton && panelInfo.behavior.termsPanelOrderNumber) {
+                                panelData.isAgreeButton = true;
+                                // Buscar el panel de términos por orderNumber (puede no estar cargado aún, buscar después)
+                                setTimeout(() => {
+                                    const termsPanel = panels.find(p => p.orderNumber === panelInfo.behavior.termsPanelOrderNumber);
+                                    if (termsPanel) {
+                                        panelData.termsPanel = termsPanel;
+                                        console.log(`Botón I AGREE restaurado en panel #${panelData.orderNumber} vinculado a términos en panel #${termsPanel.orderNumber}`);
+                                        
+                                        // 🔥 CRITICAL: Asegurar que el panel de términos tenga useWhiteScrollIndicators activado
+                                        const termsTextState = panelTextState.get(termsPanel);
+                                        if (termsTextState) {
+                                            termsTextState.useWhiteScrollIndicators = true;
+                                            console.log(`Indicadores de scroll blancos activados para panel de términos #${termsPanel.orderNumber}`);
+                                        }
+                                    }
+                                }, 100);
                             }
                         }
 
@@ -3139,11 +5728,43 @@ function loadConfiguration() {
                             }, panelData);
                         }
 
-                        if (panelInfo.behavior.modelData) {
-                            const { modelUrl, isRotating, rotationSpeed } = panelInfo.behavior.modelData;
+                        if (panelInfo.behavior.modelData && panelInfo.behavior.modelData.modelUrl) {
+                            const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName } = panelInfo.behavior.modelData;
                             loadModelToPanel(panelData, modelUrl, currentGridParams.cellSize).then(() => {
+                                // 🔥 CRITICAL: Asegurar que modelData existe
+                                if (!panelData.modelData) {
+                                    panelData.modelData = {};
+                                }
+                                
+                                // 🔥 CRITICAL: Restaurar URL del modelo (necesario para interacción con viewer)
+                                panelData.modelData.url = modelUrl;
+                                
+                                // 🔥 CRITICAL: Restaurar TODAS las propiedades del modelo
+                                if (modelName) {
+                                    panelData.modelData.name = modelName;
+                                    // 🔥 NUEVO: Si no hay scientificName guardado pero hay modelName, asignarlo desde el mapeo
+                                    if (!scientificName && modelName) {
+                                        panelData.modelData.scientificName = modelScientificNames[modelName] || null;
+                                    }
+                                }
+                                if (scientificName) {
+                                    panelData.modelData.scientificName = scientificName;
+                                }
+                                
+                                // Restaurar las propiedades específicas del tipo de panel
+                                if (isModelButton) {
+                                    panelData.modelData.isModelButton = true;
+                                    panelData.modelData.isFromModelsGrid = !!isFromModelsGrid;
+                                } else if (isModelDisplay) {
+                                    panelData.modelData.isModelDisplay = true;
+                                    panelData.modelData.isFromModelCommand = !!isFromModelCommand;
+                                } else if (isViewer) {
+                                    panelData.modelData.isViewer = true;
+                                    panelData.isViewer = true;
+                                }
+                                
                                 if (isRotating) {
-                                    toggleModelRotation(panelData);
+                                    if (!panelData.modelData.isRotating) toggleModelRotation(panelData);
                                     if (rotationSpeed) {
                                         setModelRotationSpeed(panelData, rotationSpeed);
                                     }
@@ -3154,6 +5775,57 @@ function loadConfiguration() {
                         if (panelInfo.behavior.genomData) {
                             panelData.genomData = panelInfo.behavior.genomData;
                         }
+                    }
+
+                    // Ejecutar comando modeling si está pendiente
+                    // 🔥 CRITICAL: La propiedad ya se restauró arriba, ahora solo ejecutamos el comando
+                    if (panelData.pendingModelingCommand) {
+                        // Crear un output mock para la función
+                        const mockOutput = {
+                            appendChild: () => {},
+                            innerHTML: ''
+                        };
+                        // Ejecutar el comando modeling con el panel restaurado
+                        setTimeout(() => {
+                            executeModelingCommand(panelData, mockOutput);
+                        }, 100); // Pequeño delay para asegurar que el panel esté completamente restaurado
+                    }
+                    
+                    if (panelInfo.pendingPrintCommand) {
+                        // Crear un output mock para la función
+                        const mockOutput = {
+                            appendChild: () => {},
+                            innerHTML: ''
+                        };
+                        // Ejecutar el comando print con el panel restaurado y los argumentos guardados
+                        const printArgs = Array.isArray(panelInfo.printCommandArgs) ? panelInfo.printCommandArgs : [];
+                        setTimeout(() => {
+                            executePrintCommand(panelData, printArgs, mockOutput);
+                        }, 100); // Pequeño delay para asegurar que el panel esté completamente restaurado
+                    }
+                    
+                    if (panelInfo.pendingPrintSimpleCommand) {
+                        // Crear un output mock para la función
+                        const mockOutput = {
+                            appendChild: () => {},
+                            innerHTML: ''
+                        };
+                        // Ejecutar el comando print simple
+                        setTimeout(() => {
+                            executePrintSimpleCommand(panelData, mockOutput);
+                        }, 100); // Pequeño delay para asegurar que el panel esté completamente restaurado
+                    }
+                    
+                    if (panelInfo.pendingPrintPercentCommand && typeof panelInfo.printPercentDuration === 'number') {
+                        // Crear un output mock para la función
+                        const mockOutput = {
+                            appendChild: () => {},
+                            innerHTML: ''
+                        };
+                        // Ejecutar el comando print percent con la duración guardada
+                        setTimeout(() => {
+                            executePrintPercentCommand(panelData, panelInfo.printPercentDuration, mockOutput);
+                        }, 100); // Pequeño delay para asegurar que el panel esté completamente restaurado
                     }
 
                     if (panelInfo.selected) {
@@ -3175,6 +5847,383 @@ function loadConfiguration() {
             loadBioKeyb(true); // Cargar teclado sin guardar configuración
         }
     }
+}
+
+// Función para restaurar la interfaz de modeling desde paneles guardados
+function restoreModelingInterface(modelingPanels, currentGridParams) {
+    if (!modelingPanels || modelingPanels.length === 0) {
+        console.warn('No hay paneles de modeling para restaurar');
+        return;
+    }
+    
+    // Restaurar cada panel de modeling en su posición original
+    const restoredPanels = {
+        modelingTitlePanel: null,
+        cyclicBarPanel: null,
+        progressBarPanel: null,
+        percentagePanel: null,
+        remainingTimePanel: null,
+        totalTimePanel: null,
+        modelPanel: null
+    };
+    
+    // Ordenar paneles por posición Y (de arriba a abajo) para identificar mejor
+    const sortedPanels = [...modelingPanels].sort((a, b) => {
+        const aY = a.minCellIndex.y;
+        const bY = b.minCellIndex.y;
+        if (aY !== bY) return bY - aY; // Más arriba primero (Y mayor)
+        return a.minCellIndex.x - b.minCellIndex.x; // Luego por X
+    });
+    
+    // Identificar cada panel por su posición y tamaño
+    for (const panelInfo of sortedPanels) {
+        const width = panelInfo.maxCellIndex.x - panelInfo.minCellIndex.x + 1;
+        const height = panelInfo.maxCellIndex.y - panelInfo.minCellIndex.y + 1;
+        const textContent = panelInfo.behavior?.textContent || '';
+        
+        // Crear el panel en su posición original
+        const panelData = {
+            group: null,
+            minCellIndex: { x: panelInfo.minCellIndex.x, y: panelInfo.minCellIndex.y },
+            maxCellIndex: { x: panelInfo.maxCellIndex.x, y: panelInfo.maxCellIndex.y },
+            orderNumber: panelInfo.orderNumber,
+            showOrderNumber: panelInfo.showOrderNumber || false,
+            hasText: panelInfo.behavior?.hasText || false,
+            isModelingPanel: true
+        };
+        
+        updatePanelGeometryAndPosition(panelData, currentGridParams);
+        
+        if (panelData.group) {
+            scene.add(panelData.group);
+            panels.push(panelData);
+            
+            // Identificar el tipo de panel por su contenido, tamaño y posición
+            // Título: contiene "MODELING" o mensajes de modeling
+            if (textContent && (textContent.includes('MODELING') || textContent.includes('Modeling user') || 
+                textContent.includes('Creating embeddings') || textContent.includes('Scraping') ||
+                textContent.includes('User Modeling Completed'))) {
+                if (!restoredPanels.modelingTitlePanel) {
+                    restoredPanels.modelingTitlePanel = panelData;
+                }
+            }
+            // MODELING USER DATA: contiene "MODELING USER DATA"
+            else if (textContent && textContent.includes('MODELING USER DATA')) {
+                restoredPanels.modelPanel = panelData;
+            }
+            // Porcentaje: contiene "%"
+            else if (textContent && textContent.includes('%')) {
+                restoredPanels.percentagePanel = panelData;
+            }
+            // ESTIMATED: contiene "ESTIMATED" o "RESTANTE"
+            else if (textContent && (textContent.includes('ESTIMATED') || textContent.includes('RESTANTE'))) {
+                restoredPanels.totalTimePanel = panelData;
+            }
+            // Tiempo restante: contiene "s" o ":" (formato de tiempo)
+            else if (textContent && (textContent.match(/\d+s/) || (textContent.includes(':') && textContent.length < 20))) {
+                restoredPanels.remainingTimePanel = panelData;
+            }
+            // Barras de progreso: altura 1, ancho grande, sin texto o texto vacío
+            else if (height === 1 && width > 10) {
+                // La primera barra de altura 1 es la cíclica (más arriba)
+                if (!restoredPanels.cyclicBarPanel) {
+                    restoredPanels.cyclicBarPanel = panelData;
+                }
+                // La segunda barra de altura 1 es la principal
+                else if (!restoredPanels.progressBarPanel) {
+                    restoredPanels.progressBarPanel = panelData;
+                }
+            }
+            
+            // Restaurar texto si tiene
+            if (panelData.hasText && textContent) {
+                panelData.isTextContainer = true;
+                createPanelText(panelData, currentGridParams.cellSize);
+                setPanelText(panelData, textContent, currentGridParams.cellSize);
+                
+                // Si es el panel de porcentaje, aplicar tamaño doble
+                if (restoredPanels.percentagePanel === panelData) {
+                    const percentageState = panelTextState.get(panelData);
+                    if (percentageState) {
+                        percentageState.customFontSize = 3.6;
+                        createPanelText(panelData, currentGridParams.cellSize);
+                    }
+                }
+            }
+        }
+    }
+    
+    // Inicializar la funcionalidad de modeling con los paneles restaurados
+    initializeModelingFromPanels(restoredPanels, currentGridParams);
+}
+
+// Función para inicializar la funcionalidad de modeling desde paneles restaurados
+function initializeModelingFromPanels(restoredPanels, currentGridParams) {
+    const { modelingTitlePanel, cyclicBarPanel, progressBarPanel, percentagePanel, remainingTimePanel, totalTimePanel, modelPanel } = restoredPanels;
+    
+    if (!modelingTitlePanel || !cyclicBarPanel || !progressBarPanel || !percentagePanel) {
+        console.warn('No se pudieron restaurar todos los paneles necesarios para modeling');
+        return;
+    }
+    
+    // Mostrar todos los paneles
+    [modelingTitlePanel, cyclicBarPanel, progressBarPanel, percentagePanel, remainingTimePanel, totalTimePanel, modelPanel].forEach(panel => {
+        if (panel && panel.group) panel.group.visible = true;
+    });
+    
+    // Configurar panel de progreso como barra usando bioLoad.js
+    import("./bioLoad.js").then(bioLoadModule => {
+        // Configurar barra de progreso principal
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 64;
+        
+        progressBarPanel.progressCanvas = canvas;
+        progressBarPanel.progressCtx = canvas.getContext('2d');
+        progressBarPanel.progressTexture = new THREE.CanvasTexture(canvas);
+        
+        const progressNormalMaterial = new THREE.MeshBasicMaterial({
+            map: progressBarPanel.progressTexture,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        
+        progressBarPanel.hasTexture = true;
+        progressBarPanel.textureMaterials = {
+            normal: progressNormalMaterial,
+            hover: progressNormalMaterial,
+            selected: progressNormalMaterial
+        };
+        
+        // Aplicar material a todos los meshes del panel
+        if (progressBarPanel.fillMesh) {
+            if (progressBarPanel.fillMesh.material) {
+                progressBarPanel.fillMesh.material.dispose();
+            }
+            progressBarPanel.fillMesh.material = progressNormalMaterial;
+        }
+        
+        // Asegurar que el material se aplique a todos los estados
+        if (progressBarPanel.group) {
+            progressBarPanel.group.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    child.material.dispose();
+                    child.material = progressNormalMaterial;
+                }
+            });
+        }
+        
+        progressBarPanel.drawProgress = function(progress, pulse = 0) {
+            if (!progressBarPanel.progressCtx || !progressBarPanel.progressTexture) return;
+            
+            bioLoadModule.updateProgressBar(
+                progressBarPanel.progressCtx,
+                progressBarPanel.progressCanvas.width,
+                progressBarPanel.progressCanvas.height,
+                progress,
+                pulse
+            );
+            progressBarPanel.progressTexture.needsUpdate = true;
+            Object.values(progressBarPanel.textureMaterials).forEach(material => {
+                if (material && material.map) {
+                    material.map.needsUpdate = true;
+                }
+            });
+        };
+        
+        // Configurar barra cíclica
+        if (cyclicBarPanel) {
+            const cyclicCanvas = document.createElement('canvas');
+            cyclicCanvas.width = 1024;
+            cyclicCanvas.height = 32;
+            
+            cyclicBarPanel.progressCanvas = cyclicCanvas;
+            cyclicBarPanel.progressCtx = cyclicCanvas.getContext('2d');
+            cyclicBarPanel.progressTexture = new THREE.CanvasTexture(cyclicCanvas);
+            cyclicBarPanel.cycleProgress = 0;
+            cyclicBarPanel.cycleSpeed = Math.random() * 1.5 + 0.5;
+            cyclicBarPanel.cycleCount = 0;
+            
+            const cyclicNormalMaterial = new THREE.MeshBasicMaterial({
+                map: cyclicBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            
+            cyclicBarPanel.hasTexture = true;
+            cyclicBarPanel.textureMaterials = {
+                normal: cyclicNormalMaterial,
+                hover: cyclicNormalMaterial,
+                selected: cyclicNormalMaterial
+            };
+            
+            if (cyclicBarPanel.fillMesh) {
+                cyclicBarPanel.fillMesh.material.dispose();
+                cyclicBarPanel.fillMesh.material = cyclicNormalMaterial;
+            }
+            
+            let lastCycleCount = 0;
+            
+            cyclicBarPanel.updateCyclicBar = function() {
+                if (!cyclicBarPanel.progressCtx || !cyclicBarPanel.progressTexture) return;
+                
+                cyclicBarPanel.cycleProgress += cyclicBarPanel.cycleSpeed;
+                
+                if (cyclicBarPanel.cycleProgress > 100) {
+                    cyclicBarPanel.cycleProgress = 0;
+                    cyclicBarPanel.cycleCount++;
+                    cyclicBarPanel.cycleSpeed = Math.random() * 2.0 + 0.5;
+                    
+                    // Cambiar mensaje cuando se complete un ciclo
+                    if (cyclicBarPanel.cycleCount > lastCycleCount) {
+                        lastCycleCount = cyclicBarPanel.cycleCount;
+                        const MODELING_MESSAGES = [
+                            "Modeling user preferences", "Creating embeddings", "Scraping user interactions",
+                            "Analyzing behavioral patterns", "Extracting feature vectors", "Building user profile",
+                            "Processing click streams", "Mapping user journey", "Identifying preferences",
+                            "Generating recommendations", "Training ML models", "Optimizing algorithms",
+                            "Calculating similarity scores", "Clustering user segments", "Validating data integrity",
+                            "Normalizing datasets", "Feature engineering", "Dimensionality reduction",
+                            "Cross-validation", "Hyperparameter tuning", "Model evaluation", "A/B testing",
+                            "Performance metrics", "Real-time inference", "Data pipeline optimization",
+                            "Cache warming", "Index building", "Query optimization", "Database sharding",
+                            "Load balancing", "API rate limiting", "Session management", "Token generation",
+                            "Authentication flow", "Authorization checks", "Data encryption", "Privacy compliance",
+                            "GDPR validation", "Consent management", "Data anonymization", "Audit logging",
+                            "Monitoring metrics", "Error tracking", "Performance profiling", "Resource allocation",
+                            "Scaling infrastructure", "Deployment pipeline", "Version control", "Rollback preparation",
+                            "Finalizing model"
+                        ];
+                        const messageIndex = Math.min(cyclicBarPanel.cycleCount - 1, MODELING_MESSAGES.length - 1);
+                        if (messageIndex >= 0 && messageIndex < MODELING_MESSAGES.length && modelingTitlePanel) {
+                            setPanelText(modelingTitlePanel, MODELING_MESSAGES[messageIndex], currentGridParams.cellSize);
+                        }
+                    }
+                }
+                
+                bioLoadModule.updateProgressBar(
+                    cyclicBarPanel.progressCtx,
+                    cyclicBarPanel.progressCanvas.width,
+                    cyclicBarPanel.progressCanvas.height,
+                    cyclicBarPanel.cycleProgress,
+                    0.5
+                );
+                
+                cyclicBarPanel.progressTexture.needsUpdate = true;
+                Object.values(cyclicBarPanel.textureMaterials).forEach(material => {
+                    if (material && material.map) {
+                        material.map.needsUpdate = true;
+                    }
+                });
+            };
+        }
+        
+        // Iniciar el proceso de modeling desde 0
+        startModelingProcess(restoredPanels, currentGridParams);
+        
+    }).catch(err => console.error("Error al cargar bioLoad.js:", err));
+}
+
+// Función para iniciar el proceso de modeling desde 0
+function startModelingProcess(restoredPanels, currentGridParams) {
+    const { modelingTitlePanel, cyclicBarPanel, progressBarPanel, percentagePanel, remainingTimePanel, totalTimePanel } = restoredPanels;
+    
+    isPrintingActive = true;
+    
+    const totalModelingTimeSeconds = 35;
+    let isRunning = true;
+    
+    function handleModelingEscape(event) {
+        if (event.key === 'Escape') {
+            isRunning = false;
+            isPrintingActive = false;
+            document.removeEventListener('keydown', handleModelingEscape);
+            
+            setPanelText(modelingTitlePanel, "Proceso interrumpido", currentGridParams.cellSize);
+            
+            [cyclicBarPanel, progressBarPanel, percentagePanel, remainingTimePanel, totalTimePanel].forEach(panel => {
+                if (panel && panel.group) panel.group.visible = false;
+            });
+        }
+    }
+    
+    document.addEventListener('keydown', handleModelingEscape);
+    
+    function updateModelingProgress() {
+        if (!isRunning) return;
+        
+        const startTime = Date.now();
+        const duration = totalModelingTimeSeconds * 1000;
+        
+        function animate() {
+            if (!isRunning) return;
+            
+            const currentTime = Date.now();
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(100, (elapsed / duration) * 100);
+            
+            if (progress < 100) {
+                requestAnimationFrame(animate);
+            }
+            
+            if (isPrintingActive) {
+                [cyclicBarPanel, progressBarPanel, percentagePanel, remainingTimePanel, totalTimePanel].forEach(panel => {
+                    if (panel && panel.group) panel.group.visible = true;
+                });
+            }
+            
+            const pulse = Math.sin(currentTime / 500) * 0.2;
+            if (progressBarPanel && progressBarPanel.drawProgress) {
+                try {
+                    progressBarPanel.drawProgress(progress, pulse);
+                } catch (err) {
+                    console.error('Error al dibujar barra de progreso:', err);
+                }
+            }
+            
+            if (cyclicBarPanel && cyclicBarPanel.updateCyclicBar) {
+                try {
+                    cyclicBarPanel.updateCyclicBar();
+                } catch (err) {
+                    console.error('Error al actualizar barra cíclica:', err);
+                }
+            }
+            
+            const remainingMs = duration - elapsed;
+            const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+            const timeDisplay = `${remainingSeconds}s`;
+            
+            const percentageText = `${Math.floor(progress)}%`;
+            const percentageState = panelTextState.get(percentagePanel);
+            if (percentageState) {
+                percentageState.customFontSize = 3.6;
+            }
+            setPanelText(percentagePanel, percentageText, currentGridParams.cellSize);
+            
+            if (remainingTimePanel) {
+                setPanelText(remainingTimePanel, timeDisplay, currentGridParams.cellSize);
+            }
+            if (totalTimePanel) {
+                setPanelText(totalTimePanel, `ESTIMATED`, currentGridParams.cellSize);
+            }
+            
+            if (progress >= 100) {
+                isRunning = false;
+                isPrintingActive = false;
+                
+                // Solo cambiar el texto, no mostrar pantalla de finalización
+                setPanelText(modelingTitlePanel, "User Modeling Completed", currentGridParams.cellSize);
+                
+                document.removeEventListener('keydown', handleModelingEscape);
+            }
+        }
+        
+        animate();
+    }
+    
+    updateModelingProgress();
 }
 
 // Función para descargar la configuración actual como archivo JSON
@@ -3369,8 +6418,8 @@ document.getElementById('config-file-input').addEventListener('change', (event) 
 });
 
 // --- Carga Inicial --- 
-// Intentar cargar la configuración guardada al iniciar
-loadConfiguration(); 
+// 🔥 REMOVIDO: Ya no cargamos aquí. El slot 0 se carga automáticamente después de que termine la animación del grid
+// en startGridAnimation24Frames() 
 
 // Función para animar el grid
 function animateGrid() {
@@ -3504,6 +6553,7 @@ function updateMaterialOpacity(object, callback) {
         });
     }
 }
+
 
 // Función para actualizar paneles después de la animación
 function updatePanelsAfterGridAnimation() {
@@ -3703,6 +6753,35 @@ function animateResizingPanels() {
         
         // 2.2 Animar el relleno (Shape)
         if (panelData.fillMesh && panelData.oldGeometry.fillSize) {
+            // 🔥 CRITICAL FIX: Preservar información de textura y UVs antes de recrear geometría
+            let preservedTextureInfo = null;
+            if (panelData.hasTexture && panelData.fillMesh.geometry) {
+                const oldGeometry = panelData.fillMesh.geometry;
+                const oldUVs = oldGeometry.attributes.uv;
+                const texture = panelData.fillMesh.material?.map;
+                
+                if (oldUVs && oldUVs.count > 0 && texture) {
+                    // Guardar las UVs actuales
+                    const savedUVs = [];
+                    for (let i = 0; i < oldUVs.count; i++) {
+                        savedUVs.push({
+                            u: oldUVs.getX(i),
+                            v: oldUVs.getY(i)
+                        });
+                    }
+                    
+                    preservedTextureInfo = {
+                        hasTexture: true,
+                        textureType: panelData.textureType || 'unknown',
+                        texturePath: panelData.texturePath || null,
+                        savedUVs: savedUVs,
+                        imageAspect: texture.image ? (texture.image.width / texture.image.height) : null,
+                        material: panelData.fillMesh.material, // Preservar referencia al material
+                        textureMaterials: panelData.textureMaterials // Preservar materiales de estados
+                    };
+                }
+            }
+            
             // Crear una nueva forma interpolada
             const shape = new THREE.Shape();
             
@@ -3742,7 +6821,81 @@ function animateResizingPanels() {
             
             // Actualizar geometría del relleno
             panelData.fillMesh.geometry.dispose();
-            panelData.fillMesh.geometry = new THREE.ShapeGeometry(shape);
+            const fillGeometry = new THREE.ShapeGeometry(shape);
+            
+            // 🔥 CRITICAL FIX: Restaurar textura y materiales si existían
+            let fillMaterial = panelData.fillMesh.material;
+            if (preservedTextureInfo && preservedTextureInfo.material) {
+                fillMaterial = preservedTextureInfo.material;
+                panelData.hasTexture = true;
+                panelData.textureType = preservedTextureInfo.textureType;
+                panelData.texturePath = preservedTextureInfo.texturePath;
+                panelData.textureMaterials = preservedTextureInfo.textureMaterials;
+            }
+            
+            panelData.fillMesh.geometry = fillGeometry;
+            panelData.fillMesh.material = fillMaterial;
+            
+            // 🔥 CRITICAL FIX: Restaurar UVs personalizadas si existían
+            if (preservedTextureInfo && preservedTextureInfo.savedUVs) {
+                const uvAttribute = fillGeometry.attributes.uv;
+                const savedUVs = preservedTextureInfo.savedUVs;
+                
+                // Si el número de vértices coincide, restaurar directamente las UVs originales
+                if (uvAttribute.count === savedUVs.length) {
+                    for (let i = 0; i < savedUVs.length; i++) {
+                        uvAttribute.setXY(i, savedUVs[i].u, savedUVs[i].v);
+                    }
+                    uvAttribute.needsUpdate = true;
+                } else {
+                    // Si el número de vértices cambió, recalcular UVs proporcionalmente
+                    const texture = preservedTextureInfo.material?.map;
+                    if (texture && texture.image && preservedTextureInfo.imageAspect) {
+                        const imageAspect = preservedTextureInfo.imageAspect;
+                        const panelWidth = currentWidth;
+                        const panelHeight = currentHeight;
+                        const panelAspect = panelWidth / panelHeight;
+                        
+                        // Calcular UVs "contain" para mantener aspecto de imagen
+                        let uScale, vScale, uOffset, vOffset;
+                        if (panelAspect > imageAspect) {
+                            vScale = 1.0;
+                            uScale = imageAspect / panelAspect;
+                            uOffset = (1.0 - uScale) / 2;
+                            vOffset = 0;
+                        } else {
+                            uScale = 1.0;
+                            vScale = panelAspect / imageAspect;
+                            uOffset = 0;
+                            vOffset = (1.0 - vScale) / 2;
+                        }
+                        
+                        const positions = fillGeometry.attributes.position;
+                        for (let i = 0; i < positions.count; i++) {
+                            const x = positions.getX(i);
+                            const y = positions.getY(i);
+                            const u = ((x + currentHalfWidth) / panelWidth) * uScale + uOffset;
+                            const v = ((y + currentHalfHeight) / panelHeight) * vScale + vOffset;
+                            uvAttribute.setXY(i, u, v);
+                        }
+                        uvAttribute.needsUpdate = true;
+                    }
+                }
+            } else {
+                // Si no hay textura preservada, generar UVs normales solo si no hay textura
+                if (!panelData.hasTexture) {
+                    const uvs = fillGeometry.attributes.uv;
+                    const positions = fillGeometry.attributes.position;
+                    for (let i = 0; i < positions.count; i++) {
+                        const x = positions.getX(i);
+                        const y = positions.getY(i);
+                        const u = (x + currentHalfWidth) / currentWidth;
+                        const v = (y + currentHalfHeight) / currentHeight;
+                        uvs.setXY(i, u, v);
+                    }
+                    fillGeometry.attributes.uv.needsUpdate = true;
+                }
+            }
         }
         
         // Finalizar animación cuando completemos
@@ -3787,8 +6940,21 @@ function animateFlashingPanels() {
         );
         const flashColor = new THREE.Color(0xffffff);
         
-        // Aplicar flash a materiales temporales
+        // Optimización: Clonar materiales solo una vez al inicio del flash
         if (panelData && panelData.group) {
+            // Si es el primer frame del flash, clonar materiales para evitar modificar compartidos
+            if (panelData.flashProgress < 0.15 && !panelData.flashMaterialsCloned) {
+                panelData.group.children.forEach(child => {
+                    if (child instanceof THREE.Line && child.material) {
+                        child.material = child.material.clone();
+                    } else if (child === panelData.fillMesh && child.material) {
+                        child.material = child.material.clone();
+                    }
+                });
+                panelData.flashMaterialsCloned = true;
+            }
+            
+            // Aplicar flash modificando materiales clonados (rápido)
             panelData.group.children.forEach(child => {
                 if (child instanceof THREE.Line && child.material) {
                     const color = new THREE.Color().lerpColors(
@@ -3796,14 +6962,12 @@ function animateFlashingPanels() {
                         flashColor, 
                         positiveFlash * 0.7
                     );
-                    child.material = child.material.clone();
-                    child.material.color = color;
+                    child.material.color.copy(color);
                 }
                 else if (child === panelData.fillMesh && child.material) {
                     // Si el panel tiene textura, solo modificamos la opacidad
                     if (panelData.hasTexture) {
                         const baseOpacity = panelData.selected ? 0.9 : (panelData.hovered ? 0.8 : 0.7);
-                        child.material = child.material.clone();
                         child.material.opacity = baseOpacity + (positiveFlash * 0.1);
                     } else {
                         const color = new THREE.Color().lerpColors(
@@ -3811,8 +6975,7 @@ function animateFlashingPanels() {
                             flashColor, 
                             positiveFlash * 0.7
                         );
-                        child.material = child.material.clone();
-                        child.material.color = color;
+                        child.material.color.copy(color);
                         const baseOpacity = panelData.selected ? 0.4 : (panelData.hovered ? 0.3 : 0.2);
                         child.material.opacity = baseOpacity + (positiveFlash * 0.3);
                     }
@@ -3832,15 +6995,20 @@ function animateFlashingPanels() {
                     // Iniciar siguiente flash
                     panelData.flashProgress = 0;
                     panelData.shouldFlash = true;
+                    panelData.flashMaterialsCloned = false; // Resetear flag para nuevo flash
                     doubleFlashPending.set(panelData, remainingFlashes - 1);
                     panelsFlashing.add(panelData);
                 } else {
                     doubleFlashPending.delete(panelData);
+                    // Restaurar materiales originales solo al finalizar todos los flashes
+                    panelData.flashMaterialsCloned = false;
+                    updatePanelColor(panelData);
                 }
+            } else {
+                // Restaurar materiales originales
+                panelData.flashMaterialsCloned = false;
+                updatePanelColor(panelData);
             }
-            
-            // Restaurar materiales originales
-            updatePanelColor(panelData);
         }
     });
     
@@ -4099,6 +7267,11 @@ function clearAllPanels(skipSave = false, clearBioKeyb = false) {
     // Limpiar intervalos GATC
     gatcIntervals.forEach(interval => clearInterval(interval));
     gatcIntervals.clear();
+    
+    // Limpiar modales
+    if (typeof cleanupAllModals === 'function') {
+        cleanupAllModals();
+    }
 
     // Guardar estado vacío en localStorage solo si no se especifica lo contrario
     if (!skipSave) {
@@ -4192,6 +7365,9 @@ async function applyConfigurationFromData(configData) {
     gatcIntervals.forEach(interval => clearInterval(interval));
     gatcIntervals.clear();
     
+    // Reiniciar estado de modeling si estaba activo
+    isPrintingActive = false;
+    
     console.log("Paneles en la configuración a aplicar:", configData.panels);
     if (!configData.panels || !Array.isArray(configData.panels)) {
         console.error("Error en applyConfigurationFromData: configData.panels no es un array o no existe.");
@@ -4277,10 +7453,31 @@ async function applyConfigurationFromData(configData) {
         return false; // Fallo si no podemos obtener parámetros del grid para los paneles.
     }
     
-    // Recrear los paneles guardados (que no son del teclado, ya que el teclado se maneja con loadBioKeyb)
+    // Separar paneles de modeling del resto
+    const modelingPanels = [];
+    const regularPanels = [];
+    
     if (configData.panels && Array.isArray(configData.panels)) {
-        for (const panelInfo of configData.panels) {
+        configData.panels.forEach(panelInfo => {
+            if (panelInfo.isModelingPanel) {
+                modelingPanels.push(panelInfo);
+            } else {
+                regularPanels.push(panelInfo);
+            }
+        });
+    }
+    
+    // Si hay paneles de modeling, restaurar la interfaz completa desde 0
+    if (modelingPanels.length > 0) {
+        console.log(`Detectados ${modelingPanels.length} paneles de modeling, restaurando interfaz completa desde 0`);
+        restoreModelingInterface(modelingPanels, currentGridParams);
+    }
+    
+    // Recrear los paneles guardados (que no son del teclado, ya que el teclado se maneja con loadBioKeyb)
+    if (regularPanels.length > 0) {
+        for (const panelInfo of regularPanels) {
             console.log("Procesando panelInfo para recreación:", panelInfo);
+            
             // Asegurar que el número de orden es un entero válido
             const orderNumber = parseInt(panelInfo.orderNumber);
             if (isNaN(orderNumber)) {
@@ -4298,7 +7495,18 @@ async function applyConfigurationFromData(configData) {
                 hasText: panelInfo.behavior?.hasText || false,
                 // Añadir más propiedades por defecto si es necesario o si vienen de panelInfo
                 selected: panelInfo.selected || false,
-                navigateToSlot: panelInfo.navigateToSlot // Preservar asignación de navegación
+                navigateToSlot: typeof panelInfo.navigateToSlot === 'number' ? panelInfo.navigateToSlot : undefined, // Preservar asignación de navegación
+                loadToHUDSlot: typeof panelInfo.loadToHUDSlot === 'number' ? panelInfo.loadToHUDSlot : undefined, // 🔥 NUEVO: Restaurar trigger HUD
+                speciesPanel: panelInfo.behavior?.isSpeciesPanel || false, // NUEVO: Restaurar panel de especie
+                speciesName: panelInfo.behavior?.speciesName || null, // NUEVO: Restaurar nombre de especie
+                // 🔥 NUEVO: Restaurar propiedades de identidad del panel ANTES de restaurar comportamiento
+                isModelingPanel: !!panelInfo.isModelingPanel,
+                pendingModelingCommand: !!panelInfo.pendingModelingCommand,
+                pendingPrintCommand: !!panelInfo.pendingPrintCommand,
+                printCommandArgs: Array.isArray(panelInfo.printCommandArgs) ? [...panelInfo.printCommandArgs] : [],
+                pendingPrintSimpleCommand: !!panelInfo.pendingPrintSimpleCommand,
+                pendingPrintPercentCommand: !!panelInfo.pendingPrintPercentCommand,
+                printPercentDuration: typeof panelInfo.printPercentDuration === 'number' ? panelInfo.printPercentDuration : undefined
             };
             
             updatePanelGeometryAndPosition(panel, currentGridParams);
@@ -4307,20 +7515,66 @@ async function applyConfigurationFromData(configData) {
                 scene.add(panel.group);
                 panels.push(panel); // Añadir a la lista global de paneles
                 
+                // 🔥 NUEVO: Restaurar identidad de viewer incluso sin modelo cargado
+                if (panelInfo.behavior && panelInfo.behavior.modelData && panelInfo.behavior.modelData.isViewer) {
+                    if (!panel.modelData) {
+                        panel.modelData = {};
+                    }
+                    panel.modelData.isViewer = true;
+                    panel.isViewer = true;
+                }
+                
                 // Restaurar comportamiento del panel
                 if (panelInfo.behavior) {
+                    // Restaurar modal (similar a como se restaura model/viewer)
+                    if (panelInfo.behavior.modalData && panelInfo.behavior.modalData.isModal) {
+                        const modalData = panelInfo.behavior.modalData;
+                        const containerMin = modalData.containerMinCellIndex;
+                        const containerMax = modalData.containerMaxCellIndex;
+                        
+                        if (containerMin && containerMax) {
+                            // Buscar o crear el containerPanel
+                            let containerPanel = panels.find(p => 
+                                p.minCellIndex.x === containerMin.x &&
+                                p.minCellIndex.y === containerMin.y &&
+                                p.maxCellIndex.x === containerMax.x &&
+                                p.maxCellIndex.y === containerMax.y
+                            );
+                            
+                            // Si no se encuentra, crear uno temporal
+                            if (!containerPanel) {
+                                containerPanel = createPanelFromBoundingBox({
+                                    minX: containerMin.x,
+                                    maxX: containerMax.x,
+                                    minY: containerMin.y,
+                                    maxY: containerMax.y
+                                }, currentGridParams);
+                            }
+                            
+                            if (containerPanel) {
+                                // Restaurar el modal completo
+                                restoreModalFromBehavior(containerPanel, modalData, createPanelFromBoundingBox, getCurrentGridParams, panels, getPanelText, panelsFlashing, updatePanelColor);
+                                console.log(`Modal restaurado para panel P${orderNumber} en containerPanel [${containerMin.x},${containerMin.y}]-[${containerMax.x},${containerMax.y}]`);
+                            }
+                        }
+                    }
+                    
+                    // Restaurar comportamiento que no es modal
                     if (panelInfo.behavior.hasText) {
                         panel.hasText = true; // Asegurar que está marcado
-                        const textState = {
-                            text: panelInfo.behavior.textContent || '',
-                            lines: panelInfo.behavior.messageBuffer || [],
-                            maxCharsPerLine: panelInfo.behavior.maxLines || TEXT_CONFIG.defaultMaxCharsPerLine,
-                            cursorPosition: 0,
-                            isEditing: false,
-                            scrollOffset: 0,
-                            isPassword: panelInfo.behavior.isPassword || false,
-                            realText: (panelInfo.behavior.isPassword && panelInfo.behavior.textContent) ? panelInfo.behavior.textContent : ''
-                        };
+                            const textState = {
+                                text: panelInfo.behavior.textContent || '',
+                                lines: panelInfo.behavior.messageBuffer || [],
+                                maxCharsPerLine: panelInfo.behavior.maxLines || TEXT_CONFIG.defaultMaxCharsPerLine,
+                                cursorPosition: 0,
+                                isEditing: false,
+                                scrollOffset: 0,
+                                isPassword: panelInfo.behavior.isPassword || false,
+                                realText: (panelInfo.behavior.isPassword && panelInfo.behavior.textContent) ? panelInfo.behavior.textContent : '',
+                                textAlign: panelInfo.behavior.textAlign || 'center', // Restaurar alineación de texto
+                                verticalAlign: panelInfo.behavior.verticalAlign || 'middle', // Restaurar alineación vertical
+                                useWhiteScrollIndicators: !!panelInfo.behavior.useWhiteScrollIndicators // 🔥 NUEVO: Restaurar indicadores de scroll blancos (para términos)
+                            };
                         panelTextState.set(panel, textState);
                         
                         createPanelText(panel, currentGridParams.cellSize); // Crea la estructura visual del texto
@@ -4331,6 +7585,19 @@ async function applyConfigurationFromData(configData) {
                             setPanelText(panel, textState.text, currentGridParams.cellSize); 
                         }
                         console.log(`Texto restaurado para panel P${orderNumber}. Contenido: ${textState.isPassword ? '(contraseña)' : textState.text}`);
+                        
+                        // Restaurar botón I AGREE si existe
+                        if (panelInfo.behavior.isAgreeButton && panelInfo.behavior.termsPanelOrderNumber) {
+                            panel.isAgreeButton = true;
+                            // Buscar el panel de términos por orderNumber (puede no estar cargado aún, buscar después)
+                            setTimeout(() => {
+                                const termsPanel = panels.find(p => p.orderNumber === panelInfo.behavior.termsPanelOrderNumber);
+                                if (termsPanel) {
+                                    panel.termsPanel = termsPanel;
+                                    console.log(`Botón I AGREE restaurado en panel #${panel.orderNumber} vinculado a términos en panel #${termsPanel.orderNumber}`);
+                                }
+                            }, 100);
+                        }
                     }
 
                     if (panelInfo.behavior.isGATCActive) {
@@ -4346,9 +7613,41 @@ async function applyConfigurationFromData(configData) {
                     }
 
                     if (panelInfo.behavior.modelData && panelInfo.behavior.modelData.modelUrl) {
-                        const { modelUrl, isRotating, rotationSpeed } = panelInfo.behavior.modelData;
+                        const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName } = panelInfo.behavior.modelData;
                         console.log(`Restaurando modelo ${modelUrl} para panel P${orderNumber}`);
                         await loadModelToPanel(panel, modelUrl, currentGridParams.cellSize).then(() => {
+                            // 🔥 CRITICAL: Asegurar que modelData existe
+                            if (!panel.modelData) {
+                                panel.modelData = {};
+                            }
+                            
+                            // 🔥 CRITICAL: Restaurar URL del modelo (necesario para interacción con viewer)
+                            panel.modelData.url = modelUrl;
+                            
+                            // 🔥 CRITICAL: Restaurar TODAS las propiedades del modelo
+                            if (modelName) {
+                                panel.modelData.name = modelName;
+                                // 🔥 NUEVO: Si no hay scientificName guardado pero hay modelName, asignarlo desde el mapeo
+                                if (!scientificName && modelName) {
+                                    panel.modelData.scientificName = modelScientificNames[modelName] || null;
+                                }
+                            }
+                            if (scientificName) {
+                                panel.modelData.scientificName = scientificName;
+                            }
+                            
+                            // Restaurar las propiedades específicas del tipo de panel
+                            if (isModelButton) {
+                                panel.modelData.isModelButton = true;
+                                panel.modelData.isFromModelsGrid = !!isFromModelsGrid;
+                            } else if (isModelDisplay) {
+                                panel.modelData.isModelDisplay = true;
+                                panel.modelData.isFromModelCommand = !!isFromModelCommand;
+                            } else if (isViewer) {
+                                panel.modelData.isViewer = true;
+                                panel.isViewer = true;
+                            }
+                            
                             if (isRotating) {
                                 // toggleModelRotation invierte el estado. Si queremos que esté rotando, y empieza sin rotar, llamamos una vez.
                                 // Asumimos que loadModelToPanel podría o no iniciar la rotación. Es más seguro setearlo explícitamente.
@@ -4357,15 +7656,14 @@ async function applyConfigurationFromData(configData) {
                             if (rotationSpeed) {
                                 setModelRotationSpeed(panel, rotationSpeed);
                             }
-                            console.log(`Modelo ${modelUrl} restaurado y configurado en panel P${orderNumber}. Rotando: ${panel.modelData.isRotating}, Vel: ${rotationSpeed}`);
+                            console.log(`Modelo ${modelUrl} restaurado y configurado en panel P${orderNumber}. Tipo: ${panel.modelData.isModelButton ? 'BOTÓN' : panel.modelData.isViewer ? 'VIEWER' : 'DISPLAY'}, Rotando: ${panel.modelData.isRotating}, Vel: ${rotationSpeed}`);
                         }).catch(err => console.error(`Error al restaurar modelo para panel P${orderNumber}:`, err));
                     }
 
                     if (panelInfo.behavior.genomData) {
                         panel.genomData = panelInfo.behavior.genomData;
-                        // Aquí necesitaríamos una función para RECREAR la visualización del genoma si es necesario
-                        // Por ahora, solo restauramos los datos. La visualización podría requerir una llamada explícita.
-                        // Ejemplo: await recreateGenomVisuals(panel, currentGridParams.cellSize);
+                        // Recrear la visualización del genoma
+                        await loadGenomToPanel(panel, currentGridParams.cellSize);
                         console.log(`GenomData restaurado para panel P${orderNumber}`);
                     }
                      if (panelInfo.behavior.codonData) { // Asumiendo que codonData se guarda en behavior
@@ -4373,9 +7671,146 @@ async function applyConfigurationFromData(configData) {
                         await loadCodonToPanel(panel, currentGridParams.cellSize);
                         console.log(`CodonData restaurado para panel P${orderNumber}`);
                     }
+                    
+                    // 🔥 CRITICAL FIX: Restaurar texturas (logo, apps)
+                    if (panelInfo.behavior.textureInfo && panelInfo.behavior.textureInfo.hasTexture) {
+                        const textureInfo = panelInfo.behavior.textureInfo;
+                        const texturePath = textureInfo.texturePath || './public/img/bioprint_logo.png'; // Default a logo
+                        
+                        loadTexture(
+                            texturePath,
+                            (texture) => {
+                                if (panel.fillMesh) {
+                                    // Configurar wrapping
+                                    texture.wrapS = THREE.ClampToEdgeWrapping;
+                                    texture.wrapT = THREE.ClampToEdgeWrapping;
+                                    
+                                    // Crear materiales con textura
+                                    panel.textureMaterials = createPanelMaterials(texture);
+                                    panel.fillMesh.material = panel.textureMaterials.normal;
+                                    panel.hasTexture = true;
+                                    panel.textureType = textureInfo.textureType || 'logo';
+                                    panel.texturePath = texturePath;
+                                    
+                                    // Restaurar UVs personalizadas si existen
+                                    if (textureInfo.customUVs && textureInfo.customUVs.length > 0) {
+                                        const geometry = panel.fillMesh.geometry;
+                                        const uvAttribute = geometry.attributes.uv;
+                                        
+                                        if (uvAttribute && uvAttribute.count === textureInfo.customUVs.length) {
+                                            for (let i = 0; i < textureInfo.customUVs.length; i++) {
+                                                uvAttribute.setXY(i, textureInfo.customUVs[i].u, textureInfo.customUVs[i].v);
+                                            }
+                                            uvAttribute.needsUpdate = true;
+                                        } else {
+                                            // Si la geometría cambió, recalcular UVs "contain" desde cero
+                                            const imageAspect = textureInfo.imageAspect || (texture.image ? texture.image.width / texture.image.height : 1);
+                                            const panelWidth = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
+                                            const panelHeight = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+                                            const panelAspect = panelWidth / panelHeight;
+                                            const ratio = panelAspect / imageAspect;
+                                            
+                                            for (let i = 0; i < uvAttribute.count; i++) {
+                                                const u = uvAttribute.getX(i);
+                                                const v = uvAttribute.getY(i);
+                                                
+                                                let newU = u;
+                                                let newV = v;
+                                                
+                                                if (ratio < 1) {
+                                                    newV = 0.5 + (v - 0.5) / ratio;
+                                                } else {
+                                                    newU = 0.5 + (u - 0.5) * ratio;
+                                                }
+                                                
+                                                uvAttribute.setXY(i, newU, newV);
+                                            }
+                                            uvAttribute.needsUpdate = true;
+                                        }
+                                    }
+                                    
+                                    updatePanelColor(panel);
+                                    console.log(`Textura restaurada para panel P${orderNumber}: ${texturePath}`);
+                                    
+                                    // 🔥 CRITICAL: Restaurar logo si tiene hasLogoActive
+                                    if (textureInfo.hasLogoActive && textureInfo.textureType === 'logo') {
+                                        // Crear el logo mesh si no existe
+                                        if (!logoMeshExists()) {
+                                            createLogo(scene);
+                                        }
+                                        // Activar logo en este panel
+                                        toggleLogo(true, panel);
+                                        console.log(`Logo restaurado para panel P${orderNumber}`);
+                                    }
+                                }
+                            },
+                            (error) => {
+                                console.error(`Error al restaurar textura para panel P${orderNumber}:`, error);
+                            }
+                        );
+                    } else if (panelInfo.behavior.textureInfo && panelInfo.behavior.textureInfo.hasLogoActive) {
+                        // Si solo tiene logo activo pero no textura en fillMesh, restaurar logo directamente
+                        // Crear el logo mesh si no existe
+                        if (!logoMeshExists()) {
+                            createLogo(scene);
+                        }
+                        toggleLogo(true, panel);
+                        console.log(`Logo restaurado para panel P${orderNumber} (sin textura en fillMesh)`);
+                    }
                 }
                 
                 createPanelOrderLabel(panel); // Crear etiqueta de orden (visible o no según globalShowNumbers y panel.showOrderNumber)
+                
+                // Ejecutar comando modeling si está pendiente
+                // 🔥 CRITICAL: La propiedad ya se restauró arriba, ahora solo ejecutamos el comando
+                if (panel.pendingModelingCommand) {
+                    // Crear un output mock para la función
+                    const mockOutput = {
+                        appendChild: () => {},
+                        innerHTML: ''
+                    };
+                    // Ejecutar el comando modeling con el panel restaurado
+                    setTimeout(() => {
+                        executeModelingCommand(panel, mockOutput);
+                    }, 100); // Pequeño delay para asegurar que el panel esté completamente restaurado
+                }
+                
+                if (panelInfo.pendingPrintCommand) {
+                    // Crear un output mock para la función
+                    const mockOutput = {
+                        appendChild: () => {},
+                        innerHTML: ''
+                    };
+                    // Ejecutar el comando print con el panel restaurado y los argumentos guardados
+                    const printArgs = Array.isArray(panelInfo.printCommandArgs) ? panelInfo.printCommandArgs : [];
+                    setTimeout(() => {
+                        executePrintCommand(panel, printArgs, mockOutput);
+                    }, 100); // Pequeño delay para asegurar que el panel esté completamente restaurado
+                }
+                
+                if (panelInfo.pendingPrintSimpleCommand) {
+                    // Crear un output mock para la función
+                    const mockOutput = {
+                        appendChild: () => {},
+                        innerHTML: ''
+                    };
+                    // Ejecutar el comando print simple
+                    setTimeout(() => {
+                        executePrintSimpleCommand(panel, mockOutput);
+                    }, 100); // Pequeño delay para asegurar que el panel esté completamente restaurado
+                }
+                
+                if (panelInfo.pendingPrintPercentCommand && typeof panelInfo.printPercentDuration === 'number') {
+                    // Crear un output mock para la función
+                    const mockOutput = {
+                        appendChild: () => {},
+                        innerHTML: ''
+                    };
+                    // Ejecutar el comando print percent con la duración guardada
+                    setTimeout(() => {
+                        executePrintPercentCommand(panel, panelInfo.printPercentDuration, mockOutput);
+                    }, 100); // Pequeño delay para asegurar que el panel esté completamente restaurado
+                }
                 
                 if (panel.selected) {
                     // panel.selected = true; // ya debería estar seteado desde la creación del objeto panel
@@ -4529,6 +7964,10 @@ function processTerminalCommand(command) {
         case 'apps':
             mapApps(args, output);
             break;
+        case 'social':
+        case 'login':
+            mapSocial(args, output);
+            break;
         case 'txt':
             handleTextCommand(args, output);
             break;
@@ -4608,39 +8047,145 @@ function processTerminalCommand(command) {
         case 'flash':
             handleFlashCommand(output);
             break;
+        case 'print':
+            // Detectar si es "print percent ###", "print simple" o "print [modelo]"
+            if (args.length > 0 && args[0].toLowerCase() === 'percent') {
+                const percentArgs = args.slice(1); // Resto de argumentos después de "percent"
+                handlePrintPercentCommand(percentArgs, output);
+            } else if (args.length > 0 && args[0].toLowerCase() === 'simple') {
+                const simpleArgs = args.slice(1); // Resto de argumentos después de "simple"
+                handlePrintSimpleCommand(simpleArgs, output);
+            } else {
+                handlePrintCommand(args, output);
+            }
+            break;
+        case 'modeling':
+            handleModelingCommand(output);
+            break;
+        case 'models':
+            handleModelsCommand(output);
+            break;
+        case 'statg':
+            handleStatgCommand(args, output);
+            break;
+            
+        case 'multitest':
+            handleMultiTestCommand(output);
+            break;
+        case 'demo':
+            handleDemoCommand(output);
+            break;
+            
+        case 'horizontal':
+            handleHorizontalCommand(output);
+            break;
+        case 'glitch':
+            handleGlitchCommand(output);
+            break;
+        case 'saveconjunto':
+        case 'saveconj':
+            handleSaveConjuntoCommand(args, output);
+            break;
+        case 'loadconjunto':
+        case 'loadconj':
+            handleLoadConjuntoCommand(args, output);
+            break;
+        case 'viewer':
+            handleViewerCommand(output);
+            break;
+        case 'hud':
+            handleHUDCommand(output, args);
+            break;
+        case 'modal':
+            handleModalCommand(args, output, createPanelFromBoundingBox, getCurrentGridParams, panels, showError, showSuccess, panelsFlashing, updatePanelColor);
+            break;
         default:
             showError(`Comando desconocido: ${cmd}. Escribe 'help' para ver comandos disponibles.`, output);
     }
     
     // Scroll al final
     output.scrollTop = output.scrollHeight;
+    
+    // Para ciertos comandos, no ocultamos la terminal porque siguen siendo interactivos
+    const excludedCommands = ['txt', 'help', 'list', 'status', 'clear'];
+    if (!excludedCommands.includes(cmd.toLowerCase())) {
+        // Esperar 1.5 segundos para que el usuario vea el resultado antes de ocultar la terminal
+        setTimeout(() => {
+            toggleTerminal(false);
+        }, 1500);
+    }
 }
 
 // Funciones auxiliares para los comandos
 function showHelp(output) {
-    const helpText = `
-Comandos disponibles:
-
-    select <n>     Selecciona el panel número n
-    show           Muestra los números de los paneles
-    hide           Oculta los números de los paneles
-    list           Lista todos los paneles
-    clear          Limpia la terminal
-    delete <n>     Elimina el panel número n
-    logo           Crea un logo en el panel seleccionado
-    apps           Crea un grid de iconos de aplicaciones
-    txt            Añade texto al panel seleccionado
-    model          Crea un modelo 3D en el panel seleccionado
-    genom          Crea una visualización de ADN en el panel
-    codon          Crea un modelo 3D de transcripción genética
-    gatc           Muestra una secuencia GATC animada
-    splice         Inicia proceso de splicing genético
-    stack          Inicia proceso de stack genético
-    flash          Hace parpadear el panel seleccionado
-    help           Muestra esta ayuda
-`;
+    const commands = [
+        'help - Muestra todos los comandos disponibles',
+        'zeng - Activa el efecto Zeng (azul)',
+        'boris - Activa el efecto Matrix (verde)', 
+        'ann - Activa el efecto Ann (cyan)',
+        'select all - Selecciona todos los paneles',
+        'select 1-5 - Selecciona rango de paneles',
+        'select 1 3 7 - Selecciona paneles específicos',
+        'show - Muestra los números de los paneles',
+        'hide - Oculta los números de los paneles', 
+        'list - Lista todos los paneles',
+        'clear - Limpia la terminal',
+        'delete <n> - Elimina el panel número n',
+        'delete selected - Elimina todos los paneles seleccionados',
+        'delete all - Elimina todos los paneles',
+        'logo - Crea un logo en el panel seleccionado',
+        'apps - Crea un grid de iconos de aplicaciones',
+        'social - Crea login con texto y iconos de redes sociales (Meta, Gmail, X, etc.)',
+        'login - Alias para social',
+        'txt - Añade texto al panel seleccionado',
+        'terms - Muestra términos y condiciones',
+        'model - Crea un modelo 3D en el panel seleccionado',
+        'model rotate - Hace rotar el modelo 3D',
+        'model speed <n> - Ajusta velocidad de rotación',
+        'model angle <n> - Ajusta ángulo específico',
+        'models - Crea una rejilla 3x3 de modelos biológicos',
+        'viewer - Convierte un panel en viewer de modelo (seleccionar panel con modelo lo carga en el viewer)',
+        'statg - Muestra estadísticas genómicas del último modelo clickeado',
+        'horizontal - Divide panel seleccionado horizontalmente',
+        'genom - Crea una visualización de ADN en el panel',
+        'gatc - Muestra una secuencia GATC animada',
+        'gtac - Alias para gatc',
+        'splice - Inicia proceso de splicing genético',
+        'index - Reindexa todos los paneles',
+        'reindex - Alias para index',
+        'pass - Comando de contraseña',
+        'codon - Crea un modelo 3D de transcripción genética',
+        'stack - Inicia proceso de stack genético',
+        'flash - Hace parpadear el panel seleccionado',
+        'print - Inicia simulación de bioimpresión 3D',
+        'print percent [ms] - Muestra barra de progreso con porcentaje (duración en milisegundos)',
+        'modeling - Inicia modelación de datos de usuario',
+        'multitest - Crea paneles de prueba para multiselección',
+        'demo - Crea laboratorio biomédico completo de demostración',
+        'glitch - Efecto glitch de refracción roja con bloques fragmentados',
+        'saveconjunto <n> - Guarda paneles seleccionados en slot n (0-9)',
+        'loadconjunto <n> - Carga paneles guardados desde slot n sin limpiar escena'
+    ];
     
-    showSuccess(helpText, output);
+    const helpDiv = document.createElement('div');
+    helpDiv.innerHTML = '<div><b>COMANDOS DISPONIBLES:</b></div><br>';
+    
+    commands.forEach(command => {
+        const commandDiv = document.createElement('div');
+        commandDiv.textContent = command;
+        commandDiv.style.fontFamily = 'monospace';
+        commandDiv.style.letterSpacing = '0.5px';
+        commandDiv.style.color = '#0f0';
+        commandDiv.style.marginBottom = '2px';
+        helpDiv.appendChild(commandDiv);
+    });
+    
+    const totalDiv = document.createElement('div');
+    totalDiv.innerHTML = `<br><b>Total: ${commands.length} comandos disponibles</b>`;
+    totalDiv.style.color = '#0f0';
+    helpDiv.appendChild(totalDiv);
+    
+    output.appendChild(helpDiv);
 }
 
 function selectPanels(args, output) {
@@ -4681,10 +8226,12 @@ function selectPanels(args, output) {
     panels.forEach(panel => {
         if (panelsToSelect.has(panel.orderNumber)) {
             panel.selected = true;
-            updatePanelColor(panel);
             selected++;
         }
     });
+    
+    // 🔥 ACTUALIZAR VISUAL DE TODOS LOS PANELES SELECCIONADOS
+    refreshSelectedPanelsColors();
     
     showSuccess(`${selected} paneles seleccionados`, output);
 }
@@ -4714,7 +8261,8 @@ function listPanels(output) {
     }
     
     const listDiv = document.createElement('div');
-    listDiv.innerHTML = `<div><b>Paneles (${panels.length}):</b></div>`;
+    const selectedCount = panels.filter(p => p.selected).length;
+    listDiv.innerHTML = `<div><b>Paneles (${panels.length}):</b> ${selectedCount > 0 ? `<span style="color: #4CAF50;">${selectedCount} seleccionados</span>` : ''}</div>`;
     
     // Ordenar paneles por número
     const sortedPanels = [...panels].sort((a, b) => {
@@ -4870,46 +8418,67 @@ function mapLogo(args, output) {
         './public/img/bioprint_logo.png',
         (texture) => {
             if (panel.fillMesh) {
+                // Configurar wrapping para evitar repetición si se sale de 0..1
+                texture.wrapS = THREE.ClampToEdgeWrapping;
+                texture.wrapT = THREE.ClampToEdgeWrapping;
+                
                 // Crear los materiales con textura
                 panel.textureMaterials = createPanelMaterials(texture);
                 
                 // Aplicar el material inicial
                 panel.fillMesh.material = panel.textureMaterials.normal;
 
-                // Actualizar UVs para ajustar la textura con fit horizontal
+                // Actualizar UVs para ajustar la textura sin distorsión (Contain)
                 const geometry = panel.fillMesh.geometry;
                 const uvAttribute = geometry.attributes.uv;
                 
-                // Obtener dimensiones
+                // Obtener dimensiones y aspecto
+                // Usar image.width/height de la textura cargada
                 const imageAspect = texture.image.width / texture.image.height;
+                
+                // Dimensiones del panel en unidades de grid
                 const panelWidth = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
                 const panelHeight = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
                 const panelAspect = panelWidth / panelHeight;
                 
-                // Calcular escalado para fit horizontal
-                const scaleY = panelAspect / imageAspect;
-                const offsetY = (1 - scaleY) / 2;
+                // Ratio entre aspectos
+                const ratio = panelAspect / imageAspect;
                 
                 // Aplicar transformación UV
+                // Algoritmo "Contain" (Fit): Muestra toda la imagen sin distorsión, centrada
                 for (let i = 0; i < uvAttribute.count; i++) {
                     const u = uvAttribute.getX(i);
                     const v = uvAttribute.getY(i);
-                    uvAttribute.setXY(
-                        i,
-                        u, // Mantener coordenada U para fit horizontal
-                        offsetY + (v * scaleY) // Ajustar V para mantener proporción
-                    );
+                    
+                    let newU = u;
+                    let newV = v;
+                    
+                    if (ratio < 1) {
+                        // Panel es más alto que la imagen (relativamente)
+                        // Ajustar V para centrar verticalmente (Fit Horizontal)
+                        // v' = 0.5 + (v - 0.5) / ratio
+                        newV = 0.5 + (v - 0.5) / ratio;
+                    } else {
+                        // Panel es más ancho que la imagen (relativamente)
+                        // Ajustar U para centrar horizontalmente (Fit Vertical)
+                        // u' = 0.5 + (u - 0.5) * ratio
+                        newU = 0.5 + (u - 0.5) * ratio;
+                    }
+                    
+                    uvAttribute.setXY(i, newU, newV);
                 }
                 
                 uvAttribute.needsUpdate = true;
                 panel.hasTexture = true; // Marcar que el panel tiene textura
+                panel.textureType = 'logo'; // 🔥 Guardar tipo de textura para snapshots
+                panel.texturePath = './public/img/bioprint_logo.png'; // 🔥 Guardar ruta para snapshots
                 
                 // Forzar actualización
                 if (typeof render === 'function') {
                     render();
                 }
                 
-                showSuccess('Logo aplicado exitosamente', output);
+                showSuccess('Logo aplicado exitosamente sin distorsión', output);
             } else {
                 showError('El panel no tiene una malla para aplicar la textura', output);
             }
@@ -4918,6 +8487,226 @@ function mapLogo(args, output) {
             showError(`No se pudo cargar el logo: ${error.message}`, output);
         }
     );
+}
+
+/**
+ * Módulo: mapSocial
+ * Función: Crea un panel de login con texto "LOGIN WITH SOCIAL MEDIA" y iconos de redes sociales como texturas
+ * Conexiones: 
+ * - Usa createPanelFromBoundingBox para crear paneles de iconos
+ * - Usa loadTexture para cargar imágenes de iconos de redes sociales
+ * - Usa createPanelMaterials para aplicar texturas a los paneles
+ * - Usa setPanelText para el texto del título
+ * - Usa getCurrentGridParams para obtener parámetros del grid
+ * - Similar a mapLogo pero con múltiples iconos en fila
+ * 
+ * Requisitos: Los iconos deben estar en public/img/ con nombres:
+ * - meta.png, gmail.png, x.png, linkedin.png, github.png
+ */
+function mapSocial(args, output) {
+    // Verificar si hay un panel seleccionado para usar como contenedor
+    const selectedPanels = panels.filter(p => p.selected);
+    if (selectedPanels.length !== 1) {
+        showError('Selecciona exactamente un panel para crear el login social', output);
+        return;
+    }
+    
+    const containerPanel = selectedPanels[0];
+    showInfo('Creando login social en el panel seleccionado...', output);
+    
+    // Calcular dimensiones del contenedor en celdas
+    const containerWidth = containerPanel.maxCellIndex.x - containerPanel.minCellIndex.x + 1;
+    const containerHeight = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+    
+    // Verificar que el contenedor sea lo suficientemente grande
+    // Mínimo: 10 de ancho y 8 de alto (para texto + iconos)
+    if (containerWidth < 10 || containerHeight < 8) {
+        showError(`El panel debe ser al menos de 10x8 celdas (actual: ${containerWidth}x${containerHeight})`, output);
+        return;
+    }
+    
+    // Obtener parámetros actuales del grid
+    const currentGridParams = getCurrentGridParams();
+    if (!currentGridParams) {
+        showError('No se pudo obtener la configuración del grid', output);
+        return;
+    }
+    
+    try {
+        // Dividir el panel en dos secciones:
+        // 1. Sección superior para el texto (aproximadamente 1/3 de la altura)
+        // 2. Sección inferior para los iconos (2/3 de la altura)
+        
+        const textSectionHeight = Math.max(3, Math.floor(containerHeight * 0.3));
+        const iconsSectionHeight = containerHeight - textSectionHeight - 1; // -1 para separación
+        
+        // Crear panel para el texto "LOGIN WITH SOCIAL MEDIA" (parte superior)
+        // En el sistema de coordenadas: minY es inferior, maxY es superior
+        const textPanel = createPanelFromBoundingBox({
+            minX: containerPanel.minCellIndex.x,
+            maxX: containerPanel.maxCellIndex.x,
+            minY: containerPanel.maxCellIndex.y - textSectionHeight + 1,
+            maxY: containerPanel.maxCellIndex.y
+        }, currentGridParams);
+        
+        if (textPanel && textPanel.group) {
+            // Configurar el panel de texto
+            textPanel.hasText = true;
+            createPanelText(textPanel, currentGridParams.cellSize);
+            setPanelText(textPanel, 'LOGIN WITH SOCIAL MEDIA', currentGridParams.cellSize);
+        }
+        
+        // Definir iconos de redes sociales con sus rutas de imagen
+        const socialIcons = [
+            { name: 'META', path: './public/img/meta.png' },
+            { name: 'GMAIL', path: './public/img/gmail.png' },
+            { name: 'X', path: './public/img/x.png' },
+            { name: 'LINKEDIN', path: './public/img/linkedin.png' },
+            { name: 'GITHUB', path: './public/img/github.png' }
+        ];
+        
+        // Rutas alternativas para intentar cargar
+        const alternativePaths = [
+            './public/img/',
+            '../public/img/',
+            'img/',
+            './img/',
+            '../img/',
+            '/img/',
+            'public/img/'
+        ];
+        
+        // Calcular tamaño de cada icono
+        const numIcons = socialIcons.length;
+        const iconSpacing = 1; // Separación entre iconos
+        const totalSpacing = (numIcons - 1) * iconSpacing;
+        const availableWidth = containerWidth;
+        const iconWidth = Math.floor((availableWidth - totalSpacing) / numIcons);
+        const iconHeight = Math.max(2, iconsSectionHeight);
+        
+        // Verificar que los iconos quepan
+        if (iconWidth < 2) {
+            showError('El panel es demasiado pequeño para mostrar todos los iconos', output);
+            return;
+        }
+        
+        // Calcular offset para centrar los iconos
+        const totalIconsWidth = (iconWidth * numIcons) + totalSpacing;
+        const offsetX = Math.floor((containerWidth - totalIconsWidth) / 2);
+        
+        // Crear paneles para cada icono y cargar sus texturas
+        const createdIconPanels = [];
+        let loadedIcons = 0;
+        const totalIcons = numIcons;
+        
+        for (let i = 0; i < numIcons; i++) {
+            const iconX = containerPanel.minCellIndex.x + offsetX + (i * (iconWidth + iconSpacing));
+            
+            const iconPanel = createPanelFromBoundingBox({
+                minX: iconX,
+                maxX: iconX + iconWidth - 1,
+                minY: containerPanel.minCellIndex.y,
+                maxY: containerPanel.minCellIndex.y + iconHeight - 1
+            }, currentGridParams);
+            
+            if (iconPanel && iconPanel.group && iconPanel.fillMesh) {
+                createdIconPanels.push(iconPanel);
+                
+                // Función para intentar cargar la textura del icono
+                const tryLoadIconTexture = (pathIndex = 0) => {
+                    if (pathIndex >= alternativePaths.length) {
+                        console.warn(`No se pudo cargar icono ${socialIcons[i].name}, usando placeholder`);
+                        // Si no se puede cargar, dejar el panel sin textura (se verá vacío)
+                        loadedIcons++;
+                        if (loadedIcons === totalIcons) {
+                            showSuccess(`Login social creado. ${loadedIcons}/${totalIcons} iconos cargados.`, output);
+                            if (typeof render === 'function') render();
+                        }
+                        return;
+                    }
+                    
+                    const basePath = alternativePaths[pathIndex];
+                    const iconFileName = socialIcons[i].path.split('/').pop(); // Obtener solo el nombre del archivo
+                    const fullPath = basePath + iconFileName;
+                    
+                    loadTexture(
+                        fullPath,
+                        (texture) => {
+                            // Configurar wrapping
+                            texture.wrapS = THREE.ClampToEdgeWrapping;
+                            texture.wrapT = THREE.ClampToEdgeWrapping;
+                            
+                            // Crear materiales con textura
+                            iconPanel.textureMaterials = createPanelMaterials(texture);
+                            iconPanel.fillMesh.material = iconPanel.textureMaterials.normal;
+                            
+                            // Actualizar UVs para ajustar la textura sin distorsión (Contain)
+                            const geometry = iconPanel.fillMesh.geometry;
+                            const uvAttribute = geometry.attributes.uv;
+                            
+                            // Obtener dimensiones y aspecto
+                            const imageAspect = texture.image.width / texture.image.height;
+                            const panelWidth = iconPanel.maxCellIndex.x - iconPanel.minCellIndex.x + 1;
+                            const panelHeight = iconPanel.maxCellIndex.y - iconPanel.minCellIndex.y + 1;
+                            const panelAspect = panelWidth / panelHeight;
+                            const ratio = panelAspect / imageAspect;
+                            
+                            // Aplicar transformación UV (Contain)
+                            for (let j = 0; j < uvAttribute.count; j++) {
+                                const u = uvAttribute.getX(j);
+                                const v = uvAttribute.getY(j);
+                                
+                                let newU = u;
+                                let newV = v;
+                                
+                                if (ratio < 1) {
+                                    newV = 0.5 + (v - 0.5) / ratio;
+                                } else {
+                                    newU = 0.5 + (u - 0.5) * ratio;
+                                }
+                                
+                                uvAttribute.setXY(j, newU, newV);
+                            }
+                            
+                            uvAttribute.needsUpdate = true;
+                            iconPanel.hasTexture = true;
+                            iconPanel.textureType = 'social';
+                            iconPanel.texturePath = fullPath;
+                            
+                            loadedIcons++;
+                            if (loadedIcons === totalIcons) {
+                                showSuccess(`Login social creado exitosamente. ${loadedIcons}/${totalIcons} iconos cargados.`, output);
+                                if (typeof render === 'function') render();
+                            }
+                        },
+                        (error) => {
+                            // Intentar siguiente ruta
+                            tryLoadIconTexture(pathIndex + 1);
+                        }
+                    );
+                };
+                
+                // Iniciar carga de textura
+                tryLoadIconTexture(0);
+            }
+        }
+        
+        // Eliminar el panel contenedor original
+        if (containerPanel.group) {
+            scene.remove(containerPanel.group);
+            const index = panels.indexOf(containerPanel);
+            if (index > -1) {
+                panels.splice(index, 1);
+            }
+        }
+        
+        // Nota: El mensaje de éxito se muestra cuando todas las texturas se cargan
+        // (ver dentro del loop de carga de texturas)
+        
+    } catch (error) {
+        console.error('Error en mapSocial:', error);
+        showError(`Error al crear el login social: ${error.message}`, output);
+    }
 }
 
 // Nueva función para manejar el comando de texto
@@ -4971,101 +8760,6 @@ function handleTextCommand(args, output) {
     document.addEventListener('keydown', handleEscape);
 }
 
-// Función para manejar el comando "terms" - mostrar términos y condiciones
-function handleTermsCommand(output) {
-    const selectedPanels = panels.filter(p => p.selected);
-    
-    if (selectedPanels.length === 0) {
-        showError('Seleccione un panel para mostrar los términos y condiciones', output);
-        return;
-    }
-    
-    if (selectedPanels.length > 1) {
-        showError('Seleccione solo un panel para mostrar los términos', output);
-        return;
-    }
-    
-    const panel = selectedPanels[0];
-    const currentGridParams = getCurrentGridParams();
-    
-    if (!currentGridParams) {
-        showError('No se pudo obtener la configuración del grid', output);
-        return;
-    }
-    
-    // Marcar el panel como contenedor de texto
-    panel.hasText = true;
-    
-    // Crear texto con términos y condiciones extensos
-    const termsText = `TÉRMINOS Y CONDICIONES DE USO DEL BIOMETRICS SYSTEM
-
-IMPORTANTE: LEA DETENIDAMENTE ESTOS TÉRMINOS Y CONDICIONES ANTES DE USAR EL SISTEMA.
-
-1. RECOPILACIÓN DE DATOS BIOMÉTRICOS
-Al usar este sistema, usted acepta que podemos recopilar, procesar, almacenar y utilizar sus datos biométricos, incluyendo pero no limitado a: huellas dactilares, escaneos faciales, reconocimiento de voz, patrones de retina, muestras de ADN, y cualquier otro dato biológico único que pueda ser utilizado para crear un modelo biométrico personalizado.
-
-2. USO DE LOS DATOS
-Sus datos biométricos serán utilizados para:
-   a. Desarrollar y mejorar modelos de aprendizaje automático
-   b. Identificación y autenticación personalizada
-   c. Investigación médica y científica
-   d. Análisis estadístico y demográfico
-   e. Desarrollo de productos y servicios nuevos
-   f. Cualquier otro propósito que consideremos apropiado en el futuro
-
-3. COMPARTIR DATOS
-Nos reservamos el derecho de compartir sus datos biométricos con:
-   a. Afiliados y socios comerciales
-   b. Instituciones de investigación y universidades
-   c. Agencias gubernamentales cuando sea requerido por ley
-   d. Terceros que adquieran nuestra compañía o activos
-   e. Proveedores de servicios que nos asisten en nuestras operaciones
-
-4. SEGURIDAD DE DATOS
-Aunque implementamos medidas de seguridad razonables, no podemos garantizar que sus datos biométricos estén completamente seguros contra accesos no autorizados, filtración de datos, alteración o destrucción.
-
-5. ALMACENAMIENTO Y RETENCIÓN
-Sus datos biométricos serán almacenados por tiempo indefinido, incluso después de que usted deje de utilizar nuestros servicios o solicite la eliminación de su cuenta.
-
-6. CONSENTIMIENTO IRREVOCABLE
-Al aceptar estos términos, usted otorga un consentimiento irrevocable para el uso de sus datos biométricos como se describe en este documento. Este consentimiento sobrevive a la terminación de su relación con nosotros.
-
-7. CAMBIOS EN LA POLÍTICA
-Nos reservamos el derecho de modificar estos términos en cualquier momento sin previo aviso. Su uso continuado del sistema constituye la aceptación de dichos cambios.
-
-8. LIMITACIÓN DE RESPONSABILIDAD
-No seremos responsables por ningún daño directo, indirecto, incidental, especial o consecuente que resulte del uso o la imposibilidad de usar nuestro sistema, o de la pérdida, mal uso o alteración de sus datos biométricos.
-
-9. LEY APLICABLE
-Estos términos se regirán e interpretarán de acuerdo con las leyes del país donde se encuentra nuestra sede principal, sin tener en cuenta sus principios de conflicto de leyes.
-
-10. DISPUTAS
-Cualquier disputa relacionada con estos términos o el uso de sus datos biométricos será resuelta exclusivamente mediante arbitraje vinculante en el lugar designado por nuestra compañía.
-
-11. EXPERIMENTACIÓN
-Usted reconoce y acepta que podemos utilizar sus datos biométricos para experimentos científicos, médicos o tecnológicos sin notificación adicional o compensación.
-
-12. MODELOS DE IA
-Los modelos de inteligencia artificial creados utilizando sus datos biométricos serán propiedad exclusiva de nuestra compañía y podrán ser utilizados para cualquier propósito, incluyendo la creación de réplicas digitales o físicas de sus características biológicas.
-
-13. COMERCIALIZACIÓN
-Podemos utilizar los resultados derivados del análisis de sus datos biométricos con fines comerciales, incluyendo pero no limitado a la venta de productos y servicios personalizados basados en sus características biológicas únicas.
-
-14. TRANSFERENCIA INTERNACIONAL
-Sus datos biométricos pueden ser transferidos y procesados en países distintos al suyo, que pueden tener leyes de protección de datos menos estrictas.
-
-15. RENUNCIA DE DERECHOS
-Al aceptar estos términos, usted renuncia a cualquier derecho a revisar, aprobar, detener o restringir el uso de sus datos biométricos por nuestra parte.
-
-AL CONTINUAR USANDO ESTE SISTEMA, USTED CONFIRMA QUE HA LEÍDO, ENTENDIDO Y ACEPTADO ESTOS TÉRMINOS Y CONDICIONES EN SU TOTALIDAD.`;
-    
-    // Aplicar el texto al panel
-    setPanelText(panel, termsText, currentGridParams.cellSize);
-    
-    // Mostrar mensaje de éxito
-    showSuccess('Términos y condiciones cargados en el panel seleccionado', output);
-}
-
 // Exportar funciones para controlar los efectos desde la consola
 window.setColorEffect = setColorEffect;
 
@@ -5087,7 +8781,7 @@ function toggleControlPanels(show) {
 
 // Mostrar/ocultar paneles con la tecla V
 document.addEventListener('keydown', (event) => {
-    if (event.key.toLowerCase() === 'v') {
+    if (event.key && event.key.toLowerCase() === 'v') {
         toggleControlPanels();
     }
 });
@@ -5302,6 +8996,7 @@ renderer.domElement.addEventListener('touchstart', (event) => {
             );
             
             // Simular evento de mousedown con botón derecho
+            // 🔥 CRITICAL: Marcar como touch para que sea ignorado por listeners de mouse
             const mouseEvent = new MouseEvent('mousedown', {
                 clientX: twoFingerStartPosition.x,
                 clientY: twoFingerStartPosition.y,
@@ -5310,6 +9005,8 @@ renderer.domElement.addEventListener('touchstart', (event) => {
                 bubbles: true,
                 cancelable: true
             });
+            // Establecer pointerType manualmente ya que MouseEvent no lo soporta directamente
+            Object.defineProperty(mouseEvent, 'pointerType', { value: 'touch', writable: false });
             event.target.dispatchEvent(mouseEvent);
         }
     } else if (event.touches.length === 1) {
@@ -5319,6 +9016,7 @@ renderer.domElement.addEventListener('touchstart', (event) => {
         touchStartTime = currentTime;
         
         // Simular evento de mousedown con botón izquierdo
+        // 🔥 CRITICAL: Marcar como touch para que sea ignorado por listeners de mouse
         const mouseEvent = new MouseEvent('mousedown', {
             clientX: touch.clientX,
             clientY: touch.clientY,
@@ -5327,6 +9025,8 @@ renderer.domElement.addEventListener('touchstart', (event) => {
             bubbles: true,
             cancelable: true
         });
+        // Establecer pointerType manualmente ya que MouseEvent no lo soporta directamente
+        Object.defineProperty(mouseEvent, 'pointerType', { value: 'touch', writable: false });
         event.target.dispatchEvent(mouseEvent);
     }
 }, { passive: false });
@@ -5832,23 +9532,33 @@ renderer.domElement.addEventListener('mouseup', (event) => {
     raycaster.setFromCamera(mouse, camera);
     
     // Recopilar todos los objetos seleccionables
-    const allSelectable = [];
-    panels.forEach(panel => {
-        if (panel.group) {
-            if (panel.fillMesh && !panel.fillMesh.userData.ignoreRaycast) {
-                allSelectable.push(panel.fillMesh);
+    let intersects = [];
+    if (isHUDActive()) {
+        // Cuando el HUD está activo, solo permitir clics en elementos del HUD
+        // NO permitir clics en elementos del fondo
+        const hudPanelsList = getHUDPanels();
+        const hudFillMeshes = hudPanelsList.map(p => p.fillMesh).filter(Boolean);
+        const hudBorderLines = hudPanelsList.flatMap(p => p.borderLines || []).filter(Boolean);
+        const hudSelectable = [...hudFillMeshes, ...hudBorderLines];
+        intersects = raycaster.intersectObjects(hudSelectable, false);
+    } else {
+        const allSelectable = [];
+        panels.forEach(panel => {
+            if (panel.group) {
+                if (panel.fillMesh && !panel.fillMesh.userData.ignoreRaycast) {
+                    allSelectable.push(panel.fillMesh);
+                }
+                if (panel.borderLines) {
+                    panel.borderLines.forEach(line => {
+                        if (!line.userData.ignoreRaycast) {
+                            allSelectable.push(line);
             }
-            if (panel.borderLines) {
-                panel.borderLines.forEach(line => {
-                    if (!line.userData.ignoreRaycast) {
-                        allSelectable.push(line);
-        }
-    });
-}
-        }
-    });
-    
-    const intersects = raycaster.intersectObjects(allSelectable, false);
+        });
+    }
+            }
+        });
+        intersects = raycaster.intersectObjects(allSelectable, false);
+    }
     
     if (intersects.length > 0) {
         const clickedObject = intersects[0].object;
@@ -5871,6 +9581,44 @@ renderer.domElement.addEventListener('mouseup', (event) => {
 
         if (panelData) {
             // NUEVA LÓGICA: Verificar si el panel está asignado para navegar a un slot
+            // 🔥 NUEVO: Cargar slot en HUD si el panel tiene loadToHUDSlot asignado
+            if (!panelData.isKeyboardKey && typeof panelData.loadToHUDSlot === 'number') {
+                console.log(`Panel P${panelData.orderNumber} clickeado. Cargando Slot ${panelData.loadToHUDSlot} en HUD.`);
+                (async () => {
+                    // Si el HUD no está activo, activarlo primero
+                    if (!isHUDActive()) {
+                        console.log(`HUD no está activo, activándolo primero...`);
+                        const slotConfig = bioSlotsLoadFromSlot(panelData.loadToHUDSlot);
+                        const slotDivisions = slotConfig?.grid?.divisions || currentDivisions;
+                        console.log(`Creando HUD con ${slotDivisions} divisiones del slot`);
+                        const hudCreated = createHUD(slotDivisions);
+                        if (!hudCreated) {
+                            console.error('Error al crear HUD. Cargando en grid principal como fallback.');
+                            loadFromSlot(panelData.loadToHUDSlot);
+                            return;
+                        }
+                        // Esperar un frame para asegurar que el HUD esté completamente inicializado
+                        await new Promise(resolve => requestAnimationFrame(resolve));
+                    }
+                    
+                    // Verificar que el HUD esté activo y visible antes de cargar
+                    const hudScene = getHUDScene();
+                    if (hudScene) {
+                        hudScene.visible = true;
+                        hudScene.traverse((child) => {
+                            child.visible = true;
+                        });
+                    }
+                    
+                    // Cargar el slot en el HUD
+                    await loadFromSlotToHUD(panelData.loadToHUDSlot);
+                })();
+                // Deseleccionar el panel después de la carga
+                panelData.selected = false;
+                updatePanelColor(panelData);
+                return; // Terminar el procesamiento aquí para no interferir con la selección normal
+            }
+            
             if (!panelData.isKeyboardKey && typeof panelData.navigateToSlot === 'number') {
                 console.log(`Panel P${panelData.orderNumber} clickeado. Navegando a Slot ${panelData.navigateToSlot}.`);
                 loadFromSlot(panelData.navigateToSlot);
@@ -5878,6 +9626,101 @@ renderer.domElement.addEventListener('mouseup', (event) => {
                 panelData.selected = false;
                 updatePanelColor(panelData);
                 return; // Terminar el procesamiento aquí para no interferir con la selección normal
+            }
+
+            // NUEVA FUNCIONALIDAD: Avanzar scroll de términos al hacer click en botón AGREE (mouseup)
+            if (panelData.isAgreeButton && panelData.termsPanel) {
+                const termsPanel = panelData.termsPanel;
+                const textState = panelTextState.get(termsPanel);
+                if (textState && textState.useWhiteScrollIndicators) {
+                    // Este es el botón AGREE, avanzar scroll del panel de términos
+                    const currentGridParams = getCurrentGridParams();
+                    if (currentGridParams) {
+                        // Calcular dimensiones del panel de términos
+                        const panelHeight = (termsPanel.maxCellIndex.y - termsPanel.minCellIndex.y + 1);
+                        const panelWidth = (termsPanel.maxCellIndex.x - termsPanel.minCellIndex.x + 1);
+                        const width = panelWidth * currentGridParams.cellSize;
+                        const height = panelHeight * currentGridParams.cellSize;
+                        const paddingSize = currentGridParams.cellSize;
+                        const textAreaHeight = height - (paddingSize * 2);
+                        
+                        // Calcular número máximo de líneas visibles
+                        const isUniline = panelHeight <= 3;
+                        const isTooSmall = textAreaHeight < (currentGridParams.cellSize * TEXT_CONFIG.fontSize * 0.8);
+                        
+                        let effectiveLineHeight;
+                        if (isTooSmall || isUniline) {
+                            effectiveLineHeight = panelHeight <= 1 ? TEXT_CONFIG.lineHeight * 0.2 :
+                                                 panelHeight <= 2 ? TEXT_CONFIG.lineHeight * 0.3 :
+                                                 panelHeight <= 3 ? TEXT_CONFIG.lineHeight * 0.4 :
+                                                 TEXT_CONFIG.lineHeight;
+                        } else {
+                            effectiveLineHeight = TEXT_CONFIG.lineHeight;
+                        }
+                        
+                        const maxVisibleLines = isUniline ? 1 : Math.max(1, Math.floor(textAreaHeight / (currentGridParams.cellSize * effectiveLineHeight)));
+                        
+                        // Avanzar scrollOffset en una pantalla
+                        const newScrollOffset = Math.min(
+                            textState.scrollOffset + maxVisibleLines,
+                            Math.max(0, textState.lines.length - maxVisibleLines)
+                        );
+                        
+                        // 🔥 CRITICAL: Asegurar que el panel de términos NO flashee al actualizar texto
+                        const wasFlashing = termsPanel.shouldFlash;
+                        const wasInFlashingSet = panelsFlashing.has(termsPanel);
+                        
+                        if (newScrollOffset !== textState.scrollOffset) {
+                            textState.scrollOffset = newScrollOffset;
+                            createPanelText(termsPanel, currentGridParams.cellSize);
+                            console.log(`📜 Scroll de términos avanzado (AGREE mouseup): ${textState.scrollOffset}/${textState.lines.length - maxVisibleLines}`);
+                        } else {
+                            // Si ya está al final, volver al inicio
+                            textState.scrollOffset = 0;
+                            createPanelText(termsPanel, currentGridParams.cellSize);
+                            console.log(`📜 Scroll de términos reiniciado al inicio (AGREE mouseup)`);
+                        }
+                        
+                        // 🔥 CRITICAL: Flash visual en el botón I AGREE y el panel de términos
+                        // Solo estos dos paneles deben flashear, no todos los paneles
+                        panelData.flashProgress = 0;
+                        panelData.shouldFlash = true;
+                        panelsFlashing.add(panelData);
+                        
+                        // También hacer flash en el panel de términos
+                        termsPanel.flashProgress = 0;
+                        termsPanel.shouldFlash = true;
+                        panelsFlashing.add(termsPanel);
+                        
+                        return; // Salir para evitar selección normal
+                    }
+                }
+            }
+            
+            // MANEJO DE BOTONES MODAL: + y -
+            if (panelData.isModalPlusButton || panelData.isModalMinusButton) {
+                const currentGridParams = getCurrentGridParams();
+                if (currentGridParams && panelData.containerPanel) {
+                    // Buscar el panel de porcentaje correspondiente
+                    const modalData = getModalState(panelData.containerPanel);
+                    if (modalData && modalData.divisions[panelData.modalIndex]) {
+                        const percentagePanel = modalData.divisions[panelData.modalIndex].percentagePanel;
+                        if (percentagePanel) {
+                            // Determinar el cambio (+10 o -10)
+                            const delta = panelData.isModalPlusButton ? 10 : -10;
+                            updateModalPercentage(percentagePanel, delta, currentGridParams);
+                            
+                            // Flash visual SOLO en el botón clickeado (no en todos los paneles)
+                            panelData.flashProgress = 0;
+                            panelData.shouldFlash = true;
+                            panelsFlashing.add(panelData);
+                            
+                            // NO agregar el panel de porcentaje al flash, solo el botón
+                            
+                            return; // Salir inmediatamente para evitar cualquier otro procesamiento
+                        }
+                    }
+                }
             }
 
             if (panelData.isKeyboardKey && panelData.behavior && panelData.behavior.character) {
@@ -5888,6 +9731,7 @@ renderer.domElement.addEventListener('mouseup', (event) => {
                     
                     // Asegurar que no quede seleccionada
                     panelData.selected = false;
+                    updatePanelColor(panelData);
                     
                     // Efecto visual de flash
     panelData.flashProgress = 0;
@@ -5895,6 +9739,125 @@ renderer.domElement.addEventListener('mouseup', (event) => {
     panelsFlashing.add(panelData);
                 }
             } else {
+                // NUEVA FUNCIONALIDAD: Detectar click en BOTÓN de models y cargar en panel de DISPLAY (para touch)
+                if (panelData.modelData && 
+                    panelData.modelData.isModelButton && 
+                    panelData.modelData.isFromModelsGrid) {
+                    
+                    // Este es un botón de la rejilla 3x3, buscar paneles de DISPLAY
+                    const displayPanels = panels.filter(p => 
+                        p !== panelData && 
+                        p.modelData && 
+                        p.modelData.isModelDisplay &&
+                        p.modelData.isFromModelCommand &&
+                        p.group && 
+                        p.group.children.some(child => child.userData && child.userData.isModel)
+                    );
+                    
+                    if (displayPanels.length > 0) {
+                        // Encontramos paneles de DISPLAY, usar el primero
+                        const targetDisplayPanel = displayPanels[0];
+                        const sourceModelData = panelData.modelData;
+                        
+                        console.log(`Transfiriendo modelo ${sourceModelData.name} del BOTÓN #${panelData.orderNumber} al DISPLAY #${targetDisplayPanel.orderNumber} (touch)`);
+                        
+                                                 // 🔥 ACTUALIZAR EL ÚLTIMO MODELO CLICKEADO PARA EL COMANDO PRINT (TOUCH)
+                         lastClickedModelFromGrid = {
+                             name: sourceModelData.name,
+                             url: sourceModelData.url,
+                             scientificName: modelScientificNames[sourceModelData.name] || 'MODELO DESCONOCIDO'
+                         };
+                         console.log(`📋 Último modelo para print actualizado (touch): ${lastClickedModelFromGrid.name} (${lastClickedModelFromGrid.scientificName})`);
+                         
+                         // 🔥 BUSCAR Y ACTUALIZAR PANELES DE ESTADÍSTICAS GENÓMICAS (STATG) (TOUCH)
+                         const statgPanels = panels.filter(p => p.isStatgPanel && !p.isKeyboardKey);
+                         if (statgPanels.length > 0) {
+                             const currentGridParams = getCurrentGridParams();
+                             if (currentGridParams) {
+                                 statgPanels.forEach(statgPanel => {
+                                     const updated = updateStatgPanelWithModel(statgPanel, sourceModelData.name, currentGridParams);
+                                     if (updated) {
+                                         console.log(`📊 Panel STATG #${statgPanel.orderNumber} actualizado con modelo ${sourceModelData.name} (touch)`);
+                                     }
+                                 });
+                                 
+                                 if (statgPanels.length > 0) {
+                                     console.log(`🔄 ${statgPanels.length} panel(es) de estadísticas genómicas actualizados automáticamente (touch)`);
+                                 }
+                             }
+                         }
+                         
+                         // Mostrar información en terminal solo si está disponible (touch)
+                         const terminalOutput = document.querySelector('.terminal-output');
+                         if (terminalOutput) {
+                             showInfo(`Modelo ${lastClickedModelFromGrid.name} seleccionado para print`, terminalOutput);
+                         }
+                        
+                        // Cargar el modelo del botón en el panel de display
+                        loadModelToPanel(targetDisplayPanel, sourceModelData.url, currentGrid.userData.cellSize).then((success) => {
+                            if (success) {
+                                // Actualizar datos del modelo en el panel de display (mantener que es display)
+                                targetDisplayPanel.modelData = {
+                                    name: sourceModelData.name,
+                                    url: sourceModelData.url,
+                                    isRotating: true,
+                                    rotationSpeed: sourceModelData.rotationSpeed || 0.005,
+                                    isModelDisplay: true, // Mantener como display
+                                    isFromModelCommand: true // Mantener origen
+                                };
+                                
+                                console.log(`Modelo ${sourceModelData.name} transferido exitosamente al DISPLAY #${targetDisplayPanel.orderNumber} (touch)`);
+                                
+                                // Flash visual en el panel de display para indicar la transferencia
+                                targetDisplayPanel.flashProgress = 0;
+                                targetDisplayPanel.shouldFlash = true;
+                                panelsFlashing.add(targetDisplayPanel);
+                            } else {
+                                console.error(`Error al transferir modelo ${sourceModelData.name} al DISPLAY #${targetDisplayPanel.orderNumber} (touch)`);
+                            }
+                        }).catch(error => {
+                            console.error(`Error al cargar modelo en panel destino (touch):`, error);
+                        });
+                        
+                                                 // Deseleccionar el panel de models después de la transferencia
+                         panelData.selected = false;
+                         updatePanelColor(panelData);
+                         
+                         // NUEVA FUNCIONALIDAD: Buscar panel libre para cargar nombre científico (touch)
+                         const freePanels = findFreePanels();
+                         console.log(`🔍 Buscando panel libre para nombre científico (touch). Paneles libres encontrados: ${freePanels.length}`);
+                         
+                         if (freePanels.length > 0) {
+                             const freePanel = freePanels[0];
+                             const scientificName = modelScientificNames[sourceModelData.name];
+                             
+                             console.log(`📄 Modelo (touch): ${sourceModelData.name}, Nombre científico: ${scientificName}`);
+                             
+                             if (scientificName) {
+                                  // Marcar el panel como contenedor de especie (reutilizable)
+                                  freePanel.hasText = true;
+                                  freePanel.speciesPanel = true; // NUEVO: Marcar como panel de especie
+                                  freePanel.speciesName = scientificName; // NUEVO: Guardar nombre de especie
+                                  createPanelText(freePanel, currentGrid.userData.cellSize);
+                                  setPanelText(freePanel, scientificName, currentGrid.userData.cellSize);
+                                  
+                                  console.log(`✅ Nombre científico "${scientificName}" cargado en panel de especie #${freePanel.orderNumber} (touch)`);
+                                  
+                                  // Flash visual en el panel de especie para indicar la carga
+                                  freePanel.flashProgress = 0;
+                                  freePanel.shouldFlash = true;
+                                  panelsFlashing.add(freePanel);
+                              } else {
+                                  console.warn(`⚠️ No se encontró nombre científico para el modelo (touch): ${sourceModelData.name}`);
+                              }
+                         } else {
+                             console.warn(`⚠️ No hay paneles libres disponibles para mostrar el nombre científico (touch)`);
+                         }
+                         
+                         return; // Salir temprano para evitar el comportamiento normal de selección
+                    }
+                }
+
                 // Comportamiento normal para paneles regulares
                 if (event.shiftKey) {
                     panelData.selected = !panelData.selected;
@@ -6000,15 +9963,26 @@ async function handleModelCommand(args, output) {
     }
     
     if (args.length === 0) {
-        showError('Especifique el nombre del modelo sin extensión (ej: corazon, hueso, dog, axolotl, discus)', output);
+        showError('Especifique el nombre del modelo (ej: corazon, hueso, dog, axolotl, discus, acot, tort, ham, pollo, o megazord.fbx)', output);
         return;
     }
     
     const panel = selectedPanels[0];
-    const modelName = args[0].toLowerCase();
+    const modelInput = args[0].toLowerCase();
     
-    // Construir la ruta del modelo
-    const modelUrl = `./models/${modelName}.obj`;
+    // Detectar si el usuario especificó una extensión
+    let modelUrl;
+    let modelName;
+    if (modelInput.includes('.')) {
+        // El usuario especificó la extensión
+        modelName = modelInput.split('.')[0];
+        const extension = modelInput.split('.').pop();
+        modelUrl = `./models/${modelName}.${extension}`;
+    } else {
+        // Sin extensión, intentar primero .fbx (más común para modelos animados), luego .obj
+        modelName = modelInput;
+        modelUrl = `./models/${modelName}.fbx`; // Cambiar a .fbx primero
+    }
     
     try {
         // Verificar si ya existe un modelo en el panel
@@ -6022,7 +9996,29 @@ async function handleModelCommand(args, output) {
             : `Cargando modelo ${modelName}...`;
         output.appendChild(loadingMessage);
 
-        const success = await loadModelToPanel(panel, modelUrl, currentGrid.userData.cellSize);
+        // Si no se especificó extensión, intentar primero con .fbx (más común para modelos animados)
+        // y luego con .obj como fallback
+        let success = false;
+        if (!modelInput.includes('.')) {
+            // Intentar primero con .fbx
+            const fbxUrl = `./models/${modelName}.fbx`;
+            console.log(`Intentando cargar modelo FBX: ${fbxUrl}`);
+            success = await loadModelToPanel(panel, fbxUrl, currentGrid.userData.cellSize);
+            if (success) {
+                modelUrl = fbxUrl; // Actualizar la URL para guardar en modelData
+            } else {
+                // Si falló, intentar con .obj
+                const objUrl = `./models/${modelName}.obj`;
+                console.log(`Intento con .fbx falló, intentando con .obj: ${objUrl}`);
+                success = await loadModelToPanel(panel, objUrl, currentGrid.userData.cellSize);
+                if (success) {
+                    modelUrl = objUrl; // Actualizar la URL para guardar en modelData
+                }
+            }
+        } else {
+            // Si se especificó extensión, usar directamente
+            success = await loadModelToPanel(panel, modelUrl, currentGrid.userData.cellSize);
+        }
         
         if (success) {
             // NO llamar a toggleModelRotation aquí, ya que invierte el estado
@@ -6043,17 +10039,20 @@ async function handleModelCommand(args, output) {
             `;
             output.appendChild(infoDiv);
 
-            // Guardar referencia del modelo en el panel
+            // Guardar referencia del modelo en el panel como DISPLAY individual
             panel.modelData = {
                 name: modelName,
                 url: modelUrl,
                 isRotating: true,
-                rotationSpeed: 0.01
+                rotationSpeed: 0.01,
+                isModelDisplay: true, // NUEVO: Marcar como panel de display individual
+                isFromModelCommand: true, // NUEVO: Identificar que viene del comando "model"
+                scientificName: modelScientificNames[modelName] || null // 🔥 NUEVO: Guardar nombre científico
             };
         } else {
             // Actualizar mensaje de carga a error
             loadingMessage.className = 'terminal-error';
-            loadingMessage.textContent = `Error al cargar el modelo ${modelName}. Asegúrese de que el archivo ${modelName}.obj existe en la carpeta models/`;
+            loadingMessage.textContent = `Error al cargar el modelo ${modelName}. Asegúrese de que el archivo existe en la carpeta models/ (formatos soportados: .obj, .fbx)`;
         }
     } catch (error) {
         showError(`Error al cargar el modelo: ${error.message}`, output);
@@ -6525,48 +10524,3639 @@ async function ensureBioKeybModuleInitialized() {
     }
 }
 
-// ... existing code ...
-// Función para limpiar un slot específico
-function clearSlot(slotIndex) {
-    if (slotIndex < 0 || slotIndex >= MAX_SLOTS) {
-        console.error(`Slot ${slotIndex} inválido para limpiar.`);
+/**
+ * COMANDO PRINT - Sistema de Bioimpresión 3D
+ * -----------------------------------------------------------------------------
+ * Responsabilidad:
+ * - Maneja el comando "print" desde la terminal
+ * - Almacena el comando en el panel seleccionado para ejecución diferida
+ * - Ejecuta inmediatamente si se proporciona un panel (desde carga de slot)
+ * 
+ * Flujo:
+ * 1. Si se llama desde terminal: almacena comando en panel (pendingPrintCommand)
+ * 2. Si se llama desde slot: ejecuta inmediatamente executePrintCommand()
+ * 
+ * Conexiones:
+ * - executePrintCommand(): Ejecuta la interfaz completa de impresión
+ * - panelText.js: Muestra textos en paneles
+ * - panelModel.js: Carga modelos 3D para impresión
+ * - bioLoad.js: Barras de progreso de rendering
+ * 
+ * Argumentos:
+ * - args[0]: Nombre del modelo a imprimir (opcional, usa último modelo clickeado)
+ * - providedContainerPanel: Panel contenedor (si viene de carga de slot)
+ * -----------------------------------------------------------------------------
+ */
+async function handlePrintCommand(args = [], output, providedContainerPanel = null) {
+    let containerPanel = providedContainerPanel;
+    
+    // Si no se proporciona un panel, buscar uno seleccionado
+    if (!containerPanel) {
+        const selectedPanels = panels.filter(p => p.selected);
+        if (selectedPanels.length === 0) {
+            showError("You must select a panel to use as container.", output);
+            return;
+        }
+        containerPanel = selectedPanels[0];
+    }
+    
+    const currentGridParams = getCurrentGridParams();
+    
+    // Si se proporciona un panel (desde carga de slot), ejecutar el comando inmediatamente
+    if (providedContainerPanel) {
+        // Ejecutar el comando print normalmente
+        await executePrintCommand(containerPanel, args, output);
         return;
     }
-    if (slots[slotIndex]) {
-        slots[slotIndex] = null;
-        console.log(`Slot ${slotIndex} limpiado.`);
-        persistSlotsToLocalStorage(); // Guardar cambios en localStorage
-        updateSlotsPanelUI(); // Actualizar la interfaz del panel de slots
+    
+    // Si NO se proporciona un panel (comando desde terminal), almacenar el comando en el panel
+    // El panel conserva su apariencia y no se activa hasta que un slot lo cargue
+    containerPanel.pendingPrintCommand = true;
+    containerPanel.printCommandArgs = args; // Guardar los argumentos del comando
+    showInfo(`Print command stored in panel #${containerPanel.orderNumber}. It will activate when loaded from a slot.`, output);
+    
+    // NO eliminar el panel, NO crear la interfaz, solo almacenar el comando
+    return;
+}
 
-        // Efecto flash para confirmar
+/**
+ * EJECUTOR PRINT - Interfaz Completa de Bioimpresión
+ * -----------------------------------------------------------------------------
+ * Responsabilidad:
+ * - Crea la interfaz completa de impresión 3D con todas las fases
+ * - Detecta si el panel está en HUD para usar parámetros correctos
+ * - Maneja modelos rotando (HOMO PRINTEMPS mode)
+ * 
+ * Fases:
+ * 1. Botón "PRINT MODEL" - Inicio de proceso
+ * 2. Pantalla de confirmación (YES/NO)
+ * 3. Pantalla de impresión (barras de progreso, tiempo, modelo)
+ * 
+ * Componentes creados:
+ * - printBtn: Botón inicial
+ * - confirmTitlePanel, continuePanel, cancelPanel: Confirmación
+ * - printingTitlePanel: Título durante impresión
+ * - renderingBarPanel: Barra de rendering (6 segundos)
+ * - cyclicBarPanel: Barra cíclica rápida
+ * - percentagePanel, remainingTimePanel, totalTimePanel: Info de progreso
+ * - modelPanel: Nombre del modelo
+ * 
+ * Conexiones:
+ * - handlePrintCommand(): Llamado desde aquí cuando se ejecuta desde slot
+ * - bioLoad.js: updateProgressBar() para barras de progreso
+ * - panelText.js: setPanelText() para textos
+ * - panelModel.js: lastClickedModelFromGrid para modelo a imprimir
+ * -----------------------------------------------------------------------------
+ */
+async function executePrintCommand(containerPanel, args = [], output) {
+    // IMPORTANTE: Detectar si el panel contenedor está en el HUD y usar los parámetros correctos
+    const isContainerInHUD = containerPanel.group && containerPanel.group.parent && 
+                             containerPanel.group.parent.userData && containerPanel.group.parent.userData.isHUD;
+    const currentGridParams = isContainerInHUD ? getHUDGridParams() : getCurrentGridParams();
+    
+    if (!currentGridParams) {
+        if (output) {
+            showError('No se pudieron obtener los parámetros del grid', output);
+        }
+        return;
+    }
+    
+    // Obtener límites del grid para validar índices
+    const gridCellsX = currentGridParams.cellsX;
+    const gridCellsY = currentGridParams.cellsY;
+    
+    // Determine model name from command args or use last clicked model
+    let modelName = null;
+    let scientificName = null;
+    
+    if (args.length > 0 && args[0]) {
+        const modelKey = args[0].toLowerCase();
+        if (modelScientificNames[modelKey]) {
+            modelName = modelKey;
+            scientificName = modelScientificNames[modelKey];
+        } else {
+            // Try to find a matching model name
+            for (const [key, value] of Object.entries(modelScientificNames)) {
+                if (key.toLowerCase() === modelKey || value.toLowerCase() === modelKey) {
+                    modelName = key;
+                    scientificName = value;
+                    break;
+                }
+            }
+        }
+    }
+    
+    // If no model specified in args, use last clicked model
+    if (!scientificName && lastClickedModelFromGrid && lastClickedModelFromGrid.scientificName) {
+        scientificName = lastClickedModelFromGrid.scientificName;
+        modelName = lastClickedModelFromGrid.name;
+    }
+    
+    // Default fallback
+    if (!scientificName) {
+        scientificName = 'UNKNOWN MODEL';
+    }
+    
+    // 🧬 DETECCIÓN ESPECIAL: Verificar si hay modelos rotando (HOMO PRINTEMPS)
+    const rotatingModelPanels = panels.filter(panel => {
+        return panel.modelData && panel.modelData.isRotating && 
+               (panel.modelData.isFromModelCommand || panel.modelData.isModelDisplay);
+    });
+    
+    const isHomoPrintemps = rotatingModelPanels.length > 0;
+    let homoPrintempsPanel = null;
+    
+    if (isHomoPrintemps) {
+        homoPrintempsPanel = rotatingModelPanels[0]; // Usar el primer modelo rotando encontrado
+        if (output) {
+            showSuccess("🧬 HOMO PRINTEMPS MODE ACTIVATED ♀", output);
+        }
+    }
+    
+    // Eliminar el panel contenedor original inmediatamente
+    if (containerPanel.group) {
+        scene.remove(containerPanel.group);
+        const index = panels.indexOf(containerPanel);
+        if (index > -1) {
+            panels.splice(index, 1);
+        }
+        if (output) {
+            showInfo('Container panel removed', output);
+        }
+    }
+    
+    // Verificar que el contenedor sea lo suficientemente grande
+    const containerWidth = containerPanel.maxCellIndex.x - containerPanel.minCellIndex.x + 1;
+    const containerHeight = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+    
+    if (containerWidth < 15 || containerHeight < 9) {
+        if (output) {
+            showError(`Panel must be at least 15x9 cells (current: ${containerWidth}x${containerHeight})`, output);
+        }
+        return;
+    }
+    
+    // Crear una interfaz con múltiples paneles
+    if (output) {
+        showInfo('Creating print interface...', output);
+    }
+    
+    // Definir tamaños para todos los paneles según las reglas específicas
+    const buttonHeight = 2; // Altura reducida para botones: 2 unidades exactas
+    const loadingBarHeight = 1; // Altura reducida para barra de loading: 1 unidad exacta
+    const panelSpacing = 1; // Separación reducida entre paneles: 1 unidad exacta
+    const buttonWidth = containerWidth - 4; // Dejar un pequeño margen
+    const offsetX = 2; // Pequeño margen lateral
+    
+    // Función helper para validar y ajustar índices dentro de los límites del grid
+    const clampIndices = (minX, maxX, minY, maxY) => {
+        const clampedMinX = Math.max(0, Math.min(gridCellsX - 1, minX));
+        const clampedMaxX = Math.max(0, Math.min(gridCellsX - 1, maxX));
+        const clampedMinY = Math.max(0, Math.min(gridCellsY - 1, minY));
+        const clampedMaxY = Math.max(0, Math.min(gridCellsY - 1, maxY));
+        
+        // Verificar que los índices sean válidos
+        if (clampedMinX > clampedMaxX || clampedMinY > clampedMaxY) {
+            console.warn(`Índices inválidos: (${minX},${minY})-(${maxX},${maxY}) → (${clampedMinX},${clampedMinY})-(${clampedMaxX},${clampedMaxY})`);
+            return null;
+        }
+        
+        return { minX: clampedMinX, maxX: clampedMaxX, minY: clampedMinY, maxY: clampedMaxY };
+    };
+    
+    // FASE 1: Crear panel "IMPRIMIR MODELO" como botón (altura: 3 unidades según regla)
+    const printBtnIndices = clampIndices(
+        containerPanel.minCellIndex.x + offsetX,
+        containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        containerPanel.minCellIndex.y + 3,
+        containerPanel.minCellIndex.y + 3 + buttonHeight
+    );
+    
+    if (!printBtnIndices) {
+        if (output) {
+            showError('No hay espacio suficiente en el grid para crear el botón PRINT MODEL', output);
+        }
+        return;
+    }
+    
+    const printBtn = createPanelFromBoundingBox({
+        minX: printBtnIndices.minX,
+        maxX: printBtnIndices.maxX,
+        minY: printBtnIndices.minY,
+        maxY: printBtnIndices.maxY
+    }, currentGridParams);
+    
+    // Configurarlo como botón con texto
+    printBtn.isTextContainer = true;
+    printBtn.isPrintButton = true; // Mark as print button for double tap handling
+    // Store action callback for double tap handling
+    printBtn.printButtonAction = () => {
+        if (printBtn.group && printBtn.group.visible) {
+            // Simulate double click by calling the handler directly
+            printBtn.group.visible = false;
+            showConfirmationScreen();
+        }
+    };
+    createPanelText(printBtn, currentGridParams.cellSize);
+    setPanelText(printBtn, "PRINT NOW?", currentGridParams.cellSize);
+    
+    // FASE 2: Paneles para la pantalla de confirmación (inicialmente ocultos)
+    // Panel título de confirmación (altura: 3 unidades según regla)
+    const confirmTitleIndices = clampIndices(
+        containerPanel.minCellIndex.x + offsetX,
+        containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        containerPanel.minCellIndex.y + 3,
+        containerPanel.minCellIndex.y + 3 + buttonHeight
+    );
+    
+    if (!confirmTitleIndices) {
+        if (output) {
+            showError('No hay espacio suficiente en el grid para crear el título de confirmación', output);
+        }
+        return;
+    }
+    
+    const confirmTitlePanel = createPanelFromBoundingBox({
+        minX: confirmTitleIndices.minX,
+        maxX: confirmTitleIndices.maxX,
+        minY: confirmTitleIndices.minY,
+        maxY: confirmTitleIndices.maxY
+    }, currentGridParams);
+    
+    // Panel botón "CONTINUAR" (altura: 3 unidades según regla)
+    const continueIndices = clampIndices(
+        containerPanel.minCellIndex.x + offsetX,
+        containerPanel.minCellIndex.x + Math.floor(containerWidth/2) - panelSpacing/2,
+        containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing,
+        containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight
+    );
+    
+    if (!continueIndices) {
+        if (output) {
+            showError('No hay espacio suficiente en el grid para crear el botón CONTINUAR', output);
+        }
+        return;
+    }
+    
+    const continuePanel = createPanelFromBoundingBox({
+        minX: continueIndices.minX,
+        maxX: continueIndices.maxX,
+        minY: continueIndices.minY,
+        maxY: continueIndices.maxY
+    }, currentGridParams);
+    continuePanel.isPrintContinueButton = true; // Mark as continue button for double tap handling
+    // Store action callback for double tap handling (will be set after showConfirmationScreen is defined)
+    continuePanel.printButtonAction = null;
+    
+    // Panel botón "CANCELAR" (altura: 3 unidades según regla)
+    const cancelIndices = clampIndices(
+        containerPanel.minCellIndex.x + Math.floor(containerWidth/2) + panelSpacing/2,
+        containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing,
+        containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight
+    );
+    
+    if (!cancelIndices) {
+        if (output) {
+            showError('No hay espacio suficiente en el grid para crear el botón CANCELAR', output);
+        }
+        return;
+    }
+    
+    const cancelPanel = createPanelFromBoundingBox({
+        minX: cancelIndices.minX,
+        maxX: cancelIndices.maxX,
+        minY: cancelIndices.minY,
+        maxY: cancelIndices.maxY
+    }, currentGridParams);
+    cancelPanel.isPrintCancelButton = true; // Mark as cancel button for double tap handling
+    // Store action callback for double tap handling (will be set after showConfirmationScreen is defined)
+    cancelPanel.printButtonAction = null;
+    
+    // FASE 3: Paneles para la pantalla de impresión (inicialmente ocultos)
+    // Panel título "IMPRIMIENDO" (altura: 2 unidades)
+    const printingTitleIndices = clampIndices(
+        containerPanel.minCellIndex.x + offsetX,
+        containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        containerPanel.minCellIndex.y + 3,
+        containerPanel.minCellIndex.y + 3 + buttonHeight
+    );
+    
+    if (!printingTitleIndices) {
+        if (output) {
+            showError('No hay espacio suficiente en el grid para crear el título de impresión', output);
+        }
+        return;
+    }
+    
+    const printingTitlePanel = createPanelFromBoundingBox({
+        minX: printingTitleIndices.minX,
+        maxX: printingTitleIndices.maxX,
+        minY: printingTitleIndices.minY,
+        maxY: printingTitleIndices.maxY
+    }, currentGridParams);
+    
+    // Panel para la barra de progreso de RENDERING con texto (2 unidades de altura) - PRIMERO, justo después del título
+    const renderingBarIndices = clampIndices(
+        containerPanel.minCellIndex.x + offsetX,
+        containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing,
+        containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2
+    );
+    
+    if (!renderingBarIndices) {
+        if (output) {
+            showError('No hay espacio suficiente en el grid para crear la barra de rendering', output);
+        }
+        return;
+    }
+    
+    const renderingBarPanel = createPanelFromBoundingBox({
+        minX: renderingBarIndices.minX,
+        maxX: renderingBarIndices.maxX,
+        minY: renderingBarIndices.minY,
+        maxY: renderingBarIndices.maxY
+    }, currentGridParams);
+    
+    // Panel para la barra de progreso cíclica (barra rápida que se llena constantemente)
+    const cyclicBarPanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2 + panelSpacing, // Después de rendering
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2 + panelSpacing + 1 // 1 unidad de altura
+    }, currentGridParams);
+    
+    // Panel para el porcentaje (2 unidades de altura)
+    const percentagePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + Math.floor(containerWidth/3) - panelSpacing/2,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2 + panelSpacing + 1 + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2 + panelSpacing + 1 + panelSpacing + 2
+    }, currentGridParams);
+    
+    // Panel para el tiempo restante (2 unidades de altura)
+    const remainingTimePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + Math.floor(containerWidth/3) + panelSpacing/2,
+        maxX: containerPanel.minCellIndex.x + Math.floor(containerWidth*2/3) - panelSpacing/2,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2 + panelSpacing + 1 + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2 + panelSpacing + 1 + panelSpacing + 2
+    }, currentGridParams);
+    
+    // Panel para el tiempo total (2 unidades de altura)
+    const totalTimePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + Math.floor(containerWidth*2/3) + panelSpacing/2,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2 + panelSpacing + 1 + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2 + panelSpacing + 1 + panelSpacing + 2
+    }, currentGridParams);
+    
+    // Panel para modelo (2 unidades de altura)
+    const modelPanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2 + panelSpacing + 1 + panelSpacing + 2 + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 2 + panelSpacing + 1 + panelSpacing + 2 + panelSpacing + 2
+    }, currentGridParams);
+    
+    // Calcular altura total de todos los paneles de impresión para centrar verticalmente
+    const totalPrintHeight = buttonHeight + panelSpacing + 2 + panelSpacing + 1 + panelSpacing + 2 + panelSpacing + 2 + panelSpacing + 2;
+    const containerHeightForCentering = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+    const verticalOffset = Math.floor((containerHeightForCentering - totalPrintHeight) / 2);
+    
+    // Ajustar todas las posiciones verticales para centrar
+    const adjustVerticalPosition = (panel) => {
+        if (panel && panel.minCellIndex && panel.maxCellIndex) {
+            const currentMinY = panel.minCellIndex.y;
+            const height = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+            const baseOffset = panel.minCellIndex.y - (containerPanel.minCellIndex.y + 3); // Offset desde la posición base
+            const newMinY = containerPanel.minCellIndex.y + verticalOffset + baseOffset;
+            panel.minCellIndex.y = newMinY;
+            panel.maxCellIndex.y = newMinY + height - 1;
+            
+            // Actualizar la geometría del panel
+            if (panel.group) {
+                updatePanelGeometryAndPosition(panel, currentGridParams);
+            }
+        }
+    };
+    
+    // Ajustar posición vertical de todos los paneles de impresión
+    adjustVerticalPosition(printingTitlePanel);
+    adjustVerticalPosition(cyclicBarPanel);
+    adjustVerticalPosition(renderingBarPanel);
+    adjustVerticalPosition(percentagePanel);
+    adjustVerticalPosition(remainingTimePanel);
+    adjustVerticalPosition(totalTimePanel);
+    adjustVerticalPosition(modelPanel);
+    
+    // También ajustar paneles de confirmación y botón inicial
+    adjustVerticalPosition(printBtn);
+    adjustVerticalPosition(confirmTitlePanel);
+    adjustVerticalPosition(continuePanel);
+    adjustVerticalPosition(cancelPanel);
+    
+    // Configurar textos para todos los paneles
+    const allTextPanels = [
+        confirmTitlePanel, continuePanel, cancelPanel,
+        printingTitlePanel, percentagePanel, remainingTimePanel, totalTimePanel, modelPanel
+    ];
+    
+    allTextPanels.forEach(panel => {
+        panel.isTextContainer = true;
+        createPanelText(panel, currentGridParams.cellSize);
+    });
+    
+    // Asignar textos iniciales (con modo especial HOMO PRINTEMPS)
+    const printingTitle = isHomoPrintemps ? "SPLICING IN PROGRESS" : "SPLICING IN PROGRESS";
+    const confirmTitle = isHomoPrintemps ? "Print woman? ♀" : "SAVE SETTINGS";
+    
+    setPanelText(confirmTitlePanel, confirmTitle, currentGridParams.cellSize);
+    setPanelText(continuePanel, "YES", currentGridParams.cellSize);
+    setPanelText(cancelPanel, "NO", currentGridParams.cellSize);
+    setPanelText(printingTitlePanel, printingTitle, currentGridParams.cellSize);
+    setPanelText(percentagePanel, "0%", currentGridParams.cellSize);
+    setPanelText(remainingTimePanel, "5:15:00:00:00", currentGridParams.cellSize);
+    setPanelText(totalTimePanel, "REMAINING", currentGridParams.cellSize);
+    setPanelText(modelPanel, `MODEL: ${scientificName}`, currentGridParams.cellSize);
+    
+    // Ocultar todos menos el botón inicial
+    const allPanelsExceptPrintBtn = [
+        confirmTitlePanel, continuePanel, cancelPanel,
+        printingTitlePanel, cyclicBarPanel, renderingBarPanel,
+        percentagePanel, remainingTimePanel, totalTimePanel, modelPanel
+    ];
+    
+    allPanelsExceptPrintBtn.forEach(panel => {
+        if (panel.group) panel.group.visible = false;
+    });
+    
+    // === FASE 1: BOTÓN IMPRIMIR ===
+    // Función para detectar click en el botón de imprimir
+    let printBtnHover = false;
+    let printBtnLastClickTime = 0;
+    const DOUBLE_CLICK_DELAY = 300;
+    
+    function handleHoverPrintBtn(event) {
+        const mouse = new THREE.Vector2(
+            (event.clientX / window.innerWidth) * 2 - 1,
+            -(event.clientY / window.innerHeight) * 2 + 1
+        );
+        
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        
+        const printBtnMeshes = [];
+        if (printBtn.fillMesh) printBtnMeshes.push(printBtn.fillMesh);
+        printBtn.borderLines.forEach(line => printBtnMeshes.push(line));
+        
+        const intersects = raycaster.intersectObjects(printBtnMeshes);
+        
+        // Actualizar estado de hover
+        const wasHovering = printBtnHover;
+        printBtnHover = intersects.length > 0;
+        
+        if (wasHovering !== printBtnHover) {
+            printBtn.selected = printBtnHover;
+            updatePanelColor(printBtn);
+        }
+    }
+    
+    function handleClickPrintBtn() {
+        if (!printBtnHover) return;
+        
+        const currentTime = Date.now();
+        const timeSinceLastClick = currentTime - printBtnLastClickTime;
+        
+        if (timeSinceLastClick < DOUBLE_CLICK_DELAY) {
+            // Double click detected
+            // Quitar listeners del botón imprimir
+            document.removeEventListener('mousemove', handleHoverPrintBtn);
+            document.removeEventListener('click', handleClickPrintBtn);
+            
+            // Ocultar botón de imprimir y mostrar pantalla de confirmación
+            printBtn.group.visible = false;
+            showConfirmationScreen();
+            printBtnLastClickTime = 0; // Reset
+        } else {
+            // First click, wait for second
+            printBtnLastClickTime = currentTime;
+        }
+    }
+    
+    // Activar listeners para botón de imprimir
+    document.addEventListener('mousemove', handleHoverPrintBtn);
+    document.addEventListener('click', handleClickPrintBtn);
+    
+    // Declare hideConfirmationScreen in outer scope so callbacks can access it
+    let hideConfirmationScreen = null;
+    
+    // === FASE 2: PANTALLA DE CONFIRMACIÓN ===
+    function showConfirmationScreen() {
+        // Mostrar paneles de confirmación
+        confirmTitlePanel.group.visible = true;
+        continuePanel.group.visible = true;
+        cancelPanel.group.visible = true;
+        
+        // Variables para control de hover
+        let continueHover = false;
+        let cancelHover = false;
+        let continueLastClickTime = 0;
+        let cancelLastClickTime = 0;
+        const DOUBLE_CLICK_DELAY = 300;
+        
+        // Funciones para interacción con botones de confirmación
+        function handleConfirmationHover(event) {
+            const mouse = new THREE.Vector2(
+                (event.clientX / window.innerWidth) * 2 - 1,
+                -(event.clientY / window.innerHeight) * 2 + 1
+            );
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Verificar el botón continuar
+            const continueMeshes = [];
+            if (continuePanel.fillMesh) continueMeshes.push(continuePanel.fillMesh);
+            continuePanel.borderLines.forEach(line => continueMeshes.push(line));
+            
+            // Verificar el botón cancelar
+            const cancelMeshes = [];
+            if (cancelPanel.fillMesh) cancelMeshes.push(cancelPanel.fillMesh);
+            cancelPanel.borderLines.forEach(line => cancelMeshes.push(line));
+            
+            const continueIntersects = raycaster.intersectObjects(continueMeshes);
+            const cancelIntersects = raycaster.intersectObjects(cancelMeshes);
+            
+            // Actualizar estados de hover
+            const wasContinueHover = continueHover;
+            const wasCancelHover = cancelHover;
+            
+            continueHover = continueIntersects.length > 0;
+            cancelHover = cancelIntersects.length > 0;
+            
+            // Actualizar apariencia si cambió el estado
+            if (wasContinueHover !== continueHover) {
+                continuePanel.selected = continueHover;
+                updatePanelColor(continuePanel);
+            }
+            
+            if (wasCancelHover !== cancelHover) {
+                cancelPanel.selected = cancelHover;
+                updatePanelColor(cancelPanel);
+            }
+        }
+        
+        function handleConfirmationClick() {
+            const currentTime = Date.now();
+            
+            if (continueHover) {
+                const timeSinceLastClick = currentTime - continueLastClickTime;
+                if (timeSinceLastClick < DOUBLE_CLICK_DELAY) {
+                    // Double click detected on continue
+                    hideConfirmationScreen();
+                    showPrintingScreen();
+                    continueLastClickTime = 0; // Reset
+                } else {
+                    // First click, wait for second
+                    continueLastClickTime = currentTime;
+                }
+            } else if (cancelHover) {
+                const timeSinceLastClick = currentTime - cancelLastClickTime;
+                if (timeSinceLastClick < DOUBLE_CLICK_DELAY) {
+                    // Double click detected on cancel
+                    hideConfirmationScreen();
+                    printBtn.group.visible = true;
+                    document.addEventListener('mousemove', handleHoverPrintBtn);
+                    document.addEventListener('click', handleClickPrintBtn);
+                    cancelLastClickTime = 0; // Reset
+                } else {
+                    // First click, wait for second
+                    cancelLastClickTime = currentTime;
+                }
+            }
+        }
+        
+        // Función para ocultar pantalla de confirmación (assign to outer scope variable)
+        hideConfirmationScreen = function() {
+            document.removeEventListener('mousemove', handleConfirmationHover);
+            document.removeEventListener('click', handleConfirmationClick);
+            
+            confirmTitlePanel.group.visible = false;
+            continuePanel.group.visible = false;
+            cancelPanel.group.visible = false;
+        };
+        
+        document.addEventListener('mousemove', handleConfirmationHover);
+        document.addEventListener('click', handleConfirmationClick);
+        
+        // También permitir uso del teclado
+        function handleConfirmationKeyboard(event) {
+            if (event.key === 'Enter' || event.key === ' ' || event.key === 'c' || event.key === 'C') {
+                // Continuar
+                document.removeEventListener('keydown', handleConfirmationKeyboard);
+                hideConfirmationScreen();
+                showPrintingScreen();
+            } else if (event.key === 'Escape' || event.key === 'n' || event.key === 'N') {
+                // Cancelar
+                document.removeEventListener('keydown', handleConfirmationKeyboard);
+                hideConfirmationScreen();
+                printBtn.group.visible = true;
+                document.addEventListener('mousemove', handleHoverPrintBtn);
+                document.addEventListener('click', handleClickPrintBtn);
+            }
+        }
+        
+        document.addEventListener('keydown', handleConfirmationKeyboard);
+        
+        // Now set the button action callbacks since hideConfirmationScreen is defined
+        continuePanel.printButtonAction = () => {
+            if (continuePanel.group && continuePanel.group.visible && hideConfirmationScreen) {
+                hideConfirmationScreen();
+                showPrintingScreen();
+            }
+        };
+        
+        cancelPanel.printButtonAction = () => {
+            if (cancelPanel.group && cancelPanel.group.visible && hideConfirmationScreen) {
+                hideConfirmationScreen();
+                printBtn.group.visible = true;
+                document.addEventListener('mousemove', handleHoverPrintBtn);
+                document.addEventListener('click', handleClickPrintBtn);
+            }
+        };
+    }
+    
+    // === FASE 3: PANTALLA DE IMPRESIÓN ===
+    function showPrintingScreen() {
+        // Activar el estado de impresión para prevenir alteraciones
+        isPrintingActive = true;
+        
+        // Mostrar paneles de impresión
+        printingTitlePanel.group.visible = true;
+        cyclicBarPanel.group.visible = true;
+        renderingBarPanel.group.visible = true;
+        percentagePanel.group.visible = true;
+        remainingTimePanel.group.visible = true;
+        totalTimePanel.group.visible = true;
+        modelPanel.group.visible = true;
+        
+        // Variables para controlar el progreso de rendering (declaradas fuera del import para acceso global)
+        let renderingStartTime = Date.now();
+        let renderingProgress = 0;
+        let renderingDuration = 300000; // 5 minutos en milisegundos
+        let handlePrintingSpacebar = null; // Se definirá dentro del import
+        
+        // Configurar panel de progreso como barra usando bioLoad.js
+        import("./bioLoad.js").then(bioLoadModule => {
+            // Configurar la barra de rendering
+            const renderingCanvas = document.createElement('canvas');
+            renderingCanvas.width = 1024;
+            renderingCanvas.height = 128; // Altura para la barra de 2 unidades
+            
+            renderingBarPanel.progressCanvas = renderingCanvas;
+            renderingBarPanel.progressCtx = renderingCanvas.getContext('2d');
+            renderingBarPanel.progressTexture = new THREE.CanvasTexture(renderingCanvas);
+            renderingBarPanel.renderingProgress = 0;
+            renderingBarPanel.renderingComplete = false;
+            
+            // Crear materiales con la textura para diferentes estados
+            const renderingNormalMaterial = new THREE.MeshBasicMaterial({
+                map: renderingBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            
+            const renderingHoverMaterial = new THREE.MeshBasicMaterial({
+                map: renderingBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.95,
+                side: THREE.DoubleSide
+            });
+            
+            const renderingSelectedMaterial = new THREE.MeshBasicMaterial({
+                map: renderingBarPanel.progressTexture,
+                transparent: true,
+                opacity: 1.0,
+                side: THREE.DoubleSide
+            });
+            
+            // Proteger la textura del sistema de selección
+            renderingBarPanel.hasTexture = true;
+            renderingBarPanel.textureMaterials = {
+                normal: renderingNormalMaterial,
+                hover: renderingHoverMaterial,
+                selected: renderingSelectedMaterial
+            };
+            
+            // Aplicar el material al panel
+            if (renderingBarPanel.fillMesh) {
+                renderingBarPanel.fillMesh.material.dispose();
+                renderingBarPanel.fillMesh.material = renderingNormalMaterial;
+            }
+            
+            // Función para actualizar la barra de rendering con texto
+            renderingBarPanel.drawRenderingProgress = function(progress) {
+                if (!renderingBarPanel.progressCtx || !renderingBarPanel.progressTexture) return;
+                
+                // Dibujar la barra de progreso
+                bioLoadModule.updateProgressBar(
+                    renderingBarPanel.progressCtx,
+                    renderingBarPanel.progressCanvas.width,
+                    renderingBarPanel.progressCanvas.height,
+                    progress,
+                    0.3 // Pulso suave
+                );
+                
+                // Dibujar el texto "PRINTING" o "PRINTING COMPLETE" con fuente pixelada
+                const ctx = renderingBarPanel.progressCtx;
+                const text = renderingBarPanel.renderingComplete ? "PRINTING COMPLETE" : "PRINTING";
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                // Usar "Press Start 2P" con espacios como en otros lugares del código
+                const fontSize = Math.floor(renderingBarPanel.progressCanvas.height * 0.25);
+                ctx.font = `bold ${fontSize}px "Press Start 2P", monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(
+                    text,
+                    renderingBarPanel.progressCanvas.width / 2,
+                    renderingBarPanel.progressCanvas.height / 2
+                );
+                
+                renderingBarPanel.progressTexture.needsUpdate = true;
+                Object.values(renderingBarPanel.textureMaterials).forEach(material => {
+                    if (material && material.map) {
+                        material.map.needsUpdate = true;
+                    }
+                });
+            };
+            
+            // Iniciar animación de rendering (5 minutos)
+            renderingDuration = 300000; // 5 minutos en milisegundos (5 * 60 * 1000)
+            renderingStartTime = Date.now();
+            renderingProgress = 0;
+            
+            // 🔥 NUEVO: Función para adelantar el progreso al 95% con spacebar
+            handlePrintingSpacebar = function(event) {
+                if (event.key === ' ' || event.code === 'Space') {
+                    event.preventDefault();
+                    if (isPrintingActive && !renderingBarPanel.renderingComplete) {
+                        // Adelantar el progreso al 95%
+                        renderingProgress = 95;
+                        renderingBarPanel.renderingProgress = 95;
+                        // Ajustar el tiempo de inicio para que el cálculo de progreso refleje 95%
+                        renderingStartTime = Date.now() - (renderingDuration * 0.95);
+                        
+                        // Actualizar la barra inmediatamente
+                        if (renderingBarPanel.drawRenderingProgress) {
+                            renderingBarPanel.drawRenderingProgress(95);
+                        }
+                        
+                        // 🔥 NUEVO: Actualizar panel de porcentaje con tamaño de fuente aumentado
+                        const percentageText = '95%';
+                        const percentageState = panelTextState.get(percentagePanel);
+                        if (percentageState) {
+                            percentageState.customFontSize = 3.6; // Aumentar tamaño del número
+                        }
+                        setPanelText(percentagePanel, percentageText, currentGridParams.cellSize);
+                        
+                        console.log('Progreso de printing adelantado al 95% con spacebar');
+                    }
+                }
+            };
+            
+            // Agregar listener para spacebar
+            document.addEventListener('keydown', handlePrintingSpacebar);
+            
+            function animateRendering() {
+                if (renderingBarPanel.renderingComplete) return;
+                
+                const currentTime = Date.now();
+                const elapsed = currentTime - renderingStartTime;
+                renderingProgress = Math.min(100, (elapsed / renderingDuration) * 100);
+                
+                renderingBarPanel.renderingProgress = renderingProgress;
+                
+                if (renderingBarPanel.drawRenderingProgress) {
+                    renderingBarPanel.drawRenderingProgress(renderingProgress);
+                }
+                
+                if (renderingProgress < 100) {
+                    requestAnimationFrame(animateRendering);
+                } else {
+                    // Completado - mantener llena y cambiar texto
+                    renderingBarPanel.renderingComplete = true;
+                    // Remover listener de spacebar al completar
+                    document.removeEventListener('keydown', handlePrintingSpacebar);
+                    // Actualizar la barra para mostrar el nuevo texto
+                    if (renderingBarPanel.drawRenderingProgress) {
+                        renderingBarPanel.drawRenderingProgress(100);
+                    }
+                }
+            }
+            
+            // Iniciar la animación
+            animateRendering();
+            
+            // Crear la barra de progreso cíclica
+            const cyclicCanvas = document.createElement('canvas');
+            cyclicCanvas.width = 1024;
+            cyclicCanvas.height = 32; // Más pequeña que la principal
+            
+            cyclicBarPanel.progressCanvas = cyclicCanvas;
+            cyclicBarPanel.progressCtx = cyclicCanvas.getContext('2d');
+            cyclicBarPanel.progressTexture = new THREE.CanvasTexture(cyclicCanvas);
+            cyclicBarPanel.cycleProgress = 0;
+            cyclicBarPanel.cycleSpeed = Math.random() * 1.5 + 0.5; // Velocidad inicial aleatoria entre 0.5 y 2.0
+            cyclicBarPanel.cycleCount = 0; // Contador de ciclos completados
+            
+            // Crear materiales con la textura para diferentes estados
+            const cyclicNormalMaterial = new THREE.MeshBasicMaterial({
+                map: cyclicBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            
+            const cyclicHoverMaterial = new THREE.MeshBasicMaterial({
+                map: cyclicBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.95,
+                side: THREE.DoubleSide
+            });
+            
+            const cyclicSelectedMaterial = new THREE.MeshBasicMaterial({
+                map: cyclicBarPanel.progressTexture,
+                transparent: true,
+                opacity: 1.0,
+                side: THREE.DoubleSide
+            });
+            
+            // Proteger la textura del sistema de selección
+            cyclicBarPanel.hasTexture = true;
+            cyclicBarPanel.textureMaterials = {
+                normal: cyclicNormalMaterial,
+                hover: cyclicHoverMaterial,
+                selected: cyclicSelectedMaterial
+            };
+            
+            // Aplicar el material al panel
+            if (cyclicBarPanel.fillMesh) {
+                cyclicBarPanel.fillMesh.material.dispose();
+                cyclicBarPanel.fillMesh.material = cyclicNormalMaterial;
+            }
+            
+            // Función para actualizar la barra cíclica
+            cyclicBarPanel.updateCyclicBar = function() {
+                // Incrementar progreso
+                cyclicBarPanel.cycleProgress += cyclicBarPanel.cycleSpeed;
+                
+                // Reiniciar y cambiar velocidad cuando se completa un ciclo
+                if (cyclicBarPanel.cycleProgress > 100) {
+                    cyclicBarPanel.cycleProgress = 0;
+                    cyclicBarPanel.cycleCount++; // Incrementar contador de ciclos
+                    
+                    // Generar nueva velocidad aleatoria entre 0.5 y 2.5
+                    cyclicBarPanel.cycleSpeed = Math.random() * 2.0 + 0.5;
+                    console.log(`Nuevo ciclo #${cyclicBarPanel.cycleCount} - Velocidad: ${cyclicBarPanel.cycleSpeed.toFixed(2)}`);
+                }
+                
+                // Usar función de bioLoad para dibujar la barra
+                bioLoadModule.updateProgressBar(
+                    cyclicBarPanel.progressCtx,
+                    cyclicBarPanel.progressCanvas.width,
+                    cyclicBarPanel.progressCanvas.height,
+                    cyclicBarPanel.cycleProgress,
+                    0.5 // Pulso constante
+                );
+                
+                // Actualizar todas las texturas de los materiales
+                cyclicBarPanel.progressTexture.needsUpdate = true;
+                
+                // Asegurar que se mantenga la textura en todos los estados
+                Object.values(cyclicBarPanel.textureMaterials).forEach(material => {
+                    if (material.map) {
+                        material.map.needsUpdate = true;
+                    }
+                });
+            };
+        }).catch(err => console.error("Error al cargar bioLoad.js:", err));
+        
+        let isRunning = true;
+        
+        // Tiempo total de impresión en minutos (condicional basado en el modelo)
+        // Bone/hueso tarda 5 minutos, otros modelos 40 minutos
+        let totalPrintTimeMinutes = 40;
+        let totalPrintHours = 135;
+        
+        // Check if the model is bone (by model name or scientific name)
+        const isBone = modelName && (
+            modelName.toLowerCase() === 'bone' || 
+            modelName.toLowerCase() === 'hueso' ||
+            scientificName === 'BONE'
+        );
+        
+        if (isBone) {
+            totalPrintTimeMinutes = 5;
+            // En la simulación, 5 minutos representan proporcionalmente menos tiempo
+            // Si 40 min = 135 horas, entonces 5 min = ~16.875 horas, redondeamos a 17 horas
+            totalPrintHours = 17;
+        }
+        
+        // Función para manejar escape
+        function handlePrintingEscape(event) {
+            if (event.key === 'Escape') {
+                isRunning = false;
+                isPrintingActive = false; // Desactivar estado de impresión
+                document.removeEventListener('keydown', handlePrintingEscape);
+                // Remover también el listener de spacebar si existe
+                if (handlePrintingSpacebar) {
+                    document.removeEventListener('keydown', handlePrintingSpacebar);
+                }
+                
+                // Mostrar pantalla final
+                printingTitlePanel.group.visible = true;
+                setPanelText(printingTitlePanel, "Process interrupted", currentGridParams.cellSize);
+                
+                // Ocultar otros paneles
+                cyclicBarPanel.group.visible = false;
+                renderingBarPanel.group.visible = false;
+                percentagePanel.group.visible = false;
+                remainingTimePanel.group.visible = false;
+                totalTimePanel.group.visible = false;
+                modelPanel.group.visible = false;
+                
+                // Volver al botón original después de un tiempo
+                setTimeout(() => {
+                    printingTitlePanel.group.visible = false;
+                    printBtn.group.visible = true;
+                    isPrintingActive = false; // Asegurar que se desactive
+                    document.addEventListener('mousemove', handleHoverPrintBtn);
+                    document.addEventListener('click', handleClickPrintBtn);
+                }, 3000);
+            }
+        }
+        
+        document.addEventListener('keydown', handlePrintingEscape);
+        
+        // Función para actualizar la barra de progreso
+        function updatePrintProgress() {
+            if (!isRunning) return;
+            
+            const startTime = Date.now();
+            const duration = totalPrintTimeMinutes * 60 * 1000; // Duración en milisegundos
+            
+            function animate() {
+                if (!isRunning) return;
+                
+                // 🔥 CRITICAL: Siempre usar renderingProgress si está disponible (respetar adelanto con spacebar)
+                // Si renderingProgress está definido, usarlo directamente en lugar de calcular
+                let progress;
+                if (typeof renderingProgress !== 'undefined' && renderingProgress > 0) {
+                    // Usar el progreso de rendering (que se actualiza con spacebar)
+                    progress = renderingProgress;
+                } else {
+                    // Fallback: calcular progreso basado en tiempo si renderingProgress no está disponible
+                    const currentTime = Date.now();
+                    const elapsed = currentTime - startTime;
+                    progress = Math.min(100, (elapsed / duration) * 100);
+                }
+                
+                // Solicitar siguiente frame inmediatamente para actualización de alta precisión
+                if (progress < 100) {
+                    requestAnimationFrame(animate);
+                }
+                
+                // Forzar visibilidad de los paneles de impresión para evitar que desaparezcan
+                if (isPrintingActive) {
+                    cyclicBarPanel.group.visible = true;
+                    renderingBarPanel.group.visible = true;
+                    percentagePanel.group.visible = true;
+                    remainingTimePanel.group.visible = true;
+                    totalTimePanel.group.visible = true;
+                    modelPanel.group.visible = true;
+                }
+                
+                // Actualizar barra cíclica
+                if (cyclicBarPanel.updateCyclicBar) {
+                    cyclicBarPanel.updateCyclicBar();
+                }
+                
+                // Calcular tiempo restante en el formato d:h:m:s:24avos
+                // Usar el progreso real para calcular el tiempo restante
+                const remainingMs = duration - (duration * progress / 100);
+                const totalMs = totalPrintHours * 60 * 60 * 1000; // Total en milisegundos simulados
+                
+                // Escalamos el tiempo restante real al tiempo simulado
+                const simulatedRemainingMs = remainingMs > 0 ? (remainingMs / duration) * totalMs : 0;
+                
+                // Calculamos las partes de la cuenta regresiva
+                const days = Math.floor(simulatedRemainingMs / (24 * 60 * 60 * 1000));
+                const hours = Math.floor((simulatedRemainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+                const minutes = Math.floor((simulatedRemainingMs % (60 * 60 * 1000)) / (60 * 1000));
+                const seconds = Math.floor((simulatedRemainingMs % (60 * 1000)) / 1000);
+                const twentyFourths = Math.floor((simulatedRemainingMs % 1000) / (1000 / 24));
+                
+                // Formatear la cuenta regresiva
+                const timeDisplay = `${days}:${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(twentyFourths).padStart(2, '0')}`;
+                
+                // Actualizar paneles de información
+                // 🔥 CRITICAL: Mantener el tamaño de fuente aumentado si ya se estableció
+                const percentageText = `${Math.floor(progress)}%`;
+                const percentageState = panelTextState.get(percentagePanel);
+                if (percentageState && percentageState.customFontSize) {
+                    // Mantener el tamaño de fuente aumentado
+                } else if (progress >= 95) {
+                    // Si el progreso es 95% o más, aumentar el tamaño de fuente
+                    if (!percentageState) {
+                        panelTextState.set(percentagePanel, { customFontSize: 3.6 });
+                    } else {
+                        percentageState.customFontSize = 3.6;
+                    }
+                }
+                setPanelText(percentagePanel, percentageText, currentGridParams.cellSize);
+                setPanelText(remainingTimePanel, timeDisplay, currentGridParams.cellSize);
+                setPanelText(totalTimePanel, `REMAINING`, currentGridParams.cellSize);
+                
+                // No necesitamos solicitar un nuevo frame aquí ya que lo hacemos al inicio de la función
+                if (progress >= 100) {
+                    // Proceso completado
+                    isRunning = false;
+                    isPrintingActive = false; // Desactivar estado de impresión
+                    
+                    // Mostrar mensaje final
+                    setPanelText(printingTitlePanel, "Print completed", currentGridParams.cellSize);
+                    
+                    // Ocultar paneles informativos
+                    cyclicBarPanel.group.visible = false;
+                    renderingBarPanel.group.visible = false;
+                    percentagePanel.group.visible = false;
+                    remainingTimePanel.group.visible = false;
+                    totalTimePanel.group.visible = false;
+                    modelPanel.group.visible = false;
+                    
+                    document.removeEventListener('keydown', handlePrintingEscape);
+                    
+                    // Volver al botón original después de un tiempo
+                    setTimeout(() => {
+                        printingTitlePanel.group.visible = false;
+                        printBtn.group.visible = true;
+                        document.addEventListener('mousemove', handleHoverPrintBtn);
+                        document.addEventListener('click', handleClickPrintBtn);
+                    }, 3000);
+                }
+            }
+            
+            animate();
+        }
+        
+        // 🧬 INICIALIZAR MODO ESPECIAL HOMO PRINTEMPS
+        if (isHomoPrintemps && homoPrintempsPanel) {
+            initializeHomoPrintempsMode(homoPrintempsPanel, homoPrintempsPanel, currentGridParams, cyclicBarPanel);
+        }
+        
+        // Iniciar actualización de progreso
+        updatePrintProgress();
+    }
+    
+    // Función auxiliar para eliminar un panel
+    function removePanelFromScene(panel) {
+        if (panel.group) {
+            scene.remove(panel.group);
+            const index = panels.indexOf(panel);
+            if (index > -1) {
+                panels.splice(index, 1);
+            }
+        }
+    }
+}
+
+/**
+ * COMANDO PRINT SIMPLE - Versión Simplificada
+ * -----------------------------------------------------------------------------
+ * Responsabilidad:
+ * - Maneja el comando "print simple" desde la terminal
+ * - Versión simplificada que solo muestra barra de rendering
+ * - Almacena comando para ejecución diferida o ejecuta inmediatamente
+ * 
+ * Diferencia con print completo:
+ * - No incluye barras de progreso cíclica, porcentaje, tiempo, modelo
+ * - Solo muestra: botón inicial, confirmación, barra de rendering
+ * 
+ * Conexiones:
+ * - executePrintSimpleCommand(): Ejecuta la interfaz simplificada
+ * - bioLoad.js: Barras de progreso
+ * -----------------------------------------------------------------------------
+ */
+async function handlePrintSimpleCommand(args = [], output, providedContainerPanel = null) {
+    let containerPanel = providedContainerPanel;
+    
+    // Si no se proporciona un panel, buscar uno seleccionado
+    if (!containerPanel) {
+        const selectedPanels = panels.filter(p => p.selected);
+        if (selectedPanels.length === 0) {
+            showError("You must select a panel to use as container.", output);
+            return;
+        }
+        containerPanel = selectedPanels[0];
+    }
+    
+    const currentGridParams = getCurrentGridParams();
+    
+    // Si se proporciona un panel (desde carga de slot), ejecutar el comando inmediatamente
+    if (providedContainerPanel) {
+        await executePrintSimpleCommand(containerPanel, output);
+        return;
+    }
+    
+    // Si NO se proporciona un panel (comando desde terminal), almacenar el comando en el panel
+    containerPanel.pendingPrintSimpleCommand = true;
+    showInfo(`Print simple command stored in panel #${containerPanel.orderNumber}. It will activate when loaded from a slot.`, output);
+    
+    // NO eliminar el panel, NO crear la interfaz, solo almacenar el comando
+    return;
+}
+
+/**
+ * EJECUTOR PRINT SIMPLE - Interfaz Simplificada de Rendering
+ * -----------------------------------------------------------------------------
+ * Responsabilidad:
+ * - Crea interfaz simplificada con solo barra de rendering
+ * - Detecta si el panel está en HUD para usar parámetros correctos
+ * - Versión minimalista del comando print
+ * 
+ * Componentes creados:
+ * - printBtn: Botón inicial
+ * - confirmTitlePanel, continuePanel, cancelPanel: Confirmación
+ * - renderingBarPanel: Solo barra de rendering (6 segundos)
+ * 
+ * Conexiones:
+ * - handlePrintSimpleCommand(): Llamado desde aquí cuando se ejecuta desde slot
+ * - bioLoad.js: updateProgressBar() para barra de rendering
+ * -----------------------------------------------------------------------------
+ */
+async function executePrintSimpleCommand(containerPanel, output) {
+    // IMPORTANTE: Detectar si el panel contenedor está en el HUD y usar los parámetros correctos
+    const isContainerInHUD = containerPanel.group && containerPanel.group.parent && 
+                             containerPanel.group.parent.userData && containerPanel.group.parent.userData.isHUD;
+    const currentGridParams = isContainerInHUD ? getHUDGridParams() : getCurrentGridParams();
+    
+    if (!currentGridParams) {
+        if (output) {
+            showError('No se pudieron obtener los parámetros del grid', output);
+        }
+        return;
+    }
+    
+    // Obtener límites del grid para validar índices
+    const gridCellsX = currentGridParams.cellsX;
+    const gridCellsY = currentGridParams.cellsY;
+    
+    // Eliminar el panel contenedor original inmediatamente
+    if (containerPanel.group) {
+        scene.remove(containerPanel.group);
+        const index = panels.indexOf(containerPanel);
+        if (index > -1) {
+            panels.splice(index, 1);
+        }
+        if (output) {
+            showInfo('Container panel removed', output);
+        }
+    }
+    
+    // Verificar que el contenedor sea lo suficientemente grande
+    const containerWidth = containerPanel.maxCellIndex.x - containerPanel.minCellIndex.x + 1;
+    const containerHeight = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+    
+    if (containerWidth < 15 || containerHeight < 9) {
+        if (output) {
+            showError(`Panel must be at least 15x9 cells (current: ${containerWidth}x${containerHeight})`, output);
+        }
+        return;
+    }
+    
+    // Crear una interfaz simplificada
+    if (output) {
+        showInfo('Creating simple print interface...', output);
+    }
+    
+    // Definir tamaños
+    const buttonHeight = 2;
+    const panelSpacing = 1;
+    const buttonWidth = containerWidth - 4;
+    const offsetX = 2;
+    
+    // Función helper para validar y ajustar índices dentro de los límites del grid
+    const clampIndices = (minX, maxX, minY, maxY) => {
+        const clampedMinX = Math.max(0, Math.min(gridCellsX - 1, minX));
+        const clampedMaxX = Math.max(0, Math.min(gridCellsX - 1, maxX));
+        const clampedMinY = Math.max(0, Math.min(gridCellsY - 1, minY));
+        const clampedMaxY = Math.max(0, Math.min(gridCellsY - 1, maxY));
+        
+        if (clampedMinX > clampedMaxX || clampedMinY > clampedMaxY) {
+            console.warn(`Índices inválidos: (${minX},${minY})-(${maxX},${maxY})`);
+            return null;
+        }
+        
+        return { minX: clampedMinX, maxX: clampedMaxX, minY: clampedMinY, maxY: clampedMaxY };
+    };
+    
+    // FASE 1: Botón inicial "PRINT MODEL"
+    const printBtnIndices = clampIndices(
+        containerPanel.minCellIndex.x + offsetX,
+        containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        containerPanel.minCellIndex.y + 3,
+        containerPanel.minCellIndex.y + 3 + buttonHeight
+    );
+    
+    if (!printBtnIndices) {
+        if (output) {
+            showError('No hay espacio suficiente en el grid para crear el botón PRINT MODEL', output);
+        }
+        return;
+    }
+    
+    const printBtn = createPanelFromBoundingBox({
+        minX: printBtnIndices.minX,
+        maxX: printBtnIndices.maxX,
+        minY: printBtnIndices.minY,
+        maxY: printBtnIndices.maxY
+    }, currentGridParams);
+    
+    printBtn.isTextContainer = true;
+    printBtn.isPrintButton = true;
+    printBtn.printButtonAction = () => {
+        if (printBtn.group && printBtn.group.visible) {
+            printBtn.group.visible = false;
+            showConfirmationScreen();
+        }
+    };
+    createPanelText(printBtn, currentGridParams.cellSize);
+    setPanelText(printBtn, "PRINT NOW?", currentGridParams.cellSize);
+    
+    // FASE 2: Paneles de confirmación (YES/NO arriba, SAVE SETTINGS abajo)
+    const continuePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + Math.floor(containerWidth/2) - panelSpacing/2,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight
+    }, currentGridParams);
+    continuePanel.isPrintContinueButton = true;
+    continuePanel.printButtonAction = null;
+    
+    const cancelPanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + Math.floor(containerWidth/2) + panelSpacing/2,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight
+    }, currentGridParams);
+    cancelPanel.isPrintCancelButton = true;
+    cancelPanel.printButtonAction = null;
+    
+    const confirmTitlePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight + panelSpacing + buttonHeight
+    }, currentGridParams);
+    
+    // FASE 3: Solo la barra de rendering
+    const renderingBarPanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight + panelSpacing + buttonHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight + panelSpacing + buttonHeight + panelSpacing + 2
+    }, currentGridParams);
+    
+    // Configurar textos
+    const allTextPanels = [confirmTitlePanel, continuePanel, cancelPanel, printBtn];
+    allTextPanels.forEach(panel => {
+        panel.isTextContainer = true;
+        createPanelText(panel, currentGridParams.cellSize);
+    });
+    
+    setPanelText(confirmTitlePanel, "SAVE SETTINGS", currentGridParams.cellSize);
+    setPanelText(continuePanel, "YES", currentGridParams.cellSize);
+    setPanelText(cancelPanel, "NO", currentGridParams.cellSize);
+    
+    // Ocultar todos menos el botón inicial
+    const allPanelsExceptPrintBtn = [confirmTitlePanel, continuePanel, cancelPanel, renderingBarPanel];
+    allPanelsExceptPrintBtn.forEach(panel => {
+        if (panel.group) panel.group.visible = false;
+    });
+    
+    // Calcular altura total para centrar verticalmente
+    const totalPrintHeight = buttonHeight + panelSpacing + buttonHeight + panelSpacing + buttonHeight + panelSpacing + 2;
+    const containerHeightForCentering = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+    const verticalOffset = Math.floor((containerHeightForCentering - totalPrintHeight) / 2);
+    
+    const adjustVerticalPosition = (panel) => {
+        if (panel && panel.minCellIndex && panel.maxCellIndex) {
+            const height = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+            const baseOffset = panel.minCellIndex.y - (containerPanel.minCellIndex.y + 3);
+            const newMinY = containerPanel.minCellIndex.y + verticalOffset + baseOffset;
+            panel.minCellIndex.y = newMinY;
+            panel.maxCellIndex.y = newMinY + height - 1;
+            if (panel.group) {
+                updatePanelGeometryAndPosition(panel, currentGridParams);
+            }
+        }
+    };
+    
+    adjustVerticalPosition(printBtn);
+    adjustVerticalPosition(confirmTitlePanel);
+    adjustVerticalPosition(continuePanel);
+    adjustVerticalPosition(cancelPanel);
+    adjustVerticalPosition(renderingBarPanel);
+    
+    // Asegurar que los textos se actualicen después de ajustar posiciones
+    setPanelText(printBtn, "PRINT NOW?", currentGridParams.cellSize);
+    setPanelText(confirmTitlePanel, "SAVE SETTINGS", currentGridParams.cellSize);
+    setPanelText(continuePanel, "YES", currentGridParams.cellSize);
+    setPanelText(cancelPanel, "NO", currentGridParams.cellSize);
+    
+    // === FASE 1: BOTÓN IMPRIMIR ===
+    let printBtnHover = false;
+    let printBtnLastClickTime = 0;
+    const DOUBLE_CLICK_DELAY = 300;
+    
+    function handleHoverPrintBtn(event) {
+        const mouse = new THREE.Vector2(
+            (event.clientX / window.innerWidth) * 2 - 1,
+            -(event.clientY / window.innerHeight) * 2 + 1
+        );
+        
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        
+        const printBtnMeshes = [];
+        if (printBtn.fillMesh) printBtnMeshes.push(printBtn.fillMesh);
+        printBtn.borderLines.forEach(line => printBtnMeshes.push(line));
+        
+        const intersects = raycaster.intersectObjects(printBtnMeshes);
+        
+        const wasHovering = printBtnHover;
+        printBtnHover = intersects.length > 0;
+        
+        if (wasHovering !== printBtnHover) {
+            printBtn.selected = printBtnHover;
+            updatePanelColor(printBtn);
+        }
+    }
+    
+    function handleClickPrintBtn() {
+        if (!printBtnHover) return;
+        
+        const currentTime = Date.now();
+        const timeSinceLastClick = currentTime - printBtnLastClickTime;
+        
+        if (timeSinceLastClick < DOUBLE_CLICK_DELAY) {
+            document.removeEventListener('mousemove', handleHoverPrintBtn);
+            document.removeEventListener('click', handleClickPrintBtn);
+            printBtn.group.visible = false;
+            showConfirmationScreen();
+            printBtnLastClickTime = 0;
+        } else {
+            printBtnLastClickTime = currentTime;
+        }
+    }
+    
+    document.addEventListener('mousemove', handleHoverPrintBtn);
+    document.addEventListener('click', handleClickPrintBtn);
+    
+    // === FASE 2: PANTALLA DE CONFIRMACIÓN ===
+    let hideConfirmationScreen = null;
+    
+    function showConfirmationScreen() {
+        confirmTitlePanel.group.visible = true;
+        continuePanel.group.visible = true;
+        cancelPanel.group.visible = true;
+        
+        let continueHover = false;
+        let cancelHover = false;
+        let continueLastClickTime = 0;
+        let cancelLastClickTime = 0;
+        
+        function handleConfirmationHover(event) {
+            const mouse = new THREE.Vector2(
+                (event.clientX / window.innerWidth) * 2 - 1,
+                -(event.clientY / window.innerHeight) * 2 + 1
+            );
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            const continueMeshes = [];
+            if (continuePanel.fillMesh) continueMeshes.push(continuePanel.fillMesh);
+            continuePanel.borderLines.forEach(line => continueMeshes.push(line));
+            
+            const cancelMeshes = [];
+            if (cancelPanel.fillMesh) cancelMeshes.push(cancelPanel.fillMesh);
+            cancelPanel.borderLines.forEach(line => cancelMeshes.push(line));
+            
+            const continueIntersects = raycaster.intersectObjects(continueMeshes);
+            const cancelIntersects = raycaster.intersectObjects(cancelMeshes);
+            
+            const wasContinueHover = continueHover;
+            const wasCancelHover = cancelHover;
+            
+            continueHover = continueIntersects.length > 0;
+            cancelHover = cancelIntersects.length > 0;
+            
+            if (wasContinueHover !== continueHover) {
+                continuePanel.selected = continueHover;
+                updatePanelColor(continuePanel);
+            }
+            
+            if (wasCancelHover !== cancelHover) {
+                cancelPanel.selected = cancelHover;
+                updatePanelColor(cancelPanel);
+            }
+        }
+        
+        function handleConfirmationClick() {
+            const currentTime = Date.now();
+            
+            if (continueHover) {
+                const timeSinceLastClick = currentTime - continueLastClickTime;
+                if (timeSinceLastClick < DOUBLE_CLICK_DELAY) {
+                    hideConfirmationScreen();
+                    showRenderingScreen();
+                    continueLastClickTime = 0;
+                } else {
+                    continueLastClickTime = currentTime;
+                }
+            } else if (cancelHover) {
+                const timeSinceLastClick = currentTime - cancelLastClickTime;
+                if (timeSinceLastClick < DOUBLE_CLICK_DELAY) {
+                    hideConfirmationScreen();
+                    printBtn.group.visible = true;
+                    document.addEventListener('mousemove', handleHoverPrintBtn);
+                    document.addEventListener('click', handleClickPrintBtn);
+                    cancelLastClickTime = 0;
+                } else {
+                    cancelLastClickTime = currentTime;
+                }
+            }
+        }
+        
+        hideConfirmationScreen = function() {
+            document.removeEventListener('mousemove', handleConfirmationHover);
+            document.removeEventListener('click', handleConfirmationClick);
+            confirmTitlePanel.group.visible = false;
+            continuePanel.group.visible = false;
+            cancelPanel.group.visible = false;
+        };
+        
+        document.addEventListener('mousemove', handleConfirmationHover);
+        document.addEventListener('click', handleConfirmationClick);
+        
+        function handleConfirmationKeyboard(event) {
+            if (event.key === 'Enter' || event.key === ' ' || event.key === 'y' || event.key === 'Y') {
+                document.removeEventListener('keydown', handleConfirmationKeyboard);
+                hideConfirmationScreen();
+                showRenderingScreen();
+            } else if (event.key === 'Escape' || event.key === 'n' || event.key === 'N') {
+                document.removeEventListener('keydown', handleConfirmationKeyboard);
+                hideConfirmationScreen();
+                printBtn.group.visible = true;
+                document.addEventListener('mousemove', handleHoverPrintBtn);
+                document.addEventListener('click', handleClickPrintBtn);
+            }
+        }
+        
+        document.addEventListener('keydown', handleConfirmationKeyboard);
+        
+        continuePanel.printButtonAction = () => {
+            if (continuePanel.group && continuePanel.group.visible && hideConfirmationScreen) {
+                hideConfirmationScreen();
+                showRenderingScreen();
+            }
+        };
+        
+        cancelPanel.printButtonAction = () => {
+            if (cancelPanel.group && cancelPanel.group.visible && hideConfirmationScreen) {
+                hideConfirmationScreen();
+                printBtn.group.visible = true;
+                document.addEventListener('mousemove', handleHoverPrintBtn);
+                document.addEventListener('click', handleClickPrintBtn);
+            }
+        };
+    }
+    
+    // === FASE 3: PANTALLA DE RENDERING ===
+    function showRenderingScreen() {
+        isPrintingActive = true;
+        renderingBarPanel.group.visible = true;
+        
+        import("./bioLoad.js").then(bioLoadModule => {
+            const renderingCanvas = document.createElement('canvas');
+            renderingCanvas.width = 1024;
+            renderingCanvas.height = 128; // Altura para la barra de 2 unidades
+            
+            renderingBarPanel.progressCanvas = renderingCanvas;
+            renderingBarPanel.progressCtx = renderingCanvas.getContext('2d');
+            renderingBarPanel.progressTexture = new THREE.CanvasTexture(renderingCanvas);
+            renderingBarPanel.renderingProgress = 0;
+            renderingBarPanel.renderingComplete = false;
+            
+            const renderingNormalMaterial = new THREE.MeshBasicMaterial({
+                map: renderingBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            
+            const renderingHoverMaterial = new THREE.MeshBasicMaterial({
+                map: renderingBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.95,
+                side: THREE.DoubleSide
+            });
+            
+            const renderingSelectedMaterial = new THREE.MeshBasicMaterial({
+                map: renderingBarPanel.progressTexture,
+                transparent: true,
+                opacity: 1.0,
+                side: THREE.DoubleSide
+            });
+            
+            renderingBarPanel.hasTexture = true;
+            renderingBarPanel.textureMaterials = {
+                normal: renderingNormalMaterial,
+                hover: renderingHoverMaterial,
+                selected: renderingSelectedMaterial
+            };
+            
+            if (renderingBarPanel.fillMesh) {
+                renderingBarPanel.fillMesh.material.dispose();
+                renderingBarPanel.fillMesh.material = renderingNormalMaterial;
+            }
+            
+            // Función para actualizar la barra de rendering con texto
+            renderingBarPanel.drawRenderingProgress = function(progress) {
+                if (!renderingBarPanel.progressCtx || !renderingBarPanel.progressTexture) return;
+                
+                // Dibujar la barra de progreso
+                bioLoadModule.updateProgressBar(
+                    renderingBarPanel.progressCtx,
+                    renderingBarPanel.progressCanvas.width,
+                    renderingBarPanel.progressCanvas.height,
+                    progress,
+                    0.3 // Pulso suave
+                );
+                
+                // Dibujar el texto "RENDERING" o "RENDERING COMPLETE" con fuente pixelada
+                const ctx = renderingBarPanel.progressCtx;
+                const text = renderingBarPanel.renderingComplete ? "RENDERING COMPLETE" : "RENDERING";
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                const fontSize = Math.floor(renderingBarPanel.progressCanvas.height * 0.25);
+                ctx.font = `bold ${fontSize}px "Press Start 2P", monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(
+                    text,
+                    renderingBarPanel.progressCanvas.width / 2,
+                    renderingBarPanel.progressCanvas.height / 2
+                );
+                
+                renderingBarPanel.progressTexture.needsUpdate = true;
+                Object.values(renderingBarPanel.textureMaterials).forEach(material => {
+                    if (material && material.map) {
+                        material.map.needsUpdate = true;
+                    }
+                });
+            };
+            
+            // Iniciar animación de rendering (6 segundos)
+            const renderingDuration = 6000; // 6 segundos en milisegundos
+            const renderingStartTime = Date.now();
+            
+            function animateRendering() {
+                if (renderingBarPanel.renderingComplete) return;
+                
+                const currentTime = Date.now();
+                const elapsed = currentTime - renderingStartTime;
+                const progress = Math.min(100, (elapsed / renderingDuration) * 100);
+                
+                renderingBarPanel.renderingProgress = progress;
+                
+                if (renderingBarPanel.drawRenderingProgress) {
+                    renderingBarPanel.drawRenderingProgress(progress);
+                }
+                
+                if (progress < 100) {
+                    requestAnimationFrame(animateRendering);
+                } else {
+                    // Completado - mantener llena y cambiar texto
+                    renderingBarPanel.renderingComplete = true;
+                    // Actualizar la barra para mostrar el nuevo texto
+                    if (renderingBarPanel.drawRenderingProgress) {
+                        renderingBarPanel.drawRenderingProgress(100);
+                    }
+                }
+            }
+            
+            animateRendering();
+        }).catch(err => console.error("Error al cargar bioLoad.js:", err));
+    }
+}
+
+/**
+ * COMANDO PRINT PERCENT - Barra de Progreso con Porcentaje
+ * -----------------------------------------------------------------------------
+ * Responsabilidad:
+ * - Maneja el comando "print percent ###" desde la terminal
+ * - Muestra barra de progreso con porcentaje en lugar de "RENDERING"
+ * - Usa los milisegundos proporcionados como duración
+ * - Almacena comando para ejecución diferida o ejecuta inmediatamente
+ * 
+ * Sintaxis:
+ * - print percent [milisegundos] - Duración en milisegundos
+ * 
+ * Ejemplo:
+ * - print percent 5000 - Barra de 5 segundos mostrando porcentaje
+ * 
+ * Conexiones:
+ * - executePrintPercentCommand(): Ejecuta la interfaz con barra de porcentaje
+ * - bioLoad.js: updateProgressBar() para dibujar la barra
+ * -----------------------------------------------------------------------------
+ */
+async function handlePrintPercentCommand(args = [], output, providedContainerPanel = null) {
+    let containerPanel = providedContainerPanel;
+    
+    // Si no se proporciona un panel, buscar uno seleccionado
+    if (!containerPanel) {
+        const selectedPanels = panels.filter(p => p.selected);
+        if (selectedPanels.length === 0) {
+            showError("You must select a panel to use as container.", output);
+            return;
+        }
+        containerPanel = selectedPanels[0];
+    }
+    
+    // Validar que se proporcione duración en milisegundos
+    if (args.length === 0 || !args[0]) {
+        showError("You must provide duration in milliseconds. Example: print percent 5000", output);
+        return;
+    }
+    
+    const durationMs = parseInt(args[0], 10);
+    if (isNaN(durationMs) || durationMs <= 0) {
+        showError(`Invalid duration: ${args[0]}. Must be a positive number (milliseconds).`, output);
+        return;
+    }
+    
+    const currentGridParams = getCurrentGridParams();
+    
+    // Si se proporciona un panel (desde carga de slot), ejecutar el comando inmediatamente
+    if (providedContainerPanel) {
+        await executePrintPercentCommand(containerPanel, durationMs, output);
+        return;
+    }
+    
+    // Si NO se proporciona un panel (comando desde terminal), almacenar el comando en el panel
+    containerPanel.pendingPrintPercentCommand = true;
+    containerPanel.printPercentDuration = durationMs; // Guardar la duración en milisegundos
+    showInfo(`Print percent command stored in panel #${containerPanel.orderNumber} (${durationMs}ms). It will activate when loaded from a slot.`, output);
+    
+    // NO eliminar el panel, NO crear la interfaz, solo almacenar el comando
+    return;
+}
+
+/**
+ * EJECUTOR PRINT PERCENT - Interfaz con Barra de Porcentaje
+ * -----------------------------------------------------------------------------
+ * Responsabilidad:
+ * - Crea interfaz con barra que muestra porcentaje en lugar de "RENDERING"
+ * - Usa duración personalizada en milisegundos
+ * - Detecta si el panel está en HUD para usar parámetros correctos
+ * 
+ * Componentes creados:
+ * - printBtn: Botón inicial
+ * - confirmTitlePanel, continuePanel, cancelPanel: Confirmación
+ * - percentBarPanel: Barra que muestra porcentaje (ej: "45%")
+ * 
+ * Conexiones:
+ * - handlePrintPercentCommand(): Llamado desde aquí cuando se ejecuta desde slot
+ * - bioLoad.js: updateProgressBar() para dibujar la barra
+ * -----------------------------------------------------------------------------
+ */
+async function executePrintPercentCommand(containerPanel, durationMs, output) {
+    // IMPORTANTE: Detectar si el panel contenedor está en el HUD y usar los parámetros correctos
+    const isContainerInHUD = containerPanel.group && containerPanel.group.parent && 
+                             containerPanel.group.parent.userData && containerPanel.group.parent.userData.isHUD;
+    const currentGridParams = isContainerInHUD ? getHUDGridParams() : getCurrentGridParams();
+    
+    if (!currentGridParams) {
+        if (output) {
+            showError('No se pudieron obtener los parámetros del grid', output);
+        }
+        return;
+    }
+    
+    // Obtener límites del grid para validar índices
+    const gridCellsX = currentGridParams.cellsX;
+    const gridCellsY = currentGridParams.cellsY;
+    
+    // Eliminar el panel contenedor original inmediatamente
+    if (containerPanel.group) {
+        if (isContainerInHUD) {
+            const hudScene = getHUDScene();
+            if (hudScene && hudScene.children.includes(containerPanel.group)) {
+                hudScene.remove(containerPanel.group);
+            }
+        } else {
+            scene.remove(containerPanel.group);
+        }
+        const index = panels.indexOf(containerPanel);
+        if (index > -1) {
+            panels.splice(index, 1);
+        }
+        if (output) {
+            showInfo('Container panel removed', output);
+        }
+    }
+    
+    // Verificar que el contenedor sea lo suficientemente grande
+    const containerWidth = containerPanel.maxCellIndex.x - containerPanel.minCellIndex.x + 1;
+    const containerHeight = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+    
+    if (containerWidth < 15 || containerHeight < 9) {
+        if (output) {
+            showError(`Panel must be at least 15x9 cells (current: ${containerWidth}x${containerHeight})`, output);
+        }
+        return;
+    }
+    
+    // Crear una interfaz simplificada
+    if (output) {
+        showInfo(`Creating print percent interface (${durationMs}ms)...`, output);
+    }
+    
+    // Definir tamaños
+    const buttonHeight = 2;
+    const panelSpacing = 1;
+    const buttonWidth = containerWidth - 4;
+    const offsetX = 2;
+    
+    // Función helper para validar y ajustar índices dentro de los límites del grid
+    const clampIndices = (minX, maxX, minY, maxY) => {
+        const clampedMinX = Math.max(0, Math.min(gridCellsX - 1, minX));
+        const clampedMaxX = Math.max(0, Math.min(gridCellsX - 1, maxX));
+        const clampedMinY = Math.max(0, Math.min(gridCellsY - 1, minY));
+        const clampedMaxY = Math.max(0, Math.min(gridCellsY - 1, maxY));
+        
+        if (clampedMinX > clampedMaxX || clampedMinY > clampedMaxY) {
+            console.warn(`Índices inválidos: (${minX},${minY})-(${maxX},${maxY})`);
+            return null;
+        }
+        
+        return { minX: clampedMinX, maxX: clampedMaxX, minY: clampedMinY, maxY: clampedMaxY };
+    };
+    
+    // FASE 1: Botón inicial "PRINT MODEL"
+    const printBtnIndices = clampIndices(
+        containerPanel.minCellIndex.x + offsetX,
+        containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        containerPanel.minCellIndex.y + 3,
+        containerPanel.minCellIndex.y + 3 + buttonHeight
+    );
+    
+    if (!printBtnIndices) {
+        if (output) {
+            showError('No hay espacio suficiente en el grid para crear el botón PRINT MODEL', output);
+        }
+        return;
+    }
+    
+    const printBtn = createPanelFromBoundingBox({
+        minX: printBtnIndices.minX,
+        maxX: printBtnIndices.maxX,
+        minY: printBtnIndices.minY,
+        maxY: printBtnIndices.maxY
+    }, currentGridParams);
+    
+    printBtn.isTextContainer = true;
+    printBtn.isPrintButton = true;
+    printBtn.printButtonAction = () => {
+        if (printBtn.group && printBtn.group.visible) {
+            printBtn.group.visible = false;
+            showConfirmationScreen();
+        }
+    };
+    createPanelText(printBtn, currentGridParams.cellSize);
+    setPanelText(printBtn, "PRINT NOW?", currentGridParams.cellSize);
+    
+    // FASE 2: Paneles de confirmación (YES/NO arriba, SAVE SETTINGS abajo)
+    const continuePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + Math.floor(containerWidth/2) - panelSpacing/2,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight
+    }, currentGridParams);
+    continuePanel.isPrintContinueButton = true;
+    continuePanel.printButtonAction = null;
+    
+    const cancelPanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + Math.floor(containerWidth/2) + panelSpacing/2,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight
+    }, currentGridParams);
+    cancelPanel.isPrintCancelButton = true;
+    cancelPanel.printButtonAction = null;
+    
+    const confirmTitlePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight + panelSpacing + buttonHeight
+    }, currentGridParams);
+    
+    // FASE 3: Barra de porcentaje
+    const percentBarPanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight + panelSpacing + buttonHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + buttonHeight + panelSpacing + buttonHeight + panelSpacing + 2
+    }, currentGridParams);
+    
+    // Configurar textos
+    const allTextPanels = [confirmTitlePanel, continuePanel, cancelPanel, printBtn];
+    allTextPanels.forEach(panel => {
+        panel.isTextContainer = true;
+        createPanelText(panel, currentGridParams.cellSize);
+    });
+    
+    setPanelText(confirmTitlePanel, "SAVE SETTINGS", currentGridParams.cellSize);
+    setPanelText(continuePanel, "YES", currentGridParams.cellSize);
+    setPanelText(cancelPanel, "NO", currentGridParams.cellSize);
+    
+    // Ocultar todos menos el botón inicial
+    const allPanelsExceptPrintBtn = [confirmTitlePanel, continuePanel, cancelPanel, percentBarPanel];
+    allPanelsExceptPrintBtn.forEach(panel => {
+        if (panel.group) panel.group.visible = false;
+    });
+    
+    // Calcular altura total para centrar verticalmente
+    const totalPrintHeight = buttonHeight + panelSpacing + buttonHeight + panelSpacing + buttonHeight + panelSpacing + 2;
+    const containerHeightForCentering = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+    const verticalOffset = Math.floor((containerHeightForCentering - totalPrintHeight) / 2);
+    
+    const adjustVerticalPosition = (panel) => {
+        if (panel && panel.minCellIndex && panel.maxCellIndex) {
+            const height = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+            const baseOffset = panel.minCellIndex.y - (containerPanel.minCellIndex.y + 3);
+            const newMinY = containerPanel.minCellIndex.y + verticalOffset + baseOffset;
+            panel.minCellIndex.y = newMinY;
+            panel.maxCellIndex.y = newMinY + height - 1;
+            if (panel.group) {
+                updatePanelGeometryAndPosition(panel, currentGridParams);
+            }
+        }
+    };
+    
+    adjustVerticalPosition(printBtn);
+    adjustVerticalPosition(confirmTitlePanel);
+    adjustVerticalPosition(continuePanel);
+    adjustVerticalPosition(cancelPanel);
+    adjustVerticalPosition(percentBarPanel);
+    
+    // Asegurar que los textos se actualicen después de ajustar posiciones
+    setPanelText(printBtn, "PRINT NOW?", currentGridParams.cellSize);
+    setPanelText(confirmTitlePanel, "SAVE SETTINGS", currentGridParams.cellSize);
+    setPanelText(continuePanel, "YES", currentGridParams.cellSize);
+    setPanelText(cancelPanel, "NO", currentGridParams.cellSize);
+    
+    // 🔥 CRITICAL: Añadir paneles a la escena correcta (HUD o principal)
+    if (isContainerInHUD) {
+        const hudScene = getHUDScene();
+        if (hudScene) {
+            [printBtn, continuePanel, cancelPanel, confirmTitlePanel, percentBarPanel].forEach(panel => {
+                if (panel.group) {
+                    // Remover de la escena principal si está ahí
+                    if (scene.children.includes(panel.group)) {
+                        scene.remove(panel.group);
+                        const index = panels.indexOf(panel);
+                        if (index > -1) {
+                            panels.splice(index, 1);
+                        }
+                    }
+                    // Añadir al HUD si no está ya ahí
+                    if (!hudScene.children.includes(panel.group)) {
+                        hudScene.add(panel.group);
+                        addHUDPanel(panel);
+                        panel.group.position.z = HUD_PLANE_Z;
+                        panel.group.renderOrder = 200;
+                        panel.group.traverse((child) => {
+                            child.visible = true;
+                            if (child.position) {
+                                child.position.z = HUD_PLANE_Z;
+                            }
+                            if (child.renderOrder !== undefined) {
+                                child.renderOrder = 200;
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    }
+    
+    // === FASE 1: BOTÓN IMPRIMIR ===
+    let printBtnHover = false;
+    let printBtnLastClickTime = 0;
+    const DOUBLE_CLICK_DELAY = 300;
+    
+    function handleHoverPrintBtn(event) {
+        const mouse = new THREE.Vector2(
+            (event.clientX / window.innerWidth) * 2 - 1,
+            -(event.clientY / window.innerHeight) * 2 + 1
+        );
+        
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        
+        const printBtnMeshes = [];
+        if (printBtn.fillMesh) printBtnMeshes.push(printBtn.fillMesh);
+        printBtn.borderLines.forEach(line => printBtnMeshes.push(line));
+        
+        const intersects = raycaster.intersectObjects(printBtnMeshes);
+        
+        const wasHovering = printBtnHover;
+        printBtnHover = intersects.length > 0;
+        
+        if (wasHovering !== printBtnHover) {
+            printBtn.selected = printBtnHover;
+            updatePanelColor(printBtn);
+        }
+    }
+    
+    function handleClickPrintBtn() {
+        if (!printBtnHover) return;
+        
+        const currentTime = Date.now();
+        const timeSinceLastClick = currentTime - printBtnLastClickTime;
+        
+        if (timeSinceLastClick < DOUBLE_CLICK_DELAY) {
+            document.removeEventListener('mousemove', handleHoverPrintBtn);
+            document.removeEventListener('click', handleClickPrintBtn);
+            printBtn.group.visible = false;
+            showConfirmationScreen();
+            printBtnLastClickTime = 0;
+        } else {
+            printBtnLastClickTime = currentTime;
+        }
+    }
+    
+    document.addEventListener('mousemove', handleHoverPrintBtn);
+    document.addEventListener('click', handleClickPrintBtn);
+    
+    // === FASE 2: PANTALLA DE CONFIRMACIÓN ===
+    let hideConfirmationScreen = null;
+    
+    function showConfirmationScreen() {
+        confirmTitlePanel.group.visible = true;
+        continuePanel.group.visible = true;
+        cancelPanel.group.visible = true;
+        
+        let continueHover = false;
+        let cancelHover = false;
+        let continueLastClickTime = 0;
+        let cancelLastClickTime = 0;
+        
+        function handleConfirmationHover(event) {
+            const mouse = new THREE.Vector2(
+                (event.clientX / window.innerWidth) * 2 - 1,
+                -(event.clientY / window.innerHeight) * 2 + 1
+            );
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            const continueMeshes = [];
+            if (continuePanel.fillMesh) continueMeshes.push(continuePanel.fillMesh);
+            continuePanel.borderLines.forEach(line => continueMeshes.push(line));
+            
+            const cancelMeshes = [];
+            if (cancelPanel.fillMesh) cancelMeshes.push(cancelPanel.fillMesh);
+            cancelPanel.borderLines.forEach(line => cancelMeshes.push(line));
+            
+            const continueIntersects = raycaster.intersectObjects(continueMeshes);
+            const cancelIntersects = raycaster.intersectObjects(cancelMeshes);
+            
+            const wasContinueHover = continueHover;
+            const wasCancelHover = cancelHover;
+            
+            continueHover = continueIntersects.length > 0;
+            cancelHover = cancelIntersects.length > 0;
+            
+            if (wasContinueHover !== continueHover) {
+                continuePanel.selected = continueHover;
+                updatePanelColor(continuePanel);
+            }
+            
+            if (wasCancelHover !== cancelHover) {
+                cancelPanel.selected = cancelHover;
+                updatePanelColor(cancelPanel);
+            }
+        }
+        
+        function handleConfirmationClick() {
+            const currentTime = Date.now();
+            
+            if (continueHover) {
+                const timeSinceLastClick = currentTime - continueLastClickTime;
+                if (timeSinceLastClick < DOUBLE_CLICK_DELAY) {
+                    hideConfirmationScreen();
+                    showPercentScreen();
+                    continueLastClickTime = 0;
+                } else {
+                    continueLastClickTime = currentTime;
+                }
+            } else if (cancelHover) {
+                const timeSinceLastClick = currentTime - cancelLastClickTime;
+                if (timeSinceLastClick < DOUBLE_CLICK_DELAY) {
+                    hideConfirmationScreen();
+                    printBtn.group.visible = true;
+                    document.addEventListener('mousemove', handleHoverPrintBtn);
+                    document.addEventListener('click', handleClickPrintBtn);
+                    cancelLastClickTime = 0;
+                } else {
+                    cancelLastClickTime = currentTime;
+                }
+            }
+        }
+        
+        hideConfirmationScreen = function() {
+            document.removeEventListener('mousemove', handleConfirmationHover);
+            document.removeEventListener('click', handleConfirmationClick);
+            confirmTitlePanel.group.visible = false;
+            continuePanel.group.visible = false;
+            cancelPanel.group.visible = false;
+        };
+        
+        document.addEventListener('mousemove', handleConfirmationHover);
+        document.addEventListener('click', handleConfirmationClick);
+        
+        function handleConfirmationKeyboard(event) {
+            if (event.key === 'Enter' || event.key === ' ' || event.key === 'y' || event.key === 'Y') {
+                document.removeEventListener('keydown', handleConfirmationKeyboard);
+                hideConfirmationScreen();
+                showPercentScreen();
+            } else if (event.key === 'Escape' || event.key === 'n' || event.key === 'N') {
+                document.removeEventListener('keydown', handleConfirmationKeyboard);
+                hideConfirmationScreen();
+                printBtn.group.visible = true;
+                document.addEventListener('mousemove', handleHoverPrintBtn);
+                document.addEventListener('click', handleClickPrintBtn);
+            }
+        }
+        
+        document.addEventListener('keydown', handleConfirmationKeyboard);
+        
+        continuePanel.printButtonAction = () => {
+            if (continuePanel.group && continuePanel.group.visible && hideConfirmationScreen) {
+                hideConfirmationScreen();
+                showPercentScreen();
+            }
+        };
+        
+        cancelPanel.printButtonAction = () => {
+            if (cancelPanel.group && cancelPanel.group.visible && hideConfirmationScreen) {
+                hideConfirmationScreen();
+                printBtn.group.visible = true;
+                document.addEventListener('mousemove', handleHoverPrintBtn);
+                document.addEventListener('click', handleClickPrintBtn);
+            }
+        };
+    }
+    
+    // === FASE 3: PANTALLA DE PORCENTAJE ===
+    function showPercentScreen() {
+        isPrintingActive = true;
+        percentBarPanel.group.visible = true;
+        
+        import("./bioLoad.js").then(bioLoadModule => {
+            const percentCanvas = document.createElement('canvas');
+            percentCanvas.width = 1024;
+            percentCanvas.height = 128; // Altura para la barra de 2 unidades
+            
+            percentBarPanel.progressCanvas = percentCanvas;
+            percentBarPanel.progressCtx = percentCanvas.getContext('2d');
+            percentBarPanel.progressTexture = new THREE.CanvasTexture(percentCanvas);
+            percentBarPanel.percentProgress = 0;
+            percentBarPanel.percentComplete = false;
+            
+            const percentNormalMaterial = new THREE.MeshBasicMaterial({
+                map: percentBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            
+            const percentHoverMaterial = new THREE.MeshBasicMaterial({
+                map: percentBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.95,
+                side: THREE.DoubleSide
+            });
+            
+            const percentSelectedMaterial = new THREE.MeshBasicMaterial({
+                map: percentBarPanel.progressTexture,
+                transparent: true,
+                opacity: 1.0,
+                side: THREE.DoubleSide
+            });
+            
+            percentBarPanel.hasTexture = true;
+            percentBarPanel.textureMaterials = {
+                normal: percentNormalMaterial,
+                hover: percentHoverMaterial,
+                selected: percentSelectedMaterial
+            };
+            
+            if (percentBarPanel.fillMesh) {
+                percentBarPanel.fillMesh.material.dispose();
+                percentBarPanel.fillMesh.material = percentNormalMaterial;
+            }
+            
+            // Función para actualizar la barra con porcentaje
+            percentBarPanel.drawPercentProgress = function(progress) {
+                if (!percentBarPanel.progressCtx || !percentBarPanel.progressTexture) return;
+                
+                // Dibujar la barra de progreso
+                bioLoadModule.updateProgressBar(
+                    percentBarPanel.progressCtx,
+                    percentBarPanel.progressCanvas.width,
+                    percentBarPanel.progressCanvas.height,
+                    progress,
+                    0.3 // Pulso suave
+                );
+                
+                // Dibujar el texto con porcentaje (ej: "45%")
+                const ctx = percentBarPanel.progressCtx;
+                const percentValue = Math.floor(progress);
+                const text = percentBarPanel.percentComplete ? "100% COMPLETE" : `${percentValue}%`;
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                const fontSize = Math.floor(percentBarPanel.progressCanvas.height * 0.25);
+                ctx.font = `bold ${fontSize}px "Press Start 2P", monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(
+                    text,
+                    percentBarPanel.progressCanvas.width / 2,
+                    percentBarPanel.progressCanvas.height / 2
+                );
+                
+                percentBarPanel.progressTexture.needsUpdate = true;
+                Object.values(percentBarPanel.textureMaterials).forEach(material => {
+                    if (material && material.map) {
+                        material.map.needsUpdate = true;
+                    }
+                });
+            };
+            
+            // Iniciar animación con duración personalizada en milisegundos
+            const percentStartTime = Date.now();
+            
+            function animatePercent() {
+                if (percentBarPanel.percentComplete) return;
+                
+                const currentTime = Date.now();
+                const elapsed = currentTime - percentStartTime;
+                const progress = Math.min(100, (elapsed / durationMs) * 100);
+                
+                percentBarPanel.percentProgress = progress;
+                
+                if (percentBarPanel.drawPercentProgress) {
+                    percentBarPanel.drawPercentProgress(progress);
+                }
+                
+                if (progress < 100) {
+                    requestAnimationFrame(animatePercent);
+                } else {
+                    // Completado - mantener llena y cambiar texto
+                    percentBarPanel.percentComplete = true;
+                    // Actualizar la barra para mostrar el nuevo texto
+                    if (percentBarPanel.drawPercentProgress) {
+                        percentBarPanel.drawPercentProgress(100);
+                    }
+                    
+                    // Volver al botón original después de un tiempo
+                    setTimeout(() => {
+                        percentBarPanel.group.visible = false;
+                        printBtn.group.visible = true;
+                        isPrintingActive = false;
+                        document.addEventListener('mousemove', handleHoverPrintBtn);
+                        document.addEventListener('click', handleClickPrintBtn);
+                    }, 2000);
+                }
+            }
+            
+            animatePercent();
+        }).catch(err => console.error("Error al cargar bioLoad.js:", err));
+    }
+}
+
+// Función para comando de modelación de datos de usuario
+async function handleModelingCommand(output, providedContainerPanel = null) {
+    let containerPanel = providedContainerPanel;
+    
+    // Si no se proporciona un panel, buscar uno seleccionado
+    if (!containerPanel) {
+        const selectedPanels = panels.filter(p => p.selected);
+        if (selectedPanels.length === 0) {
+            showError("Debes seleccionar un panel para usar como contenedor.", output);
+            return;
+        }
+        containerPanel = selectedPanels[0];
+    }
+    
+    const currentGridParams = getCurrentGridParams();
+    
+    // Verificar que el contenedor sea lo suficientemente grande
+    const containerWidth = containerPanel.maxCellIndex.x - containerPanel.minCellIndex.x + 1;
+    const containerHeight = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+    
+    if (containerWidth < 15 || containerHeight < 9) {
+        showError(`El panel debe ser al menos de 15x9 celdas (actual: ${containerWidth}x${containerHeight})`, output);
+        return;
+    }
+    
+    // Si se proporciona un panel (desde carga de slot), ejecutar el comando inmediatamente
+    if (providedContainerPanel) {
+        // Ejecutar el comando modeling normalmente
+        await executeModelingCommand(containerPanel, output);
+        return;
+    }
+    
+    // Si NO se proporciona un panel (comando desde terminal), almacenar el comando en el panel
+    // El panel conserva su apariencia y no se activa hasta que un slot lo cargue
+    containerPanel.pendingModelingCommand = true;
+    showInfo(`Comando modeling almacenado en panel #${containerPanel.orderNumber}. Se activará al cargar desde un slot.`, output);
+    
+    // NO eliminar el panel, NO crear la interfaz, solo almacenar el comando
+    return;
+}
+
+// Función separada para ejecutar el comando modeling (llamada desde carga de slot)
+async function executeModelingCommand(containerPanel, output) {
+    // IMPORTANTE: Detectar si el panel contenedor está en el HUD y usar los parámetros correctos
+    const isContainerInHUD = containerPanel.group && containerPanel.group.parent && 
+                             containerPanel.group.parent.userData && containerPanel.group.parent.userData.isHUD;
+    const currentGridParams = isContainerInHUD ? getHUDGridParams() : getCurrentGridParams();
+    
+    if (!currentGridParams) {
+        if (output) {
+            showError('No se pudieron obtener los parámetros del grid', output);
+        }
+        return;
+    }
+    
+    // Obtener límites del grid para validar índices
+    const gridCellsX = currentGridParams.cellsX;
+    const gridCellsY = currentGridParams.cellsY;
+    
+    // Eliminar el panel contenedor original inmediatamente
+    if (containerPanel.group) {
+        scene.remove(containerPanel.group);
+        const index = panels.indexOf(containerPanel);
+        if (index > -1) {
+            panels.splice(index, 1);
+        }
+        if (output) {
+            showInfo('Panel contenedor eliminado', output);
+        }
+    }
+    
+    // Verificar que el contenedor sea lo suficientemente grande
+    const containerWidth = containerPanel.maxCellIndex.x - containerPanel.minCellIndex.x + 1;
+    const containerHeight = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+    
+    if (containerWidth < 15 || containerHeight < 9) {
+        if (output) {
+            showError(`El panel debe ser al menos de 15x9 celdas (actual: ${containerWidth}x${containerHeight})`, output);
+        }
+        return;
+    }
+    
+    // Crear una interfaz con múltiples paneles
+    if (output) {
+        showInfo('Creando interfaz de modelación...', output);
+    }
+    
+    // Definir tamaños para todos los paneles
+    const buttonHeight = 2;
+    const loadingBarHeight = 1;
+    const panelSpacing = 1;
+    const buttonWidth = containerWidth - 4;
+    const offsetX = 2;
+    
+    // Panel título "MODELING USER PREFERENCES" (altura: 2 unidades)
+    const modelingTitlePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight
+    }, currentGridParams);
+    modelingTitlePanel.isModelingPanel = true; // Marcar como panel de modeling
+    
+    // Panel para la barra de progreso cíclica
+    const cyclicBarPanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1
+    }, currentGridParams);
+    cyclicBarPanel.isModelingPanel = true; // Marcar como panel de modeling
+    
+    // Panel para la barra de progreso principal
+    const progressBarPanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1 + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1 + panelSpacing + loadingBarHeight
+    }, currentGridParams);
+    progressBarPanel.isModelingPanel = true; // Marcar como panel de modeling
+    
+    // Importamos la funcionalidad de bioLoad.js para la barra de progreso
+    import("./bioLoad.js").then(bioLoadModule => {
+        progressBarPanel.drawProgress = function(progress) {
+            if (!progressBarPanel.progressTexture) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 1024;
+                canvas.height = 64;
+                
+                progressBarPanel.progressCanvas = canvas;
+                progressBarPanel.progressCtx = canvas.getContext('2d');
+                progressBarPanel.progressTexture = new THREE.CanvasTexture(canvas);
+                
+                const progressMaterial = new THREE.MeshBasicMaterial({
+                    map: progressBarPanel.progressTexture,
+                    transparent: true,
+                    opacity: 0.9,
+                    side: THREE.DoubleSide
+                });
+                
+                if (progressBarPanel.fillMesh) {
+                    progressBarPanel.fillMesh.material.dispose();
+                    progressBarPanel.fillMesh.material = progressMaterial;
+                }
+            }
+            
+            bioLoadModule.updateProgressBar(
+                progressBarPanel.progressCtx, 
+                progressBarPanel.progressCanvas.width, 
+                progressBarPanel.progressCanvas.height, 
+                progress
+            );
+            
+            progressBarPanel.progressTexture.needsUpdate = true;
+        };
+    }).catch(err => console.error("Error al cargar bioLoad.js:", err));
+    
+    // Panel para el porcentaje (2 unidades de altura - solo el número será más grande)
+    const percentagePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + Math.floor(containerWidth/3) - panelSpacing/2,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1 + panelSpacing + loadingBarHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1 + panelSpacing + loadingBarHeight + panelSpacing + 2
+    }, currentGridParams);
+    percentagePanel.isModelingPanel = true; // Marcar como panel de modeling
+    
+    // Panel para el tiempo restante (2 unidades de altura)
+    const remainingTimePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + Math.floor(containerWidth/3) + panelSpacing/2,
+        maxX: containerPanel.minCellIndex.x + Math.floor(containerWidth*2/3) - panelSpacing/2,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1 + panelSpacing + loadingBarHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1 + panelSpacing + loadingBarHeight + panelSpacing + 2
+    }, currentGridParams);
+    remainingTimePanel.isModelingPanel = true; // Marcar como panel de modeling
+    
+    // Panel para el tiempo total (2 unidades de altura)
+    const totalTimePanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + Math.floor(containerWidth*2/3) + panelSpacing/2,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1 + panelSpacing + loadingBarHeight + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1 + panelSpacing + loadingBarHeight + panelSpacing + 2
+    }, currentGridParams);
+    totalTimePanel.isModelingPanel = true; // Marcar como panel de modeling
+    
+    // Panel para "MODELING USER DATA" (2 unidades de altura)
+    const modelPanel = createPanelFromBoundingBox({
+        minX: containerPanel.minCellIndex.x + offsetX,
+        maxX: containerPanel.minCellIndex.x + offsetX + buttonWidth,
+        minY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1 + panelSpacing + loadingBarHeight + panelSpacing + 2 + panelSpacing,
+        maxY: containerPanel.minCellIndex.y + 3 + buttonHeight + panelSpacing + 1 + panelSpacing + loadingBarHeight + panelSpacing + 2 + panelSpacing + 2
+    }, currentGridParams);
+    modelPanel.isModelingPanel = true; // Marcar como panel de modeling
+    
+    // Configurar textos para todos los paneles
+    const allTextPanels = [
+        modelingTitlePanel, percentagePanel, remainingTimePanel, totalTimePanel, modelPanel
+    ];
+    
+    allTextPanels.forEach(panel => {
+        panel.isTextContainer = true;
+        createPanelText(panel, currentGridParams.cellSize);
+    });
+    
+    // Asignar textos iniciales
+    setPanelText(modelingTitlePanel, "MODELING USER PREFERENCES", currentGridParams.cellSize);
+    setPanelText(percentagePanel, "0%", currentGridParams.cellSize);
+    setPanelText(remainingTimePanel, "35s", currentGridParams.cellSize);
+    setPanelText(totalTimePanel, "ESTIMATED", currentGridParams.cellSize);
+    setPanelText(modelPanel, "MODELING USER DATA", currentGridParams.cellSize);
+    
+    // Configurar tamaño de fuente doble para el porcentaje desde el inicio
+    const percentageState = panelTextState.get(percentagePanel);
+    if (percentageState) {
+        percentageState.customFontSize = 3.6; // Doble de 1.8
+        createPanelText(percentagePanel, currentGridParams.cellSize); // Recrear con el nuevo tamaño
+    }
+    
+    // Mensajes de modelación de datos
+    const MODELING_MESSAGES = [
+        "Modeling user preferences",
+        "Creating embeddings",
+        "Scraping user interactions",
+        "Analyzing behavioral patterns",
+        "Extracting feature vectors",
+        "Building user profile",
+        "Processing click streams",
+        "Mapping user journey",
+        "Identifying preferences",
+        "Generating recommendations",
+        "Training ML models",
+        "Optimizing algorithms",
+        "Calculating similarity scores",
+        "Clustering user segments",
+        "Validating data integrity",
+        "Normalizing datasets",
+        "Feature engineering",
+        "Dimensionality reduction",
+        "Cross-validation",
+        "Hyperparameter tuning",
+        "Model evaluation",
+        "A/B testing",
+        "Performance metrics",
+        "Real-time inference",
+        "Data pipeline optimization",
+        "Cache warming",
+        "Index building",
+        "Query optimization",
+        "Database sharding",
+        "Load balancing",
+        "API rate limiting",
+        "Session management",
+        "Token generation",
+        "Authentication flow",
+        "Authorization checks",
+        "Data encryption",
+        "Privacy compliance",
+        "GDPR validation",
+        "Consent management",
+        "Data anonymization",
+        "Audit logging",
+        "Monitoring metrics",
+        "Error tracking",
+        "Performance profiling",
+        "Resource allocation",
+        "Scaling infrastructure",
+        "Deployment pipeline",
+        "Version control",
+        "Rollback preparation",
+        "Finalizing model"
+    ];
+    
+    // Ocultar todos los paneles inicialmente
+    const allPanels = [
+        modelingTitlePanel, cyclicBarPanel, progressBarPanel, percentagePanel, 
+        remainingTimePanel, totalTimePanel, modelPanel
+    ];
+    
+    allPanels.forEach(panel => {
+        if (panel.group) panel.group.visible = false;
+    });
+    
+    // Saltar directamente a la pantalla de modelación (sin confirmación)
+    showModelingScreen();
+    
+    // === PANTALLA DE FINALIZACIÓN ===
+    function showCompletionScreen() {
+        const gridParams = getCurrentGridParams();
+        const { cellSize, cellsX, cellsY } = gridParams;
+        
+        // Calcular centro del grid en índices de celdas
+        const centerX = Math.floor(cellsX / 2);
+        const centerY = Math.floor(cellsY / 2);
+        
+        // Panel de mensaje de éxito (centrado, ancho: 20 celdas, alto: 3 celdas)
+        const messagePanel = createPanelFromBoundingBox({
+            minX: centerX - 10,
+            maxX: centerX + 10,
+            minY: centerY + 1,
+            maxY: centerY + 4
+        }, currentGridParams);
+        
+        messagePanel.isTextContainer = true;
+        createPanelText(messagePanel, currentGridParams.cellSize);
+        setPanelText(messagePanel, "User Model Synthesized correctly", currentGridParams.cellSize);
+        
+        // Panel botón "Continue" (centrado, ancho: 12 celdas, alto: 2 celdas)
+        const continueButton = createPanelFromBoundingBox({
+            minX: centerX - 6,
+            maxX: centerX + 6,
+            minY: centerY - 3,
+            maxY: centerY - 1
+        }, currentGridParams);
+        
+        continueButton.isTextContainer = true;
+        createPanelText(continueButton, currentGridParams.cellSize);
+        setPanelText(continueButton, "Continue", currentGridParams.cellSize);
+        
+        // Centrar texto en ambos paneles
+        const messageState = panelTextState.get(messagePanel);
+        const continueState = panelTextState.get(continueButton);
+        if (messageState) messageState.textAlign = 'center';
+        if (continueState) continueState.textAlign = 'center';
+        
+        // Agregar paneles a la escena
+        panels.push(messagePanel, continueButton);
+        updatePanelGeometryAndPosition(messagePanel, currentGridParams);
+        updatePanelGeometryAndPosition(continueButton, currentGridParams);
+        scene.add(messagePanel.group);
+        scene.add(continueButton.group);
+        
+        // Variables para control de hover del botón
+        let continueHover = false;
+        
+        // Función para manejar hover y click en el botón Continue
+        function handleContinueInteraction(event) {
+            const mouse = new THREE.Vector2(
+                (event.clientX / window.innerWidth) * 2 - 1,
+                -(event.clientY / window.innerHeight) * 2 + 1
+            );
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            const continueMeshes = [];
+            if (continueButton.fillMesh) continueMeshes.push(continueButton.fillMesh);
+            continueButton.borderLines.forEach(line => continueMeshes.push(line));
+            
+            const continueIntersects = raycaster.intersectObjects(continueMeshes);
+            
+            const wasContinueHover = continueHover;
+            continueHover = continueIntersects.length > 0;
+            
+            if (wasContinueHover !== continueHover) {
+                continueButton.selected = continueHover;
+                updatePanelColor(continueButton);
+            }
+        }
+        
+        function handleContinueClick() {
+            if (!continueHover) return;
+            
+            // Limpiar listeners
+            document.removeEventListener('mousemove', handleContinueInteraction);
+            document.removeEventListener('click', handleContinueClick);
+            
+            // Eliminar paneles de finalización
+            if (messagePanel.group) {
+                scene.remove(messagePanel.group);
+                const index = panels.indexOf(messagePanel);
+                if (index > -1) panels.splice(index, 1);
+            }
+            
+            if (continueButton.group) {
+                scene.remove(continueButton.group);
+                const index = panels.indexOf(continueButton);
+                if (index > -1) panels.splice(index, 1);
+            }
+            
+            // Limpiar recursos
+            if (messagePanel.fillMesh && messagePanel.fillMesh.material) {
+                messagePanel.fillMesh.material.dispose();
+                if (messagePanel.fillMesh.material.map) {
+                    messagePanel.fillMesh.material.map.dispose();
+                }
+            }
+            if (messagePanel.fillMesh && messagePanel.fillMesh.geometry) {
+                messagePanel.fillMesh.geometry.dispose();
+            }
+            
+            if (continueButton.fillMesh && continueButton.fillMesh.material) {
+                continueButton.fillMesh.material.dispose();
+                if (continueButton.fillMesh.material.map) {
+                    continueButton.fillMesh.material.map.dispose();
+                }
+            }
+            if (continueButton.fillMesh && continueButton.fillMesh.geometry) {
+                continueButton.fillMesh.geometry.dispose();
+            }
+        }
+        
+        // Activar listeners para el botón Continue
+        document.addEventListener('mousemove', handleContinueInteraction);
+        document.addEventListener('click', handleContinueClick);
+        
+        // También permitir uso del teclado (Enter o Espacio)
+        function handleCompletionKeyboard(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                document.removeEventListener('keydown', handleCompletionKeyboard);
+                handleContinueClick();
+            }
+        }
+        
+        document.addEventListener('keydown', handleCompletionKeyboard);
+    }
+    
+    // === PANTALLA DE MODELACIÓN ===
+    function showModelingScreen() {
+        isPrintingActive = true;
+        
+        // Mostrar paneles de modelación
+        modelingTitlePanel.group.visible = true;
+        cyclicBarPanel.group.visible = true;
+        progressBarPanel.group.visible = true;
+        percentagePanel.group.visible = true;
+        remainingTimePanel.group.visible = true;
+        totalTimePanel.group.visible = true;
+        modelPanel.group.visible = true;
+        
+        // Configurar panel de progreso como barra usando bioLoad.js
+        import("./bioLoad.js").then(bioLoadModule => {
+            // Crear la barra de progreso principal con bioLoad
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 64;
+            
+            progressBarPanel.progressCanvas = canvas;
+            progressBarPanel.progressCtx = canvas.getContext('2d');
+            progressBarPanel.progressTexture = new THREE.CanvasTexture(canvas);
+            
+            const progressNormalMaterial = new THREE.MeshBasicMaterial({
+                map: progressBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            
+            progressBarPanel.hasTexture = true;
+            progressBarPanel.textureMaterials = {
+                normal: progressNormalMaterial,
+                hover: progressNormalMaterial,
+                selected: progressNormalMaterial
+            };
+            
+            if (progressBarPanel.fillMesh) {
+                progressBarPanel.fillMesh.material.dispose();
+                progressBarPanel.fillMesh.material = progressNormalMaterial;
+            }
+            
+            progressBarPanel.drawProgress = function(progress, pulse = 0) {
+                bioLoadModule.updateProgressBar(
+                    progressBarPanel.progressCtx,
+                    progressBarPanel.progressCanvas.width,
+                    progressBarPanel.progressCanvas.height,
+                    progress,
+                    pulse
+                );
+                
+                progressBarPanel.progressTexture.needsUpdate = true;
+                
+                Object.values(progressBarPanel.textureMaterials).forEach(material => {
+                    if (material.map) {
+                        material.map.needsUpdate = true;
+                    }
+                });
+            };
+            
+            // Crear la barra de progreso cíclica
+            const cyclicCanvas = document.createElement('canvas');
+            cyclicCanvas.width = 1024;
+            cyclicCanvas.height = 32;
+            
+            cyclicBarPanel.progressCanvas = cyclicCanvas;
+            cyclicBarPanel.progressCtx = cyclicCanvas.getContext('2d');
+            cyclicBarPanel.progressTexture = new THREE.CanvasTexture(cyclicCanvas);
+            cyclicBarPanel.cycleProgress = 0;
+            cyclicBarPanel.cycleSpeed = Math.random() * 1.5 + 0.5;
+            cyclicBarPanel.cycleCount = 0;
+            
+            const cyclicNormalMaterial = new THREE.MeshBasicMaterial({
+                map: cyclicBarPanel.progressTexture,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            
+            cyclicBarPanel.hasTexture = true;
+            cyclicBarPanel.textureMaterials = {
+                normal: cyclicNormalMaterial,
+                hover: cyclicNormalMaterial,
+                selected: cyclicNormalMaterial
+            };
+            
+            if (cyclicBarPanel.fillMesh) {
+                cyclicBarPanel.fillMesh.material.dispose();
+                cyclicBarPanel.fillMesh.material = cyclicNormalMaterial;
+            }
+            
+            let lastCycleCount = 0;
+            
+            cyclicBarPanel.updateCyclicBar = function() {
+                cyclicBarPanel.cycleProgress += cyclicBarPanel.cycleSpeed;
+                
+                if (cyclicBarPanel.cycleProgress > 100) {
+                    cyclicBarPanel.cycleProgress = 0;
+                    cyclicBarPanel.cycleCount++;
+                    cyclicBarPanel.cycleSpeed = Math.random() * 2.0 + 0.5;
+                    
+                    // Cambiar mensaje cuando se complete un ciclo
+                    if (cyclicBarPanel.cycleCount > lastCycleCount) {
+                        lastCycleCount = cyclicBarPanel.cycleCount;
+                        const messageIndex = Math.min(cyclicBarPanel.cycleCount - 1, MODELING_MESSAGES.length - 1);
+                        if (messageIndex >= 0 && messageIndex < MODELING_MESSAGES.length) {
+                            setPanelText(modelingTitlePanel, MODELING_MESSAGES[messageIndex], currentGridParams.cellSize);
+                        }
+                    }
+                }
+                
+                bioLoadModule.updateProgressBar(
+                    cyclicBarPanel.progressCtx,
+                    cyclicBarPanel.progressCanvas.width,
+                    cyclicBarPanel.progressCanvas.height,
+                    cyclicBarPanel.cycleProgress,
+                    0.5
+                );
+                
+                cyclicBarPanel.progressTexture.needsUpdate = true;
+                
+                Object.values(cyclicBarPanel.textureMaterials).forEach(material => {
+                    if (material.map) {
+                        material.map.needsUpdate = true;
+                    }
+                });
+            };
+        }).catch(err => console.error("Error al cargar bioLoad.js:", err));
+        
+        let isRunning = true;
+        
+        const totalModelingTimeSeconds = 35; // Duración total: 35 segundos
+        
+        function handleModelingEscape(event) {
+            if (event.key === 'Escape') {
+                isRunning = false;
+                isPrintingActive = false;
+                document.removeEventListener('keydown', handleModelingEscape);
+                
+                setPanelText(modelingTitlePanel, "Proceso interrumpido", currentGridParams.cellSize);
+                
+                cyclicBarPanel.group.visible = false;
+                progressBarPanel.group.visible = false;
+                percentagePanel.group.visible = false;
+                remainingTimePanel.group.visible = false;
+                totalTimePanel.group.visible = false;
+                modelPanel.group.visible = false;
+            }
+        }
+        
+        document.addEventListener('keydown', handleModelingEscape);
+        
+        function updateModelingProgress() {
+            if (!isRunning) return;
+            
+            const startTime = Date.now();
+            const duration = totalModelingTimeSeconds * 1000; // Duración en milisegundos (35 segundos)
+            
+            function animate() {
+                if (!isRunning) return;
+                
+                const currentTime = Date.now();
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(100, (elapsed / duration) * 100);
+                
+                if (progress < 100) {
+                    requestAnimationFrame(animate);
+                }
+                
+                if (isPrintingActive) {
+                    cyclicBarPanel.group.visible = true;
+                    progressBarPanel.group.visible = true;
+                    percentagePanel.group.visible = true;
+                    remainingTimePanel.group.visible = true;
+                    totalTimePanel.group.visible = true;
+                    modelPanel.group.visible = true;
+                }
+                
+                const pulse = Math.sin(currentTime / 500) * 0.2;
+                if (progressBarPanel.drawProgress) {
+                    progressBarPanel.drawProgress(progress, pulse);
+                }
+                
+                if (cyclicBarPanel.updateCyclicBar) {
+                    cyclicBarPanel.updateCyclicBar();
+                }
+                
+                // Calcular tiempo restante en segundos
+                const remainingMs = duration - elapsed;
+                const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+                
+                // Formatear tiempo restante como segundos
+                const timeDisplay = `${remainingSeconds}s`;
+                
+                // Actualizar paneles de información con tamaño doble para porcentaje
+                const percentageText = `${Math.floor(progress)}%`;
+                
+                // Asegurar que el customFontSize esté establecido antes de actualizar
+                const percentageState = panelTextState.get(percentagePanel);
+                if (percentageState) {
+                    percentageState.customFontSize = 3.6; // Doble de 1.8
+                }
+                
+                setPanelText(percentagePanel, percentageText, currentGridParams.cellSize);
+                
+                setPanelText(remainingTimePanel, timeDisplay, currentGridParams.cellSize);
+                setPanelText(totalTimePanel, `ESTIMATED`, currentGridParams.cellSize);
+                
+                if (progress >= 100) {
+                    isRunning = false;
+                    isPrintingActive = false;
+                    
+                    // Ocultar todos los paneles de progreso
+                    cyclicBarPanel.group.visible = false;
+                    progressBarPanel.group.visible = false;
+                    percentagePanel.group.visible = false;
+                    remainingTimePanel.group.visible = false;
+                    totalTimePanel.group.visible = false;
+                    modelPanel.group.visible = false;
+                    modelingTitlePanel.group.visible = false;
+                    
+                    document.removeEventListener('keydown', handleModelingEscape);
+                    
+                    // Solo cambiar el texto, no mostrar pantalla de finalización
+                    setPanelText(modelingTitlePanel, "User Modeling Completed", currentGridParams.cellSize);
+                }
+            }
+            
+            animate();
+        }
+        
+        updateModelingProgress();
+    }
+}
+
+// Función para iniciar y mostrar el proceso de impresión
+function startPrintingProcess(printingPanel, progressBarPanel, timeInfoPanel, output, currentGridParams) {
+    // Ocultar paneles de confirmación
+    document.querySelectorAll('[id^="panel-confirmation"]').forEach(el => el.style.display = 'none');
+    
+    // Mostrar los paneles de impresión
+    printingPanel.group.visible = true;
+    progressBarPanel.group.visible = true;
+    timeInfoPanel.group.visible = true;
+    
+    // Actualizar textos
+    setPanelText(printingPanel, "IMPRIMIENDO", currentGridParams.cellSize);
+    
+    // Configurar panel de progreso como barra usando bioLoad.js
+    import("./bioLoad.js").then(bioLoadModule => {
+        // Crear la barra de progreso con bioLoad
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 64;
+        
+        progressBarPanel.progressCanvas = canvas;
+        progressBarPanel.progressCtx = canvas.getContext('2d');
+        progressBarPanel.progressTexture = new THREE.CanvasTexture(canvas);
+        
+        // Crear material con la textura
+        const progressMaterial = new THREE.MeshBasicMaterial({
+            map: progressBarPanel.progressTexture,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        
+        // Aplicar el material al panel
+        if (progressBarPanel.fillMesh) {
+            progressBarPanel.fillMesh.material.dispose();
+            progressBarPanel.fillMesh.material = progressMaterial;
+        }
+        
+        // Definir la función drawProgress en el panel
+        progressBarPanel.drawProgress = function(progress, pulse = 0) {
+            bioLoadModule.updateProgressBar(
+                progressBarPanel.progressCtx, 
+                progressBarPanel.progressCanvas.width, 
+                progressBarPanel.progressCanvas.height, 
+                progress,
+                pulse
+            );
+            progressBarPanel.progressTexture.needsUpdate = true;
+        };
+    }).catch(err => console.error("Error al cargar bioLoad.js:", err));
+    
+    let isRunning = true;
+    
+    // Tiempo total de impresión en minutos (40 minutos para la demostración, pero simulando 65 horas)
+    const totalPrintTimeMinutes = 40;
+    const totalPrintHours = 65;
+    
+    // Función para manejar la tecla Escape
+    const handleEscape = (event) => {
+        if (event.key === 'Escape') {
+            isRunning = false;
+            setPanelText(printingPanel, "Proceso de impresión interrumpido", currentGridParams.cellSize);
+            document.removeEventListener('keydown', handleEscape);
+            
+            // Ocultar barra de progreso
+            progressBarPanel.group.visible = false;
+            timeInfoPanel.group.visible = false;
+            
+            // Eliminar todos los paneles después de un tiempo
+            setTimeout(() => {
+                const panelsToRemove = [printingPanel, progressBarPanel, timeInfoPanel];
+                panelsToRemove.forEach(panel => {
+                    if (panel.group) {
+                        scene.remove(panel.group);
+                        const index = panels.indexOf(panel);
+                        if (index > -1) {
+                            panels.splice(index, 1);
+                        }
+                    }
+                });
+            }, 2000);
+        }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    
+    // Función para actualizar el progreso
+    function updatePrintProgress() {
+        if (!isRunning) return;
+        
+        const startTime = Date.now();
+        const duration = totalPrintTimeMinutes * 60 * 1000; // Duración en milisegundos
+        
+        function animate() {
+            if (!isRunning) return;
+            
+            const currentTime = Date.now();
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(100, (elapsed / duration) * 100);
+            
+            // Actualizar barra de progreso
+            const pulse = Math.sin(currentTime / 500) * 0.2;
+            if (progressBarPanel.drawProgress) {
+                progressBarPanel.drawProgress(progress, pulse);
+            }
+            
+            // Calcular tiempo restante
+            const remainingMs = duration - elapsed;
+            const remainingHours = remainingMs > 0 ? Math.ceil((remainingMs / duration) * totalPrintHours) : 0;
+            
+            // Actualizar mensaje de tiempo
+            setPanelText(timeInfoPanel, 
+                `${Math.floor(progress)}% completado\n` +
+                `Tiempo restante: ${remainingHours} horas aprox.\n` +
+                `Tiempo total: ${totalPrintHours} horas aprox.`, 
+                currentGridParams.cellSize
+            );
+            
+            if (progress < 100) {
+                requestAnimationFrame(animate);
+            } else {
+                // Impresión completada
+                setPanelText(printingPanel, "Impresión completada con éxito", currentGridParams.cellSize);
+                // Ocultar otros paneles
+                progressBarPanel.group.visible = false;
+                timeInfoPanel.group.visible = false;
+                
+                document.removeEventListener('keydown', handleEscape);
+                
+                // Eliminar todos los paneles después de un tiempo
+                setTimeout(() => {
+                    const panelsToRemove = [printingPanel, progressBarPanel, timeInfoPanel];
+                    panelsToRemove.forEach(panel => {
+                        if (panel.group) {
+                            scene.remove(panel.group);
+                            const index = panels.indexOf(panel);
+                            if (index > -1) {
+                                panels.splice(index, 1);
+                            }
+                        }
+                    });
+                }, 3000);
+            }
+        }
+        
+        animate();
+    }
+    
+    // Iniciar la actualización del progreso
+    updatePrintProgress();
+}
+
+// 🔥 NUEVO: Función para obtener configuración serializable solo de paneles seleccionados
+function getSelectedPanelsConfig() {
+    try {
+        const selectedPanels = panels.filter(p => p.selected && !p.isKeyboardKey);
+        
+        if (selectedPanels.length === 0) {
+            console.warn('No hay paneles seleccionados para guardar.');
+            return null;
+        }
+        
+        const currentGridParams = getCurrentGridParams();
+        if (!currentGridParams) return null;
+        
+        const { width, height } = calculateGridSize();
+        
+        // Serializar solo los paneles seleccionados
+        const serializedPanels = [];
+        
+        for (const panel of selectedPanels) {
+            try {
+                const textState = panelTextState.get(panel);
+                const currentText = panel.hasText ? 
+                    (textState && textState.isPassword ? textState.realText : getPanelText(panel)) : '';
+                
+                // Detectar y guardar información de texturas
+                let textureInfo = null;
+                if (panel.hasTexture && panel.fillMesh && panel.fillMesh.material && panel.fillMesh.material.map) {
+                    const texture = panel.fillMesh.material.map;
+                    const geometry = panel.fillMesh.geometry;
+                    const uvAttribute = geometry.attributes.uv;
+                    let customUVs = null;
+                    
+                    if (uvAttribute && uvAttribute.count > 0) {
+                        const firstU = uvAttribute.getX(0);
+                        const firstV = uvAttribute.getY(1);
+                        if (firstU < 0 || firstU > 1 || firstV < 0 || firstV > 1 || 
+                            (Math.abs(firstU - 0.5) > 0.1 && Math.abs(firstV - 0.5) > 0.1)) {
+                            customUVs = [];
+                            for (let i = 0; i < uvAttribute.count; i++) {
+                                customUVs.push({
+                                    u: uvAttribute.getX(i),
+                                    v: uvAttribute.getY(i)
+                                });
+                            }
+                        }
+                    }
+                    
+                    const hasLogoActive = hasLogo(panel);
+                    let textureType = panel.textureType || 'unknown';
+                    let texturePath = panel.texturePath || null;
+                    
+                    if (hasLogoActive) {
+                        textureType = 'logo';
+                        texturePath = './public/img/bioprint_logo.png';
+                    } else if (panel.textureType === 'app' || texturePath?.includes('apps.png')) {
+                        textureType = 'app';
+                        texturePath = texturePath || './img/apps.png';
+                    }
+                    
+                    textureInfo = {
+                        hasTexture: true,
+                        textureType: textureType,
+                        texturePath: texturePath,
+                        customUVs: customUVs,
+                        imageAspect: texture.image ? (texture.image.width / texture.image.height) : null,
+                        hasLogoActive: hasLogoActive
+                    };
+                } else if (hasLogo(panel)) {
+                    textureInfo = {
+                        hasTexture: true,
+                        textureType: 'logo',
+                        texturePath: './public/img/bioprint_logo.png',
+                        customUVs: null,
+                        imageAspect: null,
+                        hasLogoActive: true
+                    };
+                }
+                
+                const serializedPanel = {
+                    minCellIndex: { 
+                        x: typeof panel.minCellIndex.x === 'number' ? panel.minCellIndex.x : 0,
+                        y: typeof panel.minCellIndex.y === 'number' ? panel.minCellIndex.y : 0
+                    },
+                    maxCellIndex: { 
+                        x: typeof panel.maxCellIndex.x === 'number' ? panel.maxCellIndex.x : 0,
+                        y: typeof panel.maxCellIndex.y === 'number' ? panel.maxCellIndex.y : 0
+                    },
+                    orderNumber: typeof panel.orderNumber === 'number' ? panel.orderNumber : 0,
+                    showOrderNumber: !!panel.showOrderNumber,
+                    selected: true, // Mantener seleccionado
+                    isModelingPanel: !!panel.isModelingPanel,
+                    pendingModelingCommand: !!panel.pendingModelingCommand, // Guardar comando modeling pendiente
+                    pendingPrintCommand: !!panel.pendingPrintCommand, // Guardar comando print pendiente
+                    printCommandArgs: Array.isArray(panel.printCommandArgs) ? [...panel.printCommandArgs] : [], // Guardar argumentos del comando print
+                    pendingPrintSimpleCommand: !!panel.pendingPrintSimpleCommand, // Guardar comando print simple pendiente
+                    pendingPrintPercentCommand: !!panel.pendingPrintPercentCommand, // Guardar comando print percent pendiente
+                    printPercentDuration: typeof panel.printPercentDuration === 'number' ? panel.printPercentDuration : undefined, // Guardar duración en milisegundos
+                    navigateToSlot: typeof panel.navigateToSlot === 'number' ? panel.navigateToSlot : undefined, // Guardar navegación a slot
+                    loadToHUDSlot: typeof panel.loadToHUDSlot === 'number' ? panel.loadToHUDSlot : undefined, // 🔥 NUEVO: Guardar trigger HUD
+                    behavior: {
+                        hasText: !!panel.hasText,
+                        textContent: typeof currentText === 'string' ? currentText : '',
+                        messageBuffer: Array.isArray(textState?.lines) ? [...textState.lines] : [],
+                        maxLines: typeof textState?.maxCharsPerLine === 'number' ? textState.maxCharsPerLine : 0,
+                        isPassword: !!textState?.isPassword,
+                        textAlign: textState?.textAlign || 'center',
+                        verticalAlign: textState?.verticalAlign || 'middle',
+                        useWhiteScrollIndicators: !!textState?.useWhiteScrollIndicators,
+                        isGATCActive: gatcIntervals.has(panel),
+                        isSpeciesPanel: !!panel.speciesPanel,
+                        speciesName: panel.speciesName || null,
+                        modelData: panel.modelData ? {
+                            modelUrl: typeof panel.modelData.url === 'string' ? panel.modelData.url : '',
+                            modelName: typeof panel.modelData.name === 'string' ? panel.modelData.name : '',
+                            isRotating: !!panel.modelData.isRotating,
+                            rotationSpeed: typeof panel.modelData.rotationSpeed === 'number' ? panel.modelData.rotationSpeed : 0.005,
+                            isModelButton: !!panel.modelData.isModelButton,
+                            isFromModelsGrid: !!panel.modelData.isFromModelsGrid,
+                            isModelDisplay: !!panel.modelData.isModelDisplay,
+                            isFromModelCommand: !!panel.modelData.isFromModelCommand,
+                            isViewer: !!panel.modelData.isViewer || !!panel.isViewer, // 🔥 NUEVO: Guardar tipo viewer (también desde panel.isViewer)
+                            scientificName: typeof panel.modelData.scientificName === 'string' ? panel.modelData.scientificName : null
+                        } : (panel.isViewer ? {
+                            // 🔥 NUEVO: Si el panel es viewer pero no tiene modelData, guardar la identidad de viewer
+                            modelUrl: '',
+                            modelName: '',
+                            isRotating: false,
+                            rotationSpeed: 0.005,
+                            isModelButton: false,
+                            isFromModelsGrid: false,
+                            isModelDisplay: false,
+                            isFromModelCommand: false,
+                            isViewer: true,
+                            scientificName: null
+                        } : null),
+                        genomData: panel.genomData || null,
+                        textureInfo: textureInfo,
+                        isAgreeButton: !!panel.isAgreeButton,
+                        termsPanelOrderNumber: panel.isAgreeButton && panel.termsPanel ? panel.termsPanel.orderNumber : null,
+                        modalData: getModalBehaviorData(panel) // 🔥 NUEVO: Guardar información del modal
+                    }
+                };
+                
+                // Validar y sanear los datos
+                if (isNaN(serializedPanel.minCellIndex.x)) serializedPanel.minCellIndex.x = 0;
+                if (isNaN(serializedPanel.minCellIndex.y)) serializedPanel.minCellIndex.y = 0;
+                if (isNaN(serializedPanel.maxCellIndex.x)) serializedPanel.maxCellIndex.x = 0;
+                if (isNaN(serializedPanel.maxCellIndex.y)) serializedPanel.maxCellIndex.y = 0;
+                
+                serializedPanels.push(serializedPanel);
+            } catch (error) {
+                console.error("Error al serializar panel seleccionado:", error);
+            }
+        }
+        
+        return {
+            type: 'selectedPanels', // Marcar como comportamiento conjunto
+            grid: {
+                divisions: currentDivisions,
+                size: {
+                    width: width,
+                    height: height,
+                    maxSize: 24,
+                    cellSize: currentGridParams.cellSize,
+                    cellsX: currentGridParams.cellsX,
+                    cellsY: currentGridParams.cellsY,
+                    adjustedWidth: currentGridParams.adjustedWidth,
+                    adjustedHeight: currentGridParams.adjustedHeight
+                }
+            },
+            panels: serializedPanels,
+            date: new Date().toISOString(),
+            appVersion: '1.1.0',
+            panelCount: serializedPanels.length
+        };
+    } catch (error) {
+        console.error("Error en getSelectedPanelsConfig:", error);
+        return null;
+    }
+}
+
+// 🔥 NUEVO: Función para guardar comportamiento conjunto (paneles seleccionados) en un slot
+async function saveSelectedPanelsToSlot(slotIndex) {
+    const config = getSelectedPanelsConfig();
+    if (!config) {
+        console.error('Error: No se pudo obtener la configuración de paneles seleccionados.');
+        const slotEntry = document.querySelector(`.slot-entry[data-slot-index="${slotIndex}"] .slot-status`);
+        if (slotEntry) {
+            slotEntry.textContent = 'Error: Sin paneles seleccionados';
+            slotEntry.title = 'Selecciona al menos un panel antes de guardar comportamiento conjunto.';
+            setTimeout(() => {
+                updateSlotsPanelUI();
+            }, 2000);
+        }
+        return false;
+    }
+    
+    console.log(`Guardando comportamiento conjunto en Slot ${slotIndex}. Paneles: ${config.panelCount}`);
+    
+    // Función para trigger flash
+    const triggerFlash = () => {
+    gridAnimationInProgress = true;
+    gridAnimationStep = 2;
+    gridAnimationProgress = 0;
+    gridFlashCount = 0;
+    };
+    
+    // Guardar usando el módulo bioSlots.js
+    const success = bioSlotsSaveToSlot(slotIndex, config, updateSlotsPanelUI, triggerFlash);
+    
+    if (success) {
+        slots = getSlots(); // Actualizar referencia local
+    }
+    
+    return success;
+}
+
+// 🔥 NUEVO: Función auxiliar para restaurar el comportamiento de un panel desde datos guardados
+async function restorePanelBehaviorFromData(panel, behaviorData, currentGridParams) {
+    if (!panel || !behaviorData) return;
+    
+    const orderNumber = panel.orderNumber;
+    
+    // Restaurar panel de especie
+    if (behaviorData.isSpeciesPanel) {
+        panel.speciesPanel = true;
+        panel.speciesName = behaviorData.speciesName || null;
+    }
+    
+    // Restaurar texto
+    if (behaviorData.hasText && behaviorData.textContent) {
+        panel.hasText = true;
+        const textState = {
+            text: behaviorData.textContent,
+            lines: behaviorData.messageBuffer || [],
+            maxCharsPerLine: behaviorData.maxLines || TEXT_CONFIG.defaultMaxCharsPerLine,
+            cursorPosition: 0,
+            isEditing: false,
+            scrollOffset: 0,
+            isPassword: behaviorData.isPassword || false,
+            realText: (behaviorData.isPassword && behaviorData.textContent) ? behaviorData.textContent : '',
+            textAlign: behaviorData.textAlign || 'center',
+            verticalAlign: behaviorData.verticalAlign || 'middle',
+            useWhiteScrollIndicators: !!behaviorData.useWhiteScrollIndicators
+        };
+        panelTextState.set(panel, textState);
+        createPanelText(panel, currentGridParams.cellSize);
+        if (textState.isPassword) {
+            setPanelText(panel, '*'.repeat(textState.realText.length), currentGridParams.cellSize);
+        } else {
+            setPanelText(panel, textState.text, currentGridParams.cellSize);
+        }
+    }
+    
+    // Restaurar GATC
+    if (behaviorData.isGATCActive) {
+        if (!panel.hasText) panel.hasText = true;
+        if (!panelTextState.has(panel)) createPanelText(panel, currentGridParams.cellSize);
+        handleGATCCommand({ appendChild: () => {}, innerHTML: '' }, panel);
+    }
+    
+    // Restaurar modal (se maneja después de crear todos los paneles en loadSelectedPanelsFromSlot)
+    // No restaurar aquí para evitar conflictos
+    
+    // Restaurar modelo
+    if (behaviorData.modelData) {
+        const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName } = behaviorData.modelData;
+        
+        // 🔥 NUEVO: Restaurar identidad de viewer incluso sin modelo cargado
+        if (isViewer) {
+            if (!panel.modelData) {
+                panel.modelData = {};
+            }
+            panel.modelData.isViewer = true;
+            panel.isViewer = true;
+        }
+        
+        // Si hay URL de modelo, cargarlo
+        if (modelUrl) {
+            await loadModelToPanel(panel, modelUrl, currentGridParams.cellSize).then(() => {
+                // 🔥 CRITICAL: Asegurar que modelData existe
+                if (!panel.modelData) {
+                    panel.modelData = {};
+                }
+                
+                // 🔥 CRITICAL: Restaurar URL del modelo (necesario para interacción con viewer)
+                panel.modelData.url = modelUrl;
+                
+                if (modelName) {
+                    panel.modelData.name = modelName;
+                    // 🔥 NUEVO: Si no hay scientificName guardado pero hay modelName, asignarlo desde el mapeo
+                    if (!scientificName && modelName) {
+                        panel.modelData.scientificName = modelScientificNames[modelName] || null;
+                    }
+                }
+                if (scientificName) {
+                    panel.modelData.scientificName = scientificName;
+                }
+                if (isModelButton) {
+                    panel.modelData.isModelButton = true;
+                    panel.modelData.isFromModelsGrid = !!isFromModelsGrid;
+                } else if (isModelDisplay) {
+                    panel.modelData.isModelDisplay = true;
+                    panel.modelData.isFromModelCommand = !!isFromModelCommand;
+                } else if (isViewer) {
+                    // Asegurar que isViewer esté restaurado (ya se restauró arriba, pero por seguridad)
+                    panel.modelData.isViewer = true;
+                    panel.isViewer = true;
+                }
+                if (isRotating && !panel.modelData.isRotating) toggleModelRotation(panel);
+                if (rotationSpeed) setModelRotationSpeed(panel, rotationSpeed);
+            });
+        }
+    }
+    
+    // Restaurar genom
+    if (behaviorData.genomData) {
+        panel.genomData = behaviorData.genomData;
+        // Recrear la visualización del genoma
+        await loadGenomToPanel(panel, currentGridParams.cellSize);
+    }
+    
+    // Restaurar codon
+    if (behaviorData.codonData) {
+        panel.codonData = behaviorData.codonData;
+        await loadCodonToPanel(panel, currentGridParams.cellSize);
+    }
+    
+    // Restaurar texturas
+    if (behaviorData.textureInfo && behaviorData.textureInfo.hasTexture) {
+        const textureInfo = behaviorData.textureInfo;
+        const texturePath = textureInfo.texturePath || './public/img/bioprint_logo.png';
+        loadTexture(texturePath, (texture) => {
+            if (panel.fillMesh) {
+                texture.wrapS = THREE.ClampToEdgeWrapping;
+                texture.wrapT = THREE.ClampToEdgeWrapping;
+                panel.textureMaterials = createPanelMaterials(texture);
+                panel.fillMesh.material = panel.textureMaterials.normal;
+                panel.hasTexture = true;
+                panel.textureType = textureInfo.textureType || 'logo';
+                panel.texturePath = texturePath;
+                
+                if (textureInfo.customUVs && textureInfo.customUVs.length > 0) {
+                    const geometry = panel.fillMesh.geometry;
+                    const uvAttribute = geometry.attributes.uv;
+                    if (uvAttribute && uvAttribute.count === textureInfo.customUVs.length) {
+                        for (let i = 0; i < textureInfo.customUVs.length; i++) {
+                            uvAttribute.setXY(i, textureInfo.customUVs[i].u, textureInfo.customUVs[i].v);
+                        }
+                        uvAttribute.needsUpdate = true;
+                    }
+                }
+                updatePanelColor(panel);
+                if (textureInfo.hasLogoActive && textureInfo.textureType === 'logo') {
+                    if (!logoMeshExists()) createLogo(scene);
+                    toggleLogo(true, panel);
+                }
+            }
+        }, (error) => {
+            console.error(`Error al restaurar textura para panel P${orderNumber}:`, error);
+        });
+    } else if (behaviorData.textureInfo && behaviorData.textureInfo.hasLogoActive) {
+        if (!logoMeshExists()) createLogo(scene);
+        toggleLogo(true, panel);
+    }
+    
+    // Restaurar botón I AGREE
+    if (behaviorData.isAgreeButton && behaviorData.termsPanelOrderNumber) {
+        panel.isAgreeButton = true;
+        setTimeout(() => {
+            const termsPanel = panels.find(p => p.orderNumber === behaviorData.termsPanelOrderNumber);
+            if (termsPanel) {
+                panel.termsPanel = termsPanel;
+            }
+        }, 100);
+    }
+}
+
+// 🔥 NUEVO: Función para cargar comportamiento conjunto desde un slot (solo restaura los paneles guardados)
+async function loadSelectedPanelsFromSlot(slotIndex) {
+    if (slotIndex < 0 || slotIndex >= MAX_SLOTS) {
+        console.error(`Slot ${slotIndex} inválido.`);
+        return false;
+    }
+    
+    // Asegurar que slots esté actualizado
+    slots = getSlots();
+    // Asegurar que slots esté actualizado
+    slots = getSlots();
+    const slotDataString = slots[slotIndex];
+    if (!slotDataString) {
+        console.warn(`Slot ${slotIndex} está vacío.`);
+        return false;
+    }
+    
+    try {
+        const config = JSON.parse(slotDataString);
+        
+        // Verificar que es un comportamiento conjunto
+        if (config.type !== 'selectedPanels') {
+            console.warn(`Slot ${slotIndex} no contiene un comportamiento conjunto. Es una configuración completa.`);
+            console.log('Usando loadFromSlot() en su lugar...');
+            return await loadFromSlot(slotIndex);
+        }
+        
+        console.log(`Cargando comportamiento conjunto desde Slot ${slotIndex}: ${config.panelCount} paneles`);
+        
+        // NO limpiar toda la escena, solo restaurar los paneles guardados
+        // Primero, eliminar paneles existentes que coincidan con las posiciones guardadas
+        if (config.panels && Array.isArray(config.panels)) {
+            for (const panelData of config.panels) {
+                // Buscar paneles existentes en las mismas posiciones y eliminarlos
+                const existingPanels = panels.filter(p => 
+                    !p.isKeyboardKey &&
+                    p.minCellIndex.x === panelData.minCellIndex.x &&
+                    p.minCellIndex.y === panelData.minCellIndex.y &&
+                    p.maxCellIndex.x === panelData.maxCellIndex.x &&
+                    p.maxCellIndex.y === panelData.maxCellIndex.y
+                );
+                
+                for (const existingPanel of existingPanels) {
+                    removePanelFromScene(existingPanel);
+                    const index = panels.indexOf(existingPanel);
+                    if (index > -1) {
+                        panels.splice(index, 1);
+                    }
+                }
+            }
+        }
+        
+        // Restaurar configuración de grid si es diferente
+        if (config.grid && config.grid.divisions !== currentDivisions) {
+            const newDivisions = config.grid.divisions;
+            if (typeof newDivisions === 'number' && newDivisions >= 2 && newDivisions <= 50) {
+                currentDivisions = newDivisions;
+                updateGrid(currentDivisions);
+            }
+        }
+        
+        // Restaurar los paneles guardados
+        const currentGridParams = getCurrentGridParams();
+        if (!currentGridParams) {
+            console.error('No se pudo obtener la configuración del grid.');
+            return false;
+        }
+        
+        // Aplicar solo los paneles guardados (sin limpiar toda la escena)
+        const restoredPanels = [];
+        const modalsToRestore = []; // Recolectar modales para restaurar después
+        
+        // Primera pasada: crear todos los paneles y recolectar información de modales
+        for (const panelData of config.panels) {
+            try {
+                const panel = createPanelFromBoundingBox({
+                    minX: panelData.minCellIndex.x,
+                    maxX: panelData.maxCellIndex.x,
+                    minY: panelData.minCellIndex.y,
+                    maxY: panelData.maxCellIndex.y
+                }, currentGridParams);
+                
+                if (panel) {
+                    // Restaurar propiedades del panel
+                    panel.orderNumber = panelData.orderNumber || panel.orderNumber;
+                    panel.showOrderNumber = panelData.showOrderNumber !== undefined ? panelData.showOrderNumber : true;
+                    panel.selected = panelData.selected !== undefined ? panelData.selected : false;
+                    panel.isModelingPanel = panelData.isModelingPanel || false;
+                    
+                    // Recolectar información de modales (no restaurar aún)
+                    if (panelData.behavior && panelData.behavior.modalData && panelData.behavior.modalData.isModal) {
+                        modalsToRestore.push({
+                            panel: panel,
+                            modalData: panelData.behavior.modalData
+                        });
+                    } else {
+                        // Restaurar comportamiento que no es modal
+                    if (panelData.behavior) {
+                        await restorePanelBehaviorFromData(panel, panelData.behavior, currentGridParams);
+                        }
+                    }
+                    
+                    restoredPanels.push(panel);
+                }
+            } catch (error) {
+                console.error('Error al restaurar panel:', error);
+            }
+        }
+        
+        // Segunda pasada: restaurar modales después de que todos los paneles estén creados
+        for (const { panel, modalData } of modalsToRestore) {
+            try {
+                const containerMin = modalData.containerMinCellIndex;
+                const containerMax = modalData.containerMaxCellIndex;
+                
+                if (containerMin && containerMax) {
+                    // Buscar o crear el containerPanel
+                    let containerPanel = panels.find(p => 
+                        p.minCellIndex.x === containerMin.x &&
+                        p.minCellIndex.y === containerMin.y &&
+                        p.maxCellIndex.x === containerMax.x &&
+                        p.maxCellIndex.y === containerMax.y
+                    );
+                    
+                    // Si no se encuentra, crear uno temporal
+                    if (!containerPanel) {
+                        containerPanel = createPanelFromBoundingBox({
+                            minX: containerMin.x,
+                            maxX: containerMax.x,
+                            minY: containerMin.y,
+                            maxY: containerMax.y
+                        }, currentGridParams);
+                    }
+                    
+                    if (containerPanel) {
+                        // Restaurar el modal completo
+                        restoreModalFromBehavior(containerPanel, modalData, createPanelFromBoundingBox, getCurrentGridParams, panels, getPanelText, panelsFlashing, updatePanelColor);
+                    }
+                }
+            } catch (error) {
+                console.error('Error al restaurar modal:', error);
+            }
+        }
+        
+        // Reindexar paneles después de restaurar
+        reindexPanels();
+        
+        console.log(`Comportamiento conjunto cargado: ${restoredPanels.length} paneles restaurados`);
+        
+        // Flash de confirmación visual
         gridAnimationInProgress = true;
-        gridAnimationStep = 2; // Solo paso de flash
+        gridAnimationStep = 2;
         gridAnimationProgress = 0;
         gridFlashCount = 0;
-    } else {
-        console.log(`Slot ${slotIndex} ya está vacío.`);
+        
+        return true;
+    } catch (error) {
+        console.error(`Error al cargar comportamiento conjunto del Slot ${slotIndex}:`, error);
+        return false;
+    }
+}
+
+// Función para limpiar un slot específico
+function clearSlot(slotIndex) {
+    // Función para trigger flash
+    const triggerFlash = () => {
+        gridAnimationInProgress = true;
+        gridAnimationStep = 2;
+        gridAnimationProgress = 0;
+        gridFlashCount = 0;
+    };
+    
+    // Limpiar usando el módulo bioSlots.js
+    const success = bioSlotsClearSlot(slotIndex, updateSlotsPanelUI, triggerFlash);
+    
+    if (success) {
+        slots = getSlots(); // Actualizar referencia local
     }
 }
 
 // Función para actualizar la interfaz del panel de slots
+// Ahora usando bioSlots.js
 function updateSlotsPanelUI() {
     const slotsContainer = document.getElementById('slots-container');
     if (!slotsContainer) return;
+    
+    // Asegurar que slots esté actualizado
+    slots = getSlots();
+    
     console.log('Actualizando UI del panel de slots. Datos actuales de slots:', slots);
 
     for (let i = 0; i < MAX_SLOTS; i++) {
         const slotEntry = slotsContainer.querySelector(`.slot-entry[data-slot-index="${i}"]`);
         if (slotEntry) {
             const statusElement = slotEntry.querySelector('.slot-status');
-            if (slots[i]) {
-                try {
-                    const config = JSON.parse(slots[i]);
-                    const date = new Date(config.date || Date.now());
-                    statusElement.textContent = `Guardado: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-                    statusElement.title = `Guardado: ${date.toLocaleString()}\nPaneles: ${config.panels?.length || 0}, Divisiones: ${config.grid?.divisions || 'N/A'}`;
-                } catch (e) {
-                    statusElement.textContent = 'Error en datos';
-                    statusElement.title = 'Los datos de este slot parecen corruptos.';
+            const slotInfo = getSlotInfo(i);
+            
+            if (slotInfo.hasData) {
+                if (slotInfo.date) {
+                    // Mostrar información según el tipo
+                    if (slotInfo.type === 'selectedPanels') {
+                        statusElement.textContent = `Conjunto: ${slotInfo.panelCount} paneles - ${slotInfo.date.toLocaleDateString()}`;
+                        statusElement.title = `Comportamiento conjunto\nGuardado: ${slotInfo.date.toLocaleString()}\nPaneles: ${slotInfo.panelCount}`;
+                    } else if (slotInfo.type === 'popup') {
+                        statusElement.textContent = `Popup - ${slotInfo.date.toLocaleDateString()}`;
+                        statusElement.title = `Popup\nGuardado: ${slotInfo.date.toLocaleString()}\nPaneles: ${slotInfo.panelCount}`;
+                    } else {
+                        statusElement.textContent = `Guardado: ${slotInfo.date.toLocaleDateString()} ${slotInfo.date.toLocaleTimeString()}`;
+                        statusElement.title = `Guardado: ${slotInfo.date.toLocaleString()}\nPaneles: ${slotInfo.panelCount}`;
+                    }
+                } else {
+                    statusElement.textContent = 'Datos sin fecha';
+                    statusElement.title = 'Este slot contiene datos pero sin información de fecha.';
                 }
             } else {
                 statusElement.textContent = 'Vacío';
@@ -6605,13 +14195,49 @@ function initSlotsPanel() {
 
         const saveBtn = document.createElement('button');
         saveBtn.textContent = 'Guardar';
+        saveBtn.title = 'Guardar configuración completa (Ctrl+Shift+' + i + ')';
         saveBtn.addEventListener('click', () => saveToSlot(i));
         actions.appendChild(saveBtn);
 
+        const saveConjuntoBtn = document.createElement('button');
+        saveConjuntoBtn.textContent = 'Guardar Conjunto';
+        saveConjuntoBtn.title = 'Guardar solo paneles seleccionados';
+        saveConjuntoBtn.style.fontSize = '11px';
+        saveConjuntoBtn.style.padding = '5px';
+        saveConjuntoBtn.addEventListener('click', async () => {
+            const success = await saveSelectedPanelsToSlot(i);
+            if (success) {
+                const originalText = saveConjuntoBtn.textContent;
+                saveConjuntoBtn.textContent = '✓ Guardado!';
+                setTimeout(() => {
+                    saveConjuntoBtn.textContent = originalText;
+                }, 1500);
+            }
+        });
+        actions.appendChild(saveConjuntoBtn);
+
         const loadBtn = document.createElement('button');
         loadBtn.textContent = 'Cargar';
+        loadBtn.title = 'Cargar configuración completa (Ctrl+' + i + ')';
         loadBtn.addEventListener('click', () => loadFromSlot(i));
         actions.appendChild(loadBtn);
+
+        const loadConjuntoBtn = document.createElement('button');
+        loadConjuntoBtn.textContent = 'Cargar Conjunto';
+        loadConjuntoBtn.title = 'Cargar solo paneles guardados (sin limpiar escena)';
+        loadConjuntoBtn.style.fontSize = '11px';
+        loadConjuntoBtn.style.padding = '5px';
+        loadConjuntoBtn.addEventListener('click', async () => {
+            const success = await loadSelectedPanelsFromSlot(i);
+            if (success) {
+                const originalText = loadConjuntoBtn.textContent;
+                loadConjuntoBtn.textContent = '✓ Cargado!';
+                setTimeout(() => {
+                    loadConjuntoBtn.textContent = originalText;
+                }, 1500);
+            }
+        });
+        actions.appendChild(loadConjuntoBtn);
 
         const clearBtn = document.createElement('button');
         clearBtn.textContent = 'Limpiar';
@@ -6686,9 +14312,15 @@ function mapApps(args, output) {
         getCurrentGridParams,          // Función para obtener parámetros del grid
         lineMaterials,                 // Materiales para las líneas
         (createdPanels) => {           // Callback de éxito
-            // Deseleccionar el panel contenedor
-            containerPanel.selected = false;
-            updatePanelColor(containerPanel);
+            // Eliminar el panel contenedor original
+            if (containerPanel.group) {
+                scene.remove(containerPanel.group);
+                const index = panels.indexOf(containerPanel);
+                if (index > -1) {
+                    panels.splice(index, 1);
+                }
+                showInfo('Panel contenedor eliminado', output);
+            }
             
             showSuccess(`¡Iconos de apps mapeados exitosamente! Se crearon ${createdPanels.length} paneles.`, output);
             
@@ -6701,4 +14333,1787 @@ function mapApps(args, output) {
             showError(errorMessage, output);
         }
     );
+}
+
+// Función para mostrar términos y condiciones en un panel seleccionado
+function handleTermsCommand(output) {
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para mostrar los términos y condiciones', output);
+        return false;
+    }
+    
+    if (selectedPanels.length > 1) {
+        showError('Seleccione solo un panel para mostrar los términos y condiciones', output);
+        return false;
+    }
+    
+    const panel = selectedPanels[0];
+    const currentGridParams = getCurrentGridParams();
+    
+    if (!currentGridParams) {
+        showError('No se pudo obtener la configuración del grid', output);
+        return false;
+    }
+    
+    // Marcar el panel como contenedor de texto
+    panel.hasText = true;
+    
+    // Asegurar que el estado existe y configurar indicadores de scroll blancos para términos
+    if (!panelTextState.has(panel)) {
+        panelTextState.set(panel, {
+            text: '',
+            cursorPosition: 0,
+            lines: [''],
+            isEditing: false,
+            maxCharsPerLine: 0,
+            scrollOffset: 0,
+            textMeshes: [],
+            isPassword: false,
+            textAlign: 'center',
+            verticalAlign: 'middle',
+            useWhiteScrollIndicators: true // Activar indicadores blancos para términos
+        });
+    } else {
+        const textState = panelTextState.get(panel);
+        textState.useWhiteScrollIndicators = true;
+    }
+    
+    // Texto de términos y condiciones (en inglés, US-based)
+    const termsText = `TERMS AND CONDITIONS OF USE – BIOPRINT SYSTEM
+
+Property of BIOCORP, LLC.
+
+1. ACCEPTANCE OF TERMS
+By accessing, operating, or interacting with the BIOPRINT hardware unit, software interface, or associated cloud services (collectively, the "Service"), you ("The User") agree to be bound by these Terms and Conditions ("Terms"). If you do not agree to all of these Terms, do not access or use the BIOPRINT machine.
+
+2. DATA COLLECTION AND USER CONSENT
+To ensure the optimal calibration of the BIOPRINT system and to provide a hyper-personalized biological synthesis, BIOCORP requires the collection of extensive user data. By using the Service, The User grants BIOCORP an irrevocable, worldwide, royalty-free license to collect, process, and analyze the following categories of data:
+
+2.1. Personal and Biometric Information
+The User agrees to provide accurate and complete personal identification data, including but not limited to: full legal name, date of birth, residential address, Social Security Number (for identity verification purposes), and genetic or biological samples required by the BIOPRINT intake module. The User expressly consents to the capture and storage of biometric identifiers, including facial recognition scans, fingerprints, and retinal patterns, to secure their unique User Profile.
+
+2.2. Social Media Integration and Digital Footprint
+Access to the BIOPRINT functionality requires the synchronization of The User's primary social media accounts. The User hereby authorizes BIOCORP to access, scrape, and analyze data from connected platforms (including, but not limited to, X/Twitter, Meta/Facebook, Instagram, TikTok, and LinkedIn). This access includes:
+
+* Content Analysis: Scanning of public and private posts, direct messages, and comments to assess psychological states and stress levels.
+
+* Social Graphing: Mapping of friend lists and professional networks to determine social influence factors.
+
+* Sentiment Metrics: Analysis of "likes," shares, and engagement history to refine the User's psychographic profile.
+
+2.3. Consumption Habits and Lifestyle Data
+The User authorizes BIOCORP to aggregate data regarding their consumption habits to predict biological needs. This includes accessing:
+
+* Transaction History: Integration with payment gateways to analyze food, supplement, and health-related purchases.
+
+* Digital Behavior: Tracking of browsing history, search queries, and third-party cookies related to lifestyle choices.
+
+* Behavioral Modeling: Algorithmic assessment of sleep patterns, physical activity, and dietary preferences derived from connected wearables or IoT devices.
+
+3. USE OF DATA AND PROPRIETARY ALGORITHMS
+The User acknowledges that while the raw personal data belongs to The User, the predictive models, biological blueprints, and synthesized profiles generated by the BIOPRINT system are the sole intellectual property of BIOCORP. BIOCORP reserves the right to use anonymized aggregate data for machine learning training, product development, and commercial partnerships with third-party pharmaceutical or insurance entities.
+
+4. DISCLAIMER OF WARRANTIES
+THE BIOPRINT SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS. TO THE FULLEST EXTENT PERMITTED BY LAW, BIOCORP DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. BIOCORP DOES NOT WARRANT THAT THE BIOPRINT RESULTS WILL BE ERROR-FREE OR THAT THE BIOLOGICAL OUTPUT WILL MEET THE USER'S EXPECTATIONS WITHOUT VARIANCE.
+
+5. LIMITATION OF LIABILITY
+IN NO EVENT SHALL BIOCORP, ITS AFFILIATES, OFFICERS, OR DIRECTORS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF THE USE OF THE BIOPRINT MACHINE OR THE DISCLOSURE OF DATA RESULTING FROM UNAUTHORIZED SECURITY BREACHES, BEYOND THE EXTENT OF REASONABLE SECURITY MEASURES.
+
+6. GOVERNING LAW AND ARBITRATION
+These Terms shall be governed by and construed in accordance with the laws of the State of [Insert State, e.g., Delaware or California], without regard to its conflict of law principles. Any dispute arising from these Terms or the use of BIOPRINT shall be resolved through binding arbitration in accordance with the rules of the American Arbitration Association (AAA). The User waives the right to participate in any class action lawsuit against BIOCORP.`;
+    
+    // Establecer el texto en el panel
+    setPanelText(panel, termsText, currentGridParams.cellSize);
+    
+    // Buscar el siguiente panel libre para usar como botón AGREE
+    const freePanels = findFreePanels();
+    
+    if (freePanels.length > 0) {
+        const agreeButton = freePanels[0];
+        
+        // Configurar el botón AGREE
+        agreeButton.hasText = true;
+        agreeButton.isAgreeButton = true; // Marcar como botón AGREE
+        agreeButton.termsPanel = panel; // Guardar referencia al panel de términos
+        
+        // Crear texto en el botón
+        createPanelText(agreeButton, currentGridParams.cellSize);
+        setPanelText(agreeButton, "I AGREE", currentGridParams.cellSize);
+        
+        // Centrar el texto
+        const agreeTextState = panelTextState.get(agreeButton);
+        if (agreeTextState) {
+            agreeTextState.textAlign = 'center';
+        }
+        
+        console.log(`Botón I AGREE asignado al panel libre #${agreeButton.orderNumber} para términos en panel #${panel.orderNumber}`);
+        showSuccess(`Términos y condiciones cargados en el panel seleccionado. Botón I AGREE asignado al panel #${agreeButton.orderNumber}.`, output);
+    } else {
+        showError('No se encontró un panel libre para crear el botón AGREE. Cree un panel libre primero.', output);
+        showSuccess('Términos y condiciones cargados en el panel seleccionado.', output);
+    }
+    return true;
+}
+
+// Función para crear una rejilla 3x3 de modelos
+async function handleModelsCommand(output) {
+    // Verificar si hay un panel seleccionado para usar como contenedor
+    const selectedPanels = panels.filter(p => p.selected);
+    if (selectedPanels.length !== 1) {
+        showError('Selecciona exactamente un panel para usar como contenedor de los modelos', output);
+        return;
+    }
+    
+    const containerPanel = selectedPanels[0];
+    showInfo('Creando rejilla 3x3 de modelos en el panel seleccionado...', output);
+    
+    // Lista de modelos disponibles (se pueden agregar más fácilmente)
+    const modelNames = ['corazon', 'hueso', 'axolotl', 'discus', 'dog', 'acot', 'tort', 'ham', 'pollo'];
+    
+    // Asegurar que tenemos exactamente 9 modelos para la rejilla 3x3
+    // Si hay menos de 9, repetir algunos modelos
+    const gridModels = [];
+    for (let i = 0; i < 9; i++) {
+        gridModels.push(modelNames[i % modelNames.length]);
+    }
+    
+    try {
+        const currentGridParams = getCurrentGridParams();
+        if (!currentGridParams) {
+            showError('No se pudo obtener la configuración del grid', output);
+            return;
+        }
+        
+        // Calcular las dimensiones del panel contenedor
+        const containerWidth = containerPanel.maxCellIndex.x - containerPanel.minCellIndex.x + 1;
+        const containerHeight = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+        
+        // Verificar que el contenedor sea lo suficientemente grande (mínimo 3x3)
+        if (containerWidth < 3 || containerHeight < 3) {
+            showError('El panel contenedor debe ser de al menos 3x3 unidades para crear la rejilla de modelos', output);
+            return;
+        }
+        
+        // Calcular el tamaño de cada celda de la rejilla
+        const cellWidth = Math.floor(containerWidth / 3);
+        const cellHeight = Math.floor(containerHeight / 3);
+        
+        const createdPanels = [];
+        let modelIndex = 0;
+        
+        // Crear la rejilla 3x3
+        for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 3; col++) {
+                // Calcular las coordenadas del panel
+                const minX = containerPanel.minCellIndex.x + (col * cellWidth);
+                const maxX = minX + cellWidth - 1;
+                const minY = containerPanel.minCellIndex.y + (row * cellHeight);
+                const maxY = minY + cellHeight - 1;
+                
+                // Crear el panel
+                const panel = createPanelFromBoundingBox({
+                    minX: minX,
+                    maxX: maxX,
+                    minY: minY,
+                    maxY: maxY
+                }, currentGridParams);
+                
+                if (panel && panel.group) {
+                    createdPanels.push(panel);
+                    
+                    // Cargar el modelo correspondiente en el panel
+                    const modelName = gridModels[modelIndex];
+                    let modelUrl = `./models/${modelName}.obj`;
+                    
+                    // Cargar el modelo de forma asíncrona
+                    (async () => {
+                        try {
+                            // Intentar primero con .obj, luego con .fbx si falla
+                            let success = await loadModelToPanel(panel, modelUrl, currentGridParams.cellSize);
+                            if (!success) {
+                                const fbxUrl = `./models/${modelName}.fbx`;
+                                console.log(`Intento con .obj falló para ${modelName}, intentando con .fbx`);
+                                success = await loadModelToPanel(panel, fbxUrl, currentGridParams.cellSize);
+                                if (success) {
+                                    modelUrl = fbxUrl; // Actualizar URL si se cargó con .fbx
+                                }
+                            }
+                            
+                            if (success) {
+                                // Guardar referencia del modelo en el panel como BOTÓN de la rejilla
+                                panel.modelData = {
+                                    name: modelName,
+                                    url: modelUrl,
+                                    isRotating: true,
+                                    rotationSpeed: 0.005 + (Math.random() * 0.01), // Velocidad ligeramente aleatoria
+                                    isModelButton: true, // NUEVO: Marcar como botón de la rejilla 3x3
+                                    isFromModelsGrid: true, // NUEVO: Identificar que viene del comando "models"
+                                    scientificName: modelScientificNames[modelName] || null // 🔥 NUEVO: Guardar nombre científico
+                                };
+                                console.log(`Modelo ${modelName} cargado en panel #${panel.orderNumber}`);
+                            } else {
+                                console.warn(`No se pudo cargar el modelo ${modelName} en panel #${panel.orderNumber}`);
+                            }
+                        } catch (error) {
+                            console.error(`Error cargando modelo ${modelName}:`, error);
+                        }
+                    })();
+                    
+                    modelIndex++;
+                }
+            }
+        }
+        
+        // Eliminar el panel contenedor original (como en los comandos apps y print)
+        if (containerPanel.group) {
+            scene.remove(containerPanel.group);
+            const index = panels.indexOf(containerPanel);
+            if (index > -1) {
+                panels.splice(index, 1);
+            }
+        }
+        
+        showSuccess(`¡Rejilla de modelos creada exitosamente! Se crearon ${createdPanels.length} paneles con modelos.`, output);
+        
+        // Mostrar información de los modelos cargados
+        const infoDiv = document.createElement('div');
+        infoDiv.innerHTML = `
+            <br>Modelos incluidos: ${modelNames.join(', ')}
+            <br>Cada modelo rota automáticamente con velocidad aleatoria
+            <br>Usa 'model rotate' para alternar rotación en paneles seleccionados
+            <br>Usa 'model speed [valor]' para ajustar velocidad de rotación
+        `;
+        output.appendChild(infoDiv);
+        
+        // Forzar actualización de la escena
+        if (typeof render === 'function') {
+            render();
+        }
+        
+    } catch (error) {
+        console.error('Error en handleModelsCommand:', error);
+        showError(`Error al crear la rejilla de modelos: ${error.message}`, output);
+    }
+}
+
+// 🔥 NUEVO: Función para asignar un panel como trigger para cargar slot en HUD
+function handleHUDCommand(output, args) {
+    const selectedPanels = panels.filter(p => p.selected && !p.isKeyboardKey);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para asignar trigger HUD', output);
+        return;
+    }
+    
+    if (selectedPanels.length > 1) {
+        showError('Seleccione solo un panel para asignar trigger HUD', output);
+        return;
+    }
+    
+    if (args.length === 0) {
+        showError('Especifique el número de slot (0-29). Ejemplo: hud 5', output);
+        return;
+    }
+    
+    const slotIndex = parseInt(args[0]);
+    if (isNaN(slotIndex) || slotIndex < 0 || slotIndex >= MAX_SLOTS) {
+        showError(`Número de slot inválido. Debe ser entre 0 y ${MAX_SLOTS - 1}`, output);
+        return;
+    }
+    
+    const hudPanel = selectedPanels[0];
+    
+    // Asignar el slot al panel
+    hudPanel.loadToHUDSlot = slotIndex;
+    
+    // Efecto flash para confirmar
+    hudPanel.flashProgress = 0;
+    hudPanel.shouldFlash = true;
+    panelsFlashing.add(hudPanel);
+    
+    showSuccess(`Panel #${hudPanel.orderNumber} asignado para cargar Slot ${slotIndex} en HUD al hacer click`, output);
+}
+
+// 🔥 NUEVO: Función para convertir un panel en viewer de modelo
+function handleViewerCommand(output) {
+    const selectedPanels = panels.filter(p => p.selected && !p.isKeyboardKey);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para convertirlo en viewer', output);
+        return;
+    }
+    
+    if (selectedPanels.length > 1) {
+        showError('Seleccione solo un panel para convertirlo en viewer', output);
+        return;
+    }
+    
+    const viewerPanel = selectedPanels[0];
+    
+    // Marcar el panel como viewer
+    if (!viewerPanel.modelData) {
+        viewerPanel.modelData = {};
+    }
+    viewerPanel.modelData.isViewer = true;
+    viewerPanel.isViewer = true;
+    
+    showSuccess(`Panel #${viewerPanel.orderNumber} convertido en viewer de modelo`, output);
+    
+    // Si hay algún panel con modelo presente, cargarlo en el viewer
+    const panelsWithModels = panels.filter(p => 
+        p !== viewerPanel && 
+        p.modelData && 
+        p.modelData.url && 
+        !p.isKeyboardKey &&
+        (p.modelData.isModelButton || p.modelData.isModelDisplay || p.modelData.isViewer)
+    );
+    
+    if (panelsWithModels.length > 0) {
+        // Usar el primer panel con modelo encontrado
+        const sourcePanel = panelsWithModels[0];
+        const sourceModelData = sourcePanel.modelData;
+        
+        if (sourceModelData.url) {
+            const currentGridParams = getCurrentGridParams();
+            if (currentGridParams) {
+                loadModelToPanel(viewerPanel, sourceModelData.url, currentGridParams.cellSize).then((success) => {
+                    if (success) {
+                        viewerPanel.modelData.name = sourceModelData.name;
+                        viewerPanel.modelData.url = sourceModelData.url;
+                        viewerPanel.modelData.isRotating = true;
+                        viewerPanel.modelData.rotationSpeed = sourceModelData.rotationSpeed || 0.005;
+                        viewerPanel.modelData.scientificName = sourceModelData.scientificName || modelScientificNames[sourceModelData.name] || null; // 🔥 NUEVO: Preservar o asignar nombre científico
+                        
+                        showInfo(`Modelo ${sourceModelData.name} cargado en viewer`, output);
+                        
+                        // Mostrar nombre científico en el panel libre más cercano al viewer
+                        const closestFreePanel = findClosestFreePanel(viewerPanel);
+                        if (closestFreePanel) {
+                            const scientificName = modelScientificNames[sourceModelData.name];
+                            
+                            if (scientificName) {
+                                closestFreePanel.hasText = true;
+                                closestFreePanel.speciesPanel = true;
+                                closestFreePanel.speciesName = scientificName;
+                                createPanelText(closestFreePanel, currentGridParams.cellSize);
+                                setPanelText(closestFreePanel, scientificName, currentGridParams.cellSize);
+                                
+                                // Flash visual en el panel de especie
+                                closestFreePanel.flashProgress = 0;
+                                closestFreePanel.shouldFlash = true;
+                                panelsFlashing.add(closestFreePanel);
+                                
+                                showInfo(`Nombre científico "${scientificName}" mostrado en panel #${closestFreePanel.orderNumber} (más cercano al viewer)`, output);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+}
+
+// 🔥 NUEVO: Función para guardar comportamiento conjunto desde terminal
+async function handleSaveConjuntoCommand(args, output) {
+    if (args.length === 0) {
+        showError('Especifica el número de slot (0-9). Ejemplo: saveconjunto 1', output);
+        return;
+    }
+    
+    const slotIndex = parseInt(args[0]);
+    if (isNaN(slotIndex) || slotIndex < 0 || slotIndex >= MAX_SLOTS) {
+        showError(`Slot inválido. Usa un número entre 0 y ${MAX_SLOTS - 1}.`, output);
+        return;
+    }
+    
+    const selectedPanels = panels.filter(p => p.selected && !p.isKeyboardKey);
+    if (selectedPanels.length === 0) {
+        showError('Selecciona al menos un panel antes de guardar comportamiento conjunto.', output);
+        return;
+    }
+    
+    showInfo(`Guardando ${selectedPanels.length} paneles seleccionados en slot ${slotIndex}...`, output);
+    const success = await saveSelectedPanelsToSlot(slotIndex);
+    
+    if (success) {
+        showSuccess(`Comportamiento conjunto guardado en slot ${slotIndex} (${selectedPanels.length} paneles)`, output);
+    } else {
+        showError('Error al guardar comportamiento conjunto.', output);
+    }
+}
+
+// 🔥 NUEVO: Función para cargar comportamiento conjunto desde terminal
+async function handleLoadConjuntoCommand(args, output) {
+    if (args.length === 0) {
+        showError(`Especifica el número de slot (0-${MAX_SLOTS - 1}). Ejemplo: loadconjunto 1`, output);
+        return;
+    }
+    
+    const slotIndex = parseInt(args[0]);
+    if (isNaN(slotIndex) || slotIndex < 0 || slotIndex >= MAX_SLOTS) {
+        showError(`Slot inválido. Usa un número entre 0 y ${MAX_SLOTS - 1}.`, output);
+        return;
+    }
+    
+    // Asegurar que slots esté actualizado
+    slots = getSlots();
+    const slotDataString = slots[slotIndex];
+    if (!slotDataString) {
+        showError(`Slot ${slotIndex} está vacío.`, output);
+        return;
+    }
+    
+    try {
+        const config = JSON.parse(slotDataString);
+        if (config.type !== 'selectedPanels') {
+            showError(`Slot ${slotIndex} contiene una configuración completa, no un comportamiento conjunto. Usa 'load' o Ctrl+${slotIndex} para cargarlo.`, output);
+            return;
+        }
+        
+        showInfo(`Cargando comportamiento conjunto desde slot ${slotIndex} (${config.panelCount} paneles)...`, output);
+        const success = await loadSelectedPanelsFromSlot(slotIndex);
+        
+        if (success) {
+            showSuccess(`Comportamiento conjunto cargado desde slot ${slotIndex} (${config.panelCount} paneles restaurados)`, output);
+        } else {
+            showError('Error al cargar comportamiento conjunto.', output);
+        }
+    } catch (error) {
+        showError(`Error al procesar slot ${slotIndex}: ${error.message}`, output);
+    }
+}
+
+// Función para dividir un panel horizontalmente con altura 3 y separación 1
+function handleHorizontalCommand(output) {
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para dividir horizontalmente', output);
+        return;
+    }
+    
+    const containerPanel = selectedPanels[0];
+    const currentGridParams = getCurrentGridParams();
+    if (!currentGridParams) {
+        showError('No se pudo obtener la configuración del grid', output);
+        return;
+    }
+    
+    // Calcular las dimensiones del panel contenedor
+    const containerWidth = containerPanel.maxCellIndex.x - containerPanel.minCellIndex.x + 1;
+    const containerHeight = containerPanel.maxCellIndex.y - containerPanel.minCellIndex.y + 1;
+    
+    // Verificar que el contenedor sea lo suficientemente grande (mínimo 4 de altura para al menos un panel de 3 + separación)
+    if (containerHeight < 4) {
+        showError('El panel contenedor debe tener al menos 4 unidades de altura para crear divisiones horizontales', output);
+        return;
+    }
+    
+    const panelHeight = 3; // Altura fija de cada panel
+    const separationHeight = 1; // Separación entre paneles
+    const totalPanelHeight = panelHeight + separationHeight;
+    
+    // Calcular cuántos paneles caben
+    const maxPanels = Math.floor(containerHeight / totalPanelHeight);
+    
+    if (maxPanels === 0) {
+        showError('El panel contenedor es demasiado pequeño para crear divisiones horizontales', output);
+        return;
+    }
+    
+    try {
+        const createdPanels = [];
+        
+        // Crear paneles horizontales
+        for (let i = 0; i < maxPanels; i++) {
+            const minY = containerPanel.minCellIndex.y + (i * totalPanelHeight);
+            const maxY = minY + panelHeight - 1;
+            
+            // Verificar que no se salga del contenedor
+            if (maxY > containerPanel.maxCellIndex.y) {
+                break;
+            }
+            
+            // Crear el panel
+            const panel = createPanelFromBoundingBox({
+                minX: containerPanel.minCellIndex.x,
+                maxX: containerPanel.maxCellIndex.x,
+                minY: minY,
+                maxY: maxY
+            }, currentGridParams);
+            
+            if (panel && panel.group) {
+                createdPanels.push(panel);
+            }
+        }
+        
+        // Eliminar el panel contenedor original
+        if (containerPanel.group) {
+            scene.remove(containerPanel.group);
+            const index = panels.indexOf(containerPanel);
+            if (index > -1) {
+                panels.splice(index, 1);
+            }
+        }
+        
+        showSuccess(`División horizontal completada. Se crearon ${createdPanels.length} paneles de altura 3 con separación 1.`, output);
+        
+        // Mostrar información de los paneles creados
+        const infoDiv = document.createElement('div');
+        infoDiv.innerHTML = `<br>Paneles creados:<br>`;
+        createdPanels.forEach((panel, index) => {
+            infoDiv.innerHTML += `Panel #${panel.orderNumber}: ${containerWidth}x${panelHeight} unidades<br>`;
+        });
+        output.appendChild(infoDiv);
+        
+    } catch (error) {
+        console.error('Error en handleHorizontalCommand:', error);
+        showError('Error al crear la división horizontal', output);
+    }
+}
+
+// Función para mostrar estadísticas genómicas de un modelo
+function handleMultiTestCommand(output) {
+    showInfo('Creando demostración de multiselección biomédica...', output);
+    
+    const currentGridParams = getCurrentGridParams();
+    if (!currentGridParams) {
+        showError('No se pudo obtener la configuración del grid', output);
+        return;
+    }
+    
+    // Crear patrón de laboratorio biomédico
+    const labLayout = [
+        // Fila de muestras genéticas
+        { minX: 2, maxX: 4, minY: 2, maxY: 4 },
+        { minX: 6, maxX: 8, minY: 2, maxY: 4 },
+        { minX: 10, maxX: 12, minY: 2, maxY: 4 },
+        
+        // Fila de cultivos celulares
+        { minX: 3, maxX: 5, minY: 7, maxY: 9 },
+        { minX: 7, maxX: 9, minY: 7, maxY: 9 },
+        
+        // Área de análisis
+        { minX: 5, maxX: 9, minY: 12, maxY: 15 }
+    ];
+    
+    const createdPanels = [];
+    labLayout.forEach((bounds, index) => {
+        const panelData = createPanelFromBoundingBox([bounds], currentGridParams);
+        if (panelData) {
+            createdPanels.push(panelData);
+            // Asignar etiquetas conceptuales
+            if (index < 3) {
+                panelData.demoLabel = `Muestra Genética ${index + 1}`;
+            } else if (index < 5) {
+                panelData.demoLabel = `Cultivo Celular ${index - 2}`;
+            } else {
+                panelData.demoLabel = 'Área de Análisis';
+            }
+        }
+    });
+    
+    if (createdPanels.length > 0) {
+        showSuccess(`
+        🧬 LABORATORIO BIOMÉDICO VIRTUAL CREADO
+        
+        📊 ${createdPanels.length} estaciones de trabajo listas:
+        • P1-P3: Muestras genéticas para análisis comparativo
+        • P4-P5: Cultivos celulares para observación
+        • P6: Área de análisis integrado
+        
+        🔥 PRUEBA ESTAS OPERACIONES:
+        
+        🔹 MULTISELECCIÓN:
+          • <b>Shift + Click</b> en P1, P2, P3 → Seleccionar muestras genéticas
+          • <b>Ctrl + Arrastrar</b> sobre P4-P5 → Añadir cultivos a selección
+          • <b>Click normal</b> en P6 → Selección única de análisis
+        
+        🔹 OPERACIONES EN LOTE:
+          • <b>Flechas ← → ↑ ↓</b> → Mover conjunto seleccionado
+          • <b>Tecla Supr</b> → Eliminar selección completa
+          • <b>"delete selected"</b> → Comando de eliminación
+        
+        🔹 COMANDOS BIOMÉDICOS:
+          • <b>"select 1-3"</b> → Seleccionar muestras genéticas
+          • <b>"select all"</b> → Seleccionar todo el laboratorio
+          • <b>"list"</b> → Ver estado de selección actual
+        
+        💡 APLICACIÓN REAL: Procesamiento batch de datos genómicos
+        `, output);
+        
+        // Añadir información técnica
+        const techDiv = document.createElement('div');
+        techDiv.innerHTML = `
+            <br><b>🔬 APLICACIONES BIOMÉDICAS:</b>
+            <br>• <b>Análisis comparativo:</b> Selecciona múltiples muestras para correlación
+            <br>• <b>Pipeline automatizado:</b> Procesa lotes de datos genómicos
+            <br>• <b>Control de calidad:</b> Mueve grupos de muestras entre fases
+            <br>• <b>Documentación:</b> Rastrea conjuntos de experimentos
+        `;
+        output.appendChild(techDiv);
+    } else {
+        showError('Error al crear el laboratorio virtual', output);
+    }
+}
+
+// Función para demostración avanzada de multiselección
+function handleDemoCommand(output) {
+    showInfo('Iniciando demostración avanzada de multiselección biomédica...', output);
+    
+    const currentGridParams = getCurrentGridParams();
+    if (!currentGridParams) {
+        showError('No se pudo obtener la configuración del grid', output);
+        return;
+    }
+    
+    // Limpiar solo paneles del demo anterior (no teclado)
+    const demoMarkers = panels.filter(p => p.bioType);
+    demoMarkers.forEach(panel => {
+        if (panel.group) {
+            scene.remove(panel.group);
+        }
+        const index = panels.indexOf(panel);
+        if (index > -1) {
+            panels.splice(index, 1);
+        }
+    });
+    
+    // Función optimizada para detectar área del teclado
+    const isKeyboardArea = (minX, maxX, minY, maxY) => {
+        const keyboardPanels = panels.filter(panel => panel.isKeyboardKey);
+        if (keyboardPanels.length === 0) return false;
+        
+        return keyboardPanels.some(panel => {
+            return !(maxX < panel.minCellIndex.x || 
+                     minX > panel.maxCellIndex.x || 
+                     maxY < panel.minCellIndex.y || 
+                     minY > panel.maxCellIndex.y);
+        });
+    };
+    
+    // Función para encontrar áreas libres en TODA la pantalla
+    const findFreeArea = (width, height, attempts = 200) => {
+        const gridSize = currentGridParams.divisions || 24;
+        const usedAreas = createdPanels.map(p => ({
+            minX: p.minCellIndex.x,
+            maxX: p.maxCellIndex.x,
+            minY: p.minCellIndex.y,
+            maxY: p.maxCellIndex.y
+        }));
+        
+        // Detectar límites del teclado para evitarlo
+        const keyboardPanels = panels.filter(panel => panel.isKeyboardKey);
+        let keyboardBounds = null;
+        if (keyboardPanels.length > 0) {
+            keyboardBounds = {
+                minX: Math.min(...keyboardPanels.map(p => p.minCellIndex.x)),
+                maxX: Math.max(...keyboardPanels.map(p => p.maxCellIndex.x)),
+                minY: Math.min(...keyboardPanels.map(p => p.minCellIndex.y)),
+                maxY: Math.max(...keyboardPanels.map(p => p.maxCellIndex.y))
+            };
+        }
+        
+        // BÚSQUEDA SISTEMÁTICA por TODO el grid (no aleatoria)
+        const positions = [];
+        for (let x = 0; x <= gridSize - width; x++) {
+            for (let y = 0; y <= gridSize - height; y++) {
+                positions.push({ x, y });
+            }
+        }
+        
+        // Mezclar posiciones para distribución más natural
+        for (let i = positions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [positions[i], positions[j]] = [positions[j], positions[i]];
+        }
+        
+        // Probar cada posición
+        for (const pos of positions) {
+            const minX = pos.x;
+            const minY = pos.y;
+            const maxX = minX + width - 1;
+            const maxY = minY + height - 1;
+            
+            // Verificar límites del grid
+            if (maxX >= gridSize || maxY >= gridSize || minX < 0 || minY < 0) continue;
+            
+            // Verificar colisión con teclado usando bounds calculados
+            if (keyboardBounds) {
+                const overlapsKeyboard = !(maxX < keyboardBounds.minX || 
+                                          minX > keyboardBounds.maxX || 
+                                          maxY < keyboardBounds.minY || 
+                                          minY > keyboardBounds.maxY);
+                if (overlapsKeyboard) continue;
+            }
+            
+            // Verificar colisión con paneles existentes
+            const hasCollision = panels.some(panel => {
+                if (panel.isKeyboardKey) return false;
+                return !(maxX < panel.minCellIndex.x || 
+                         minX > panel.maxCellIndex.x || 
+                         maxY < panel.minCellIndex.y || 
+                         minY > panel.maxCellIndex.y);
+            });
+            
+            // Verificar colisión con áreas ya creadas en esta sesión
+            const hasCreatedCollision = usedAreas.some(area => {
+                return !(maxX < area.minX || minX > area.maxX || maxY < area.minY || minY > area.maxY);
+            });
+            
+            if (!hasCollision && !hasCreatedCollision) {
+                return { minX, maxX, minY, maxY };
+            }
+        }
+        
+        return null; // No se encontró espacio libre
+    };
+    
+    // Crear layout de investigación biomédica con tamaños variables distribuidos
+    const bioLabModules = [
+        // Análisis genómicos (tamaños pequeños distribuidos)
+        { name: 'BRCA1 Gene', type: 'genomics', size: [2, 2] },
+        { name: 'TP53 Analysis', type: 'genomics', size: [3, 2] },
+        { name: 'KRAS Mutation', type: 'genomics', size: [2, 3] },
+        { name: 'PIK3CA Variant', type: 'genomics', size: [3, 3] },
+        
+        // Cultivos celulares (tamaños medianos distribuidos)
+        { name: 'HeLa Culture', type: 'cell_culture', size: [4, 3] },
+        { name: 'MCF-7 Line', type: 'cell_culture', size: [3, 4] },
+        { name: 'Primary Neurons', type: 'cell_culture', size: [5, 2] },
+        { name: 'Stem Cells', type: 'cell_culture', size: [2, 5] },
+        
+        // Equipamiento de laboratorio (tamaños grandes distribuidos)
+        { name: 'Flow Cytometer', type: 'equipment', size: [5, 4] },
+        { name: 'PCR Station', type: 'equipment', size: [4, 5] },
+        { name: 'Microscopy Hub', type: 'equipment', size: [6, 3] },
+        { name: 'Sequencer', type: 'equipment', size: [3, 6] },
+        
+        // Análisis de datos (tamaños rectangulares grandes)
+        { name: 'Bioinformatics', type: 'analysis', size: [8, 3] },
+        { name: 'Statistical Model', type: 'analysis', size: [6, 5] },
+        { name: 'Results Dashboard', type: 'analysis', size: [7, 4] },
+        { name: 'AI Processing', type: 'analysis', size: [5, 6] }
+    ];
+    
+    const createdPanels = [];
+    const colors = {
+        genomics: '#00ff88',    // Verde para genómica
+        cell_culture: '#ff6600', // Naranja para cultivos
+        equipment: '#0088ff',   // Azul para equipamiento
+        analysis: '#ff0088'     // Rosa para análisis
+    };
+    
+    bioLabModules.forEach((module, index) => {
+        const [width, height] = module.size;
+        const area = findFreeArea(width, height);
+        
+        if (area) {
+                         const panelData = createPanelFromBoundingBox(area, currentGridParams);
+            if (panelData) {
+                createdPanels.push(panelData);
+                
+                // Asignar metadatos biomédicos
+                panelData.bioType = module.type;
+                panelData.bioName = module.name;
+                panelData.bioSize = `${width}x${height}`;
+                panelData.bioColor = colors[module.type];
+                
+                // Añadir un indicador visual del tipo
+                const typeIndicator = module.type.charAt(0).toUpperCase();
+                panelData.typeIndicator = typeIndicator;
+                
+                                 showInfo(`📍 Creado: ${module.name} (${width}x${height}) en [${area.minX},${area.minY}] - [${area.maxX},${area.maxY}]`, output);
+                 
+                 // Debug del panel creado (sin forzar números)
+                 if (panelData.group) {
+                     panelData.group.visible = true;
+                     updatePanelColor(panelData); // Actualizar colores
+                     console.log(`Panel ${panelData.orderNumber} creado en posición:`, panelData.group.position);
+                 }
+            }
+        } else {
+            showInfo(`⚠️ No se pudo colocar: ${module.name} (${width}x${height}) - Sin espacio libre`, output);
+        }
+    });
+    
+    if (createdPanels.length > 0) {
+        showSuccess(`
+        🧬 LABORATORIO BIOMÉDICO DISTRIBUIDO DESPLEGADO
+        
+        📊 ${createdPanels.length} módulos de investigación activos:
+        
+        🧪 MÓDULOS GENÓMICOS (Verde):
+          • Análisis de genes BRCA1, TP53, KRAS
+          • Detección de mutaciones puntuales
+          • Secuenciación de nueva generación
+        
+        🔬 CULTIVOS CELULARES (Naranja):
+          • Líneas celulares inmortalizadas
+          • Cultivos primarios de neuronas
+          • Ensayos de viabilidad celular
+        
+        ⚗️ EQUIPAMIENTO ESPECIALIZADO (Azul):
+          • Citometría de flujo multiparamétrica
+          • Estaciones de PCR en tiempo real
+          • Microscopía avanzada de alta resolución
+        
+        📈 ANÁLISIS COMPUTACIONAL (Rosa):
+          • Pipeline bioinformático completo
+          • Modelos estadísticos complejos
+          • Dashboard de resultados integrados
+        
+        🔥 FUNCIONALIDADES DINÁMICAS:
+        
+        ✨ DISTRIBUCIÓN INTELIGENTE:
+          • Paneles de tamaños variables (2x2 hasta 7x3)
+          • Evita automáticamente el espacio del teclado
+          • Distribución aleatoria en espacio libre
+        
+        🎯 FLUJOS DE TRABAJO ADAPTATIVOS:
+          1. "select" + tipo → Seleccionar por categoría
+          2. Shift + Arrastrar → Multiselección de área
+          3. Flechas → Reorganización espacial inteligente
+          4. "list" → Inventario completo del laboratorio
+          
+        🧬 APLICACIONES BIOMÉDICAS:
+          • Workflow de medicina personalizada
+          • Pipeline de descubrimiento de fármacos
+          • Análisis multi-ómico integrado
+          • Investigación traslacional
+        `, output);
+        
+        // Auto-seleccionar módulos genómicos para empezar
+        // Estadísticas de distribución 
+        const stats = {
+            total: createdPanels.length,
+            attempted: bioLabModules.length,
+            coverage: Math.round((createdPanels.length / bioLabModules.length) * 100)
+        };
+        
+        const typeStats = Object.entries(typeColors).map(([type, _]) => {
+            const count = createdPanels.filter(p => p.bioType === type).length;
+            return `${type}: ${count}`;
+        }).join(', ');
+        
+        showSuccess(
+            `🧬 LABORATORIO EXPANDIDO: ${stats.total}/${stats.attempted} módulos (${stats.coverage}% cobertura) ` +
+            `distribuidos por toda la pantalla - ${typeStats}`, 
+            output
+        );
+        
+        // Diagnóstico completo de paneles creados
+        showInfo(`🔬 DIAGNÓSTICO DE LABORATORIO:`, output);
+        panels.forEach((panel, index) => {
+            if (panel.bioType) {
+                const pos = panel.group ? panel.group.position : 'sin posición';
+                const visible = panel.group ? panel.group.visible : 'no visible';
+                showInfo(`   Panel #${panel.orderNumber}: ${panel.bioName} (${panel.bioSize}) - Pos: ${JSON.stringify(pos)} - Visible: ${visible}`, output);
+            }
+        });
+        
+        setTimeout(() => {
+            const genomicsPanels = createdPanels.filter(p => p.bioType === 'genomics');
+            if (genomicsPanels.length > 0) {
+                genomicsPanels.forEach(panel => {
+                    panel.selected = true;
+                });
+                refreshSelectedPanelsColors();
+                showInfo(`✨ Auto-seleccionados: ${genomicsPanels.length} módulos genómicos para comenzar`, output);
+            }
+        }, 2000);
+        
+        // Mostrar números SOLO en paneles del demo, NO en teclado
+        setTimeout(() => {
+            createdPanels.forEach(panel => {
+                if (panel.bioType) {
+                    panel.showOrderNumber = true;
+                    createPanelOrderLabel(panel);
+                }
+            });
+            showInfo('📊 Números activados solo para módulos del laboratorio', output);
+        }, 1000);
+        
+    } else {
+        showError('Error: No se pudo crear ningún módulo del laboratorio - Grid saturado', output);
+    }
+}
+
+// Función auxiliar para actualizar estadísticas genómicas en un panel existente
+function updateStatgPanelWithModel(panel, modelName, currentGridParams) {
+    // Base de datos de estadísticas genómicas por modelo (copiada de handleStatgCommand)
+    const genomicStats = {
+        corazon: {
+            species: "Homo sapiens (Corazón Humano)",
+            chromosomes: "23 pares (2n=46)",
+            genomeSize: "3.2 Gb",
+            genes: "20,687 genes codificantes",
+            proteins: "20,430 proteínas únicas",
+            gcContent: "41%",
+            repetitiveElements: "45%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,881 tRNA, 45 rRNA",
+            functionalDomains: "Contracción cardíaca, Conducción eléctrica, Metabolismo energético",
+            mutations: "SNPs: 4.3M, Indels: 0.6M",
+            phylogeny: "Primates, Familia Hominidae",
+            biomedical: "Cardiomiopatías, arritmias, insuficiencia cardíaca, modelos de regeneración"
+        },
+        hueso: {
+            species: "Homo sapiens (Tejido Óseo)",
+            chromosomes: "23 pares (2n=46)",
+            genomeSize: "3.2 Gb",
+            genes: "20,687 genes codificantes",
+            proteins: "20,430 proteínas únicas",
+            gcContent: "41%",
+            repetitiveElements: "45%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,881 tRNA, 45 rRNA",
+            functionalDomains: "Osteogénesis, Remodelación ósea, Homeostasis del calcio",
+            mutations: "SNPs: 4.3M, Indels: 0.6M",
+            phylogeny: "Primates, Familia Hominidae",
+            biomedical: "Osteoporosis, Fracturas, Displasia ósea"
+        },
+        axolotl: {
+            species: "Ambystoma mexicanum",
+            chromosomes: "14 pares (2n=28)",
+            genomeSize: "32.4 Gb",
+            genes: "23,251 genes codificantes",
+            proteins: "22,472 proteínas únicas",
+            gcContent: "27.8%",
+            repetitiveElements: "65.8%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "2,341 tRNA, 45 rRNA",
+            functionalDomains: "Regeneración de extremidades, Neotenia, Cicatrización",
+            mutations: "SNPs: 45.7M, Indels: 3.8M",
+            phylogeny: "Anfibios, Familia Ambystomatidae",
+            biomedical: "Medicina regenerativa, Cicatrización de heridas"
+        },
+        discus: {
+            species: "Symphysodon discus",
+            chromosomes: "24 pares (2n=48)",
+            genomeSize: "0.9 Gb",
+            genes: "28,644 genes codificantes",
+            proteins: "26,735 proteínas únicas",
+            gcContent: "40.8%",
+            repetitiveElements: "28.4%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,523 tRNA, 45 rRNA",
+            functionalDomains: "Navegación acuática, Coloración, Cuidado parental",
+            mutations: "SNPs: 12.4M, Indels: 1.1M",
+            phylogeny: "Perciformes, Familia Cichlidae",
+            biomedical: "Modelos de comportamiento social"
+        },
+        dog: {
+            species: "Canis lupus familiaris",
+            chromosomes: "39 pares (2n=78)",
+            genomeSize: "2.41 Gb",
+            genes: "19,856 genes codificantes",
+            proteins: "19,074 proteínas únicas",
+            gcContent: "41.5%",
+            repetitiveElements: "31.2%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,334 tRNA, 45 rRNA",
+            functionalDomains: "Olfato avanzado, Comunicación social, Domesticación",
+            mutations: "SNPs: 58.6M, Indels: 4.2M",
+            phylogeny: "Carnívoros, Familia Canidae",
+            biomedical: "Modelos de cáncer, epilepsia, cardiomiopatía"
+        },
+        acot: {
+            species: "Acotylosaurus arcuatus",
+            chromosomes: "18 pares (2n=36)",
+            genomeSize: "1.8 Gb",
+            genes: "21,334 genes codificantes",
+            proteins: "20,156 proteínas únicas",
+            gcContent: "38.9%",
+            repetitiveElements: "42.1%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,567 tRNA, 45 rRNA",
+            functionalDomains: "Metabolismo herbívoro, Defensa corporal",
+            mutations: "SNPs: 28.9M, Indels: 2.3M",
+            phylogeny: "Dinosauria, Familia Nodosauridae",
+            biomedical: "Paleogenómica, Evolución de armaduras"
+        },
+        tort: {
+            species: "Chelonia mydas (Tortuga Verde)",
+            chromosomes: "26 pares (2n=52)",
+            genomeSize: "2.24 Gb",
+            genes: "21,796 genes codificantes",
+            proteins: "20,623 proteínas únicas",
+            gcContent: "42.3%",
+            repetitiveElements: "39.7%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,445 tRNA, 45 rRNA",
+            functionalDomains: "Longevidad extrema, Navegación magnética, Caparazón",
+            mutations: "SNPs: 35.2M, Indels: 2.7M",
+            phylogeny: "Reptilia, Familia Cheloniidae",
+            biomedical: "Estudios de longevidad, resistencia a cáncer"
+        },
+        ham: {
+            species: "Sus scrofa (Jamón de Cerdo)",
+            chromosomes: "19 pares (2n=38)",
+            genomeSize: "2.8 Gb",
+            genes: "21,640 genes codificantes",
+            proteins: "20,823 proteínas únicas",
+            gcContent: "42.1%",
+            repetitiveElements: "38.5%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,789 tRNA, 45 rRNA",
+            functionalDomains: "Metabolismo lipídico, Desarrollo muscular, Producción cárnica",
+            mutations: "SNPs: 8.9M, Indels: 1.2M",
+            phylogeny: "Artiodáctilos, Familia Suidae",
+            biomedical: "Xenotrasplantes, modelos de obesidad, investigación nutricional"
+        },
+        pollo: {
+            species: "Gallus gallus domesticus",
+            chromosomes: "39 pares (2n=78)",
+            genomeSize: "1.23 Gb",
+            genes: "20,867 genes codificantes",
+            proteins: "17,954 proteínas únicas",
+            gcContent: "41.2%",
+            repetitiveElements: "9.7%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,234 tRNA, 45 rRNA",
+            functionalDomains: "Producción de huevos, Metabolismo rápido, Vuelo limitado",
+            mutations: "SNPs: 19.8M, Indels: 1.4M",
+            phylogeny: "Aves, Familia Phasianidae",
+            biomedical: "Modelos de desarrollo embrionario, vacunas aviares"
+        }
+    };
+
+    // Verificar si el modelo existe
+    if (!genomicStats[modelName]) {
+        console.warn(`Modelo '${modelName}' no encontrado para estadísticas genómicas`);
+        return false;
+    }
+
+    const stats = genomicStats[modelName];
+    
+    // Actualizar datos del panel
+    panel.statgModelName = modelName;
+    
+    // Generar el texto de estadísticas genómicas
+    const statsText = `ESTADÍSTICAS GENÓMICAS - ${modelName.toUpperCase()}
+
+═══════════════════════════════════════════════════════════
+
+INFORMACIÓN TAXONÓMICA
+Especie: ${stats.species}
+Filogenia: ${stats.phylogeny}
+
+ARQUITECTURA GENÓMICA
+Cromosomas: ${stats.chromosomes}
+Tamaño del genoma: ${stats.genomeSize}
+Contenido GC: ${stats.gcContent}
+Elementos repetitivos: ${stats.repetitiveElements}
+
+ANOTACIÓN GÉNICA
+Genes codificantes: ${stats.genes}
+Proteínas únicas: ${stats.proteins}
+Genes mitocondriales: ${stats.mitochondrialGenes}
+Genes de RNA: ${stats.rnaGenes}
+
+VARIACIÓN GENÉTICA
+Mutaciones: ${stats.mutations}
+
+DOMINIOS FUNCIONALES
+${stats.functionalDomains}
+
+APLICACIONES BIOMÉDICAS
+${stats.biomedical}
+
+═══════════════════════════════════════════════════════════
+Datos generados por BioPrint Genomics Suite v2.1
+Actualizado: ${new Date().toLocaleDateString('es-ES')}`;
+    
+    // Establecer el texto en el panel
+    setPanelText(panel, statsText, currentGridParams.cellSize);
+    
+    // Flash visual para indicar la actualización
+    panel.flashProgress = 0;
+    panel.shouldFlash = true;
+    panelsFlashing.add(panel);
+    
+    console.log(`✅ Estadísticas genómicas actualizadas en panel #${panel.orderNumber}: ${modelName} → ${stats.species}`);
+    return true;
+}
+
+// 🧬 FUNCIONES ESPECIALES HOMO PRINTEMPS
+function initializeHomoPrintempsMode(modelPanel, displayPanel, gridParams, cyclicBarPanel) {
+    console.log("🧬 Iniciando modo HOMO PRINTEMPS...");
+    console.log("🧬 ModelPanel:", modelPanel);
+    console.log("🧬 DisplayPanel:", displayPanel);
+    console.log("🧬 CyclicBarPanel:", cyclicBarPanel);
+    
+    try {
+        // 1. Detener rotación y posicionar modelo flatlay
+        setModelToFlatlayPosition(modelPanel, gridParams);
+        
+        // 2. Crear scanline súper visible en el panel del modelo
+        createHomoPrintempsScanline(modelPanel, gridParams, cyclicBarPanel);
+        
+        console.log("🧬 Modo HOMO PRINTEMPS activado completamente");
+    } catch (err) {
+        console.error("Error en HOMO PRINTEMPS:", err);
+    }
+}
+
+function createHomoPrintempsScanline(targetPanel, gridParams, cyclicBarPanel) {
+    console.log("🧬 === CREANDO SCANLINE HOMO PRINTEMPS ===");
+    console.log("🧬 Panel objetivo:", targetPanel.type || "desconocido");
+    console.log("🧬 Panel tiene grupo:", !!targetPanel.group);
+    console.log("🧬 CyclicBarPanel válido:", !!cyclicBarPanel);
+    console.log("🧬 CyclicBarPanel.cycleProgress inicial:", cyclicBarPanel.cycleProgress);
+    
+    // Crear material SÚPER BRILLANTE Y VISIBLE
+    const scanlineMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff, // BLANCO PURO
+        transparent: false,
+        side: THREE.DoubleSide,
+        depthTest: false,
+        depthWrite: false,
+        emissive: 0xffffff, // EMITE LUZ BLANCA
+        emissiveIntensity: 1.0 // INTENSIDAD MÁXIMA
+    });
+    
+    // Calcular dimensiones del panel
+    const panelWidth = (targetPanel.maxCellIndex.x - targetPanel.minCellIndex.x + 1) * gridParams.cellSize;
+    const panelHeight = (targetPanel.maxCellIndex.y - targetPanel.minCellIndex.y + 1) * gridParams.cellSize;
+    
+    // 🧬 SCANLINE ABARCA TODO EL ANCHO DEL PANEL
+    const scanlineWidth = panelWidth; // 100% del ancho del panel, sin reducir
+    const scanlineGeometry = new THREE.PlaneGeometry(scanlineWidth, 0.3); // Altura normal
+    const scanlineMesh = new THREE.Mesh(scanlineGeometry, scanlineMaterial);
+    
+    // Posicionamiento inicial en la parte inferior del panel
+    const startY = -panelHeight / 2;
+    const endY = panelHeight / 2;
+    scanlineMesh.position.set(0, startY, 2.0); // Z=2.0 MUY por encima
+    
+    // Asegurar que esté visible
+    scanlineMesh.visible = true;
+    scanlineMesh.frustumCulled = false; // No hacer culling
+    
+    // Añadir al grupo del panel
+    targetPanel.group.add(scanlineMesh);
+    
+    console.log("🧬 Scanline añadida al grupo del panel");
+    console.log("🧬 Posición inicial:", scanlineMesh.position);
+    console.log("🧬 Dimensiones:", panelWidth * 0.95, "x", 0.3);
+    console.log("🧬 Rango movimiento Y:", startY, "a", endY);
+    console.log("🧬 Material emisivo activado con intensidad máxima");
+    
+    // Variable para controlar la animación
+    let isAnimating = true;
+    
+    // Función de animación simple
+    function animateScanline() {
+        if (!isAnimating) return;
+        
+        try {
+            // Obtener progreso de la barra cíclica
+            const rawProgress = cyclicBarPanel.cycleProgress || 0;
+            const normalizedProgress = rawProgress / 100;
+            
+                         // Calcular nueva posición Y
+             const newY = startY + (endY - startY) * normalizedProgress;
+             scanlineMesh.position.y = newY;
+             
+             // Efecto de parpadeo para máxima visibilidad  
+             const time = Date.now() * 0.01;
+             
+             // Sincronizar efecto voxel del modelo con la scanline
+             updateModelVoxelReveal(targetPanel, newY, time);
+             const pulse = Math.sin(time) * 0.3 + 0.7; // Parpadeo entre 0.4 y 1.0
+             scanlineMaterial.emissiveIntensity = pulse;
+             
+             // 🧬 EFECTO DE ESCALA SOLO EN Y (altura) PARA MANTENER ANCHO COMPLETO
+             const scaleY = 1.0 + Math.sin(time * 1.5) * 0.2; // Pulso vertical más marcado
+             scanlineMesh.scale.set(1.0, scaleY, 1.0); // Solo escalar en altura, mantener ancho completo
+             
+             // Debug cada 30 frames (~2 veces por segundo)
+             if (Date.now() % 500 < 20) {
+                 console.log("🧬 SCANLINE ACTIVA:", {
+                     rawProgress: rawProgress,
+                     normalizedProgress: normalizedProgress,
+                     positionY: newY,
+                     pulse: pulse,
+                     scaleY: scaleY, // 🧬 CORREGIDO: usar scaleY en lugar de scale
+                     visible: scanlineMesh.visible,
+                     inScene: !!scanlineMesh.parent
+                 });
+             }
+            
+            // Continuar animación
+            requestAnimationFrame(animateScanline);
+        } catch (error) {
+            console.error("🧬 Error en animación scanline:", error);
+            isAnimating = false;
+        }
+    }
+    
+    // Iniciar animación inmediatamente
+    animateScanline();
+    
+    // Guardar referencias
+    targetPanel.homoPrintempsScanline = scanlineMesh;
+    targetPanel.homoPrintempsActive = true;
+    
+    console.log("🧬 === SCANLINE HOMO PRINTEMPS COMPLETADA ===");
+    
+    return scanlineMesh;
+}
+
+// Funciones auxiliares para HOMO PRINTEMPS
+
+function setModelToFlatlayPosition(modelPanel, gridParams) {
+    console.log("🧬 Configurando modelo flatlay con revelado voxelizado...");
+    
+    try {
+        // 🧬 MANTENER ROTACIÓN PERO DESDE CENTRO DEL GRID  
+        if (modelPanel && modelPanel.modelData) {
+            // NO detener la rotación, solo marcar el modo especial
+            modelPanel.modelData.isHomoPrintemps = true;
+            // Mantener velocidad de rotación actual o usar una moderada
+            if (!modelPanel.modelData.rotationSpeed) {
+                modelPanel.modelData.rotationSpeed = 0.01; // Velocidad moderada
+            }
+            console.log("🧬 Rotación mantenida en modo HOMO PRINTEMPS con velocidad:", modelPanel.modelData.rotationSpeed);
+        }
+        
+        // Buscar el modelo en el panel
+        const modelGroup = modelPanel.group.children.find(child => 
+            child.userData && child.userData.isModel);
+        
+        if (modelGroup) {
+            // Buscar el grupo isométrico
+            const isoGroup = modelGroup.children.find(child => 
+                child.name === 'IsoGroup');
+            
+            if (isoGroup && isoGroup.children.length > 0) {
+                const model = isoGroup.children[0];
+                
+                console.log("🧬 Modelo encontrado, aplicando transformación flatlay con revelado");
+                
+                // Resetear todas las rotaciones del grupo isométrico
+                isoGroup.rotation.set(0, 0, 0);
+                // 🧬 POSICIONAR EN CENTRO DE LA VISTA DE CÁMARA (0,0,0)
+                isoGroup.position.set(0, 0, 0);
+                
+                // Resetear rotaciones del modelo y orientar de frente
+                model.rotation.set(0, 0, 0);
+                
+                // Calcular bounding box para centrado correcto
+                const bbox = new THREE.Box3().setFromObject(model);
+                const center = new THREE.Vector3();
+                const size = new THREE.Vector3();
+                bbox.getCenter(center);
+                bbox.getSize(size);
+                
+                // 🧬 CALCULAR DIMENSIONES Y CENTRO DEL PANEL
+                const panelWidth = (modelPanel.maxCellIndex.x - modelPanel.minCellIndex.x + 1) * gridParams.cellSize;
+                const panelHeight = (modelPanel.maxCellIndex.y - modelPanel.minCellIndex.y + 1) * gridParams.cellSize;
+                const panelCenterX = -gridParams.halfWidth + (modelPanel.minCellIndex.x + panelWidth/gridParams.cellSize/2) * gridParams.cellSize;
+                const panelCenterY = -gridParams.halfHeight + (modelPanel.minCellIndex.y + panelHeight/gridParams.cellSize/2) * gridParams.cellSize;
+                
+                // 🧬 ESCALADO ADAPTATIVO: TRANSFORMAR EL MODELO A LA MEDIDA DEL PANEL
+                // Calcular el factor de escala para que el modelo use óptimamente el panel
+                const margenSeguridad = 0.85; // Usar 85% del panel para dejar margen visual
+                const espacioDisponibleX = panelWidth * margenSeguridad;
+                const espacioDisponibleY = panelHeight * margenSeguridad;
+                
+                // Calcular factores de escala para X e Y
+                const factorEscalaX = espacioDisponibleX / size.x;
+                const factorEscalaY = espacioDisponibleY / size.y;
+                
+                // Usar el menor factor para mantener proporciones (escalado uniforme)
+                const factorEscalaUniforme = Math.min(factorEscalaX, factorEscalaY);
+                
+                // Aplicar escalado adaptativo
+                model.scale.multiplyScalar(factorEscalaUniforme);
+                
+                // Recalcular bounding box después del escalado adaptativo
+                const scaledBbox = new THREE.Box3().setFromObject(model);
+                const scaledCenter = new THREE.Vector3();
+                scaledBbox.getCenter(scaledCenter);
+                
+                // 🧬 CENTRAR EL MODELO ESCALADO EN EL PANEL
+                const posicionYModelo = -scaledCenter.y;
+                
+                model.position.set(
+                    -scaledCenter.x, // Centrar en X relativo al modelo escalado
+                    posicionYModelo, // Pies tocando la base del panel
+                    -scaledCenter.z + 0.1  // Ligeramente por encima del plano
+                );
+                
+                // 🧬 MOVER EL GRUPO AL CENTRO DEL PANEL (para que rote desde ahí)
+                modelGroup.position.set(panelCenterX, panelCenterY, 0);
+                
+                // Crear efecto de revelado voxelizado
+                createVoxelRevealEffect(model, bbox, panelHeight);
+                
+                // Guardar referencias para el efecto de revelado
+                modelPanel.homoPrintempsModel = model;
+                modelPanel.homoPrintempsBbox = bbox;
+                modelPanel.homoPrintempsPanelHeight = panelHeight;
+                
+                console.log("🧬 Modelo posicionado flatlay con efecto voxel:", {
+                    modelPos: model.position,
+                    bbox: { min: bbox.min, max: bbox.max },
+                    center: center,
+                    panelHeight: panelHeight
+                });
+            } else {
+                console.log("🧬 No se encontró grupo isométrico o modelo");
+            }
+        } else {
+            console.log("🧬 No se encontró grupo de modelo en el panel");
+        }
+    } catch (error) {
+        console.error("🧬 Error en setModelToFlatlayPosition:", error);
+    }
+}
+
+function createVoxelRevealEffect(model, bbox, panelHeight) {
+    console.log("🧬 Creando efecto de revelado voxelizado...");
+    
+    // Crear shader material personalizado para el efecto de revelado
+    const voxelShaderMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+            scanlineY: { value: -panelHeight/2 }, // Posición Y de la scanline
+            panelMinY: { value: -panelHeight/2 }, // 🧬 USAR RANGO DEL PANEL
+            panelMaxY: { value: panelHeight/2 },  // 🧬 USAR RANGO DEL PANEL
+            voxelSize: { value: 24.0 }, // 🧬 VOXELES MONSTRUOSOS PARA MÁXIMA VISIBILIDAD
+            time: { value: 0.0 },
+            opacity: { value: 1.0 },
+            progress: { value: 0.0 } // 🧬 NUEVO: progreso de impresión para resolución
+        },
+        vertexShader: `
+            varying vec3 vWorldPosition;
+            varying vec3 vPosition;
+            
+            void main() {
+                vPosition = position;
+                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                vWorldPosition = worldPosition.xyz;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float scanlineY;
+            uniform float panelMinY; // 🧬 RANGO DEL PANEL EN LUGAR DEL MODELO
+            uniform float panelMaxY; // 🧬 RANGO DEL PANEL EN LUGAR DEL MODELO
+            uniform float voxelSize;
+            uniform float time;
+            uniform float opacity;
+            uniform float progress; // 🧬 Progreso de impresión (0.0 a 1.0)
+            
+            varying vec3 vWorldPosition;
+            varying vec3 vPosition;
+            
+            void main() {
+                // 🧬 REVELAR TODO LO QUE ESTÉ DEBAJO DE LA SCANLINE EN EL PANEL
+                float revealThreshold = scanlineY + 0.1; // Offset pequeño para suavizar
+                
+                // Solo mostrar partes que estén por debajo de la scanline
+                if (vWorldPosition.y > revealThreshold) {
+                    discard;
+                }
+                
+                // 🧬 ASEGURAR QUE SE PROCESA TODO EL RANGO DEL PANEL
+                if (vWorldPosition.y < panelMinY - 1.0 || vWorldPosition.y > panelMaxY + 1.0) {
+                    discard; // Fuera del rango del panel
+                }
+                
+                // 🧬 RESOLUCIÓN PROGRESIVA: voxelSize disminuye MUY LENTAMENTE
+                float minVoxelSize = 4.5;  // 🧬 RESOLUCIÓN FINAL GIGANTESCA (el triple: 1.5 * 3)
+                float maxVoxelSize = 24.0; // 🧬 VOXELES INICIALES MONSTRUOSOS (el triple: 8.0 * 3)
+                
+                // 🧬 CURVA SÚPER LENTA: mantiene blocky el 80% del tiempo
+                float slowProgress = progress * progress * progress; // Curva cúbica = muy lenta
+                slowProgress = slowProgress * 0.6; // Solo usar 60% del rango para cambiar más lento
+                
+                float currentVoxelSize = mix(maxVoxelSize, minVoxelSize, slowProgress);
+                
+                // 🧬 EFECTO VOXELIZADO MUY VISIBLE
+                vec3 voxelPos = floor(vPosition / currentVoxelSize) * currentVoxelSize;
+                
+                // 🧬 CREAR BORDES DE VOXEL SÚPER MARCADOS 
+                vec3 voxelCenter = voxelPos + currentVoxelSize * 0.5;
+                vec3 distanceFromCenter = abs(vPosition - voxelCenter);
+                float edgeDistance = max(max(distanceFromCenter.x, distanceFromCenter.y), distanceFromCenter.z);
+                float voxelEdge = smoothstep(currentVoxelSize * 0.2, currentVoxelSize * 0.4, edgeDistance); // Bordes más gruesos
+                
+                // 🧬 COLORES VOXEL MUY CONTRASTANTES
+                float voxelNoise = sin(voxelPos.x * 5.0) * sin(voxelPos.y * 5.0) * sin(voxelPos.z * 5.0);
+                
+                // 🧬 COLORES VOXEL MUY DRAMÁTICOS
+                float distanceToScanline = abs(vWorldPosition.y - scanlineY);
+                float glowIntensity = 1.0 - smoothstep(0.0, 0.5, distanceToScanline);
+                
+                // 🧬 COLORES VOXEL ALTERNADOS (como bloques de Minecraft)
+                float voxelColorCode = mod(voxelPos.x + voxelPos.y + voxelPos.z, 3.0);
+                vec3 voxelColor1 = vec3(0.2, 0.8, 1.0); // Cyan biomédico
+                vec3 voxelColor2 = vec3(1.0, 0.3, 0.8); // Rosa biomédico  
+                vec3 voxelColor3 = vec3(0.8, 1.0, 0.2); // Verde biomédico
+                
+                vec3 baseVoxelColor = voxelColor1;
+                if (voxelColorCode < 1.0) baseVoxelColor = voxelColor1;
+                else if (voxelColorCode < 2.0) baseVoxelColor = voxelColor2;
+                else baseVoxelColor = voxelColor3;
+                
+                // 🧬 EFECTO DE BRILLO EN LA SCANLINE
+                vec3 glowColor = vec3(1.0, 1.0, 1.0); // Blanco brillante
+                vec3 finalColor = mix(baseVoxelColor, glowColor, glowIntensity * 0.8);
+                
+                // 🧬 INTENSIDAD DE VOXEL SE MANTIENE CASI SIEMPRE
+                float voxelIntensity = 1.0 - progress * 0.1; // Mantener blocky casi todo el tiempo
+                
+                // 🧬 BORDES DE VOXEL SÚPER DRAMÁTICOS
+                finalColor = mix(finalColor * 0.1, finalColor, voxelEdge); // Oscurecer bordes mucho más
+                
+                float voxelAlpha = 0.9 + voxelNoise * 0.3 * voxelIntensity;
+                
+                gl_FragColor = vec4(finalColor, voxelAlpha * opacity);
+            }
+        `,
+        transparent: true,
+        side: THREE.DoubleSide
+    });
+    
+    // 🧬 APLICAR EL MATERIAL VOXEL A TODOS LOS MESHES DEL MODELO
+    console.log("🧬 Aplicando material voxel a todos los meshes...");
+    
+    // Función recursiva para aplicar material a todos los meshes
+    function applyVoxelMaterialToModel(object) {
+        if (object.isMesh && object.geometry) {
+            console.log("🧬 Aplicando material voxel a mesh:", object.name || "sin nombre");
+            // Guardar material original si no existe
+            if (!object.originalMaterial) {
+                object.originalMaterial = object.material;
+            }
+            // Aplicar material voxel
+            object.material = voxelShaderMaterial.clone(); // Clonar para cada mesh
+        }
+        
+        // Aplicar recursivamente a todos los hijos
+        if (object.children && object.children.length > 0) {
+            object.children.forEach(child => {
+                applyVoxelMaterialToModel(child);
+            });
+        }
+    }
+    
+    // Aplicar a todo el modelo
+    applyVoxelMaterialToModel(model);
+    
+    // Guardar referencia al shader principal
+    model.homoPrintempsShader = voxelShaderMaterial;
+    
+    console.log("🧬 Efecto voxel aplicado al modelo");
+}
+
+function updateModelVoxelReveal(targetPanel, scanlineY, time, progress = 0.0) {
+    // Actualizar el shader del modelo con la posición actual de la scanline
+    if (targetPanel.homoPrintempsModel) {
+        
+        // 🧬 CALCULAR PROGRESO BASADO EN LA POSICIÓN DE LA SCANLINE
+        const modelBbox = targetPanel.homoPrintempsBbox;
+        const panelHeight = targetPanel.homoPrintempsPanelHeight;
+        
+        if (modelBbox && panelHeight) {
+            // 🧬 USAR EL RANGO COMPLETO DEL PANEL PARA EL PROGRESO
+            const panelBottom = -panelHeight / 2;
+            const panelTop = panelHeight / 2;
+            const scanlineProgress = Math.max(0, Math.min(1, 
+                (scanlineY - panelBottom) / (panelTop - panelBottom)
+            ));
+            progress = scanlineProgress;
+            
+            // Debug mejorado
+            if (Date.now() % 2000 < 20) {
+                console.log("🧬 PROGRESO VOXEL:", {
+                    scanlineY: scanlineY,
+                    panelBottom: panelBottom,
+                    panelTop: panelTop,
+                    progress: progress,
+                    modelBbox: { min: modelBbox.min.y, max: modelBbox.max.y }
+                });
+            }
+        }
+        
+        // 🧬 ACTUALIZAR TODOS LOS SHADERS VOXEL DEL MODELO
+        function updateVoxelShader(object) {
+            if (object.isMesh && object.material && 
+                object.material.uniforms && object.material.uniforms.scanlineY) {
+                
+                // Actualizar uniforms del shader voxel
+                object.material.uniforms.scanlineY.value = scanlineY;
+                object.material.uniforms.time.value = time;
+                object.material.uniforms.progress.value = progress;
+            }
+            
+            // Aplicar recursivamente a todos los hijos
+            if (object.children && object.children.length > 0) {
+                object.children.forEach(child => {
+                    updateVoxelShader(child);
+                });
+            }
+        }
+        
+        // Aplicar actualización a todo el modelo
+        updateVoxelShader(targetPanel.homoPrintempsModel);
+        
+        // Debug ocasional
+        if (Date.now() % 1000 < 20) {
+            console.log("🧬 Actualizando revelado voxel - ScanlineY:", scanlineY, "Progress:", progress);
+        }
+    }
+}
+
+function handleStatgCommand(args, output) {
+    const selectedPanels = panels.filter(p => p.selected);
+    
+    if (selectedPanels.length === 0) {
+        showError('Seleccione un panel para mostrar las estadísticas genómicas', output);
+        return;
+    }
+    
+    if (selectedPanels.length > 1) {
+        showError('Seleccione solo un panel para mostrar las estadísticas genómicas', output);
+        return;
+    }
+    
+    const panel = selectedPanels[0];
+    
+    // 🔥 OBTENER MODELO AUTOMÁTICAMENTE DEL ÚLTIMO CLICKEADO EN MODELS
+    let modelName;
+    
+    if (args.length > 0) {
+        // Si se especifica un modelo manualmente, usarlo (retrocompatibilidad)
+        modelName = args[0].toLowerCase();
+        console.log(`📋 Usando modelo especificado manualmente: ${modelName}`);
+    } else {
+        // Usar el último modelo clickeado desde la rejilla models
+        modelName = lastClickedModelFromGrid.name;
+        console.log(`📋 Usando último modelo clickeado desde rejilla models: ${modelName}`);
+        
+        if (!modelName || modelName === 'corazon') {
+            showInfo(`Usando modelo por defecto: ${modelName}. Para cambiar, haz click en un modelo de la rejilla 'models' primero.`, output);
+        } else {
+            showInfo(`Cargando estadísticas del modelo seleccionado: ${modelName}`, output);
+        }
+    }
+    const currentGridParams = getCurrentGridParams();
+    
+    if (!currentGridParams) {
+        showError('No se pudo obtener la configuración del grid', output);
+        return;
+    }
+    
+    // Base de datos de estadísticas genómicas por modelo
+    const genomicStats = {
+        corazon: {
+            species: "Homo sapiens (Corazón Humano)",
+            chromosomes: "23 pares (2n=46)",
+            genomeSize: "3.2 Gb",
+            genes: "20,687 genes codificantes",
+            proteins: "20,430 proteínas únicas",
+            gcContent: "41%",
+            repetitiveElements: "45%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,881 tRNA, 45 rRNA",
+            functionalDomains: "Contracción cardíaca, Conducción eléctrica, Metabolismo energético",
+            mutations: "SNPs: 4.3M, Indels: 0.6M",
+            phylogeny: "Primates, Familia Hominidae",
+            biomedical: "Cardiomiopatías, arritmias, insuficiencia cardíaca, modelos de regeneración"
+        },
+        hueso: {
+            species: "Homo sapiens (Tejido Óseo)",
+            chromosomes: "23 pares (2n=46)",
+            genomeSize: "3.2 Gb",
+            genes: "20,687 genes codificantes",
+            proteins: "20,430 proteínas únicas",
+            gcContent: "41%",
+            repetitiveElements: "45%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,881 tRNA, 45 rRNA",
+            functionalDomains: "Osteogénesis, Remodelación ósea, Homeostasis del calcio",
+            mutations: "SNPs: 4.3M, Indels: 0.6M",
+            phylogeny: "Primates, Familia Hominidae",
+            biomedical: "Osteoporosis, Fracturas, Displasia ósea"
+        },
+        axolotl: {
+            species: "Ambystoma mexicanum",
+            chromosomes: "14 pares (2n=28)",
+            genomeSize: "32.4 Gb",
+            genes: "23,251 genes codificantes",
+            proteins: "22,472 proteínas únicas",
+            gcContent: "27.8%",
+            repetitiveElements: "65.8%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "2,341 tRNA, 45 rRNA",
+            functionalDomains: "Regeneración de extremidades, Neotenia, Cicatrización",
+            mutations: "SNPs: 45.7M, Indels: 3.8M",
+            phylogeny: "Anfibios, Familia Ambystomatidae",
+            biomedical: "Medicina regenerativa, Cicatrización de heridas"
+        },
+        discus: {
+            species: "Symphysodon discus",
+            chromosomes: "24 pares (2n=48)",
+            genomeSize: "0.9 Gb",
+            genes: "28,644 genes codificantes",
+            proteins: "26,735 proteínas únicas",
+            gcContent: "40.8%",
+            repetitiveElements: "28.4%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,523 tRNA, 45 rRNA",
+            functionalDomains: "Navegación acuática, Coloración, Cuidado parental",
+            mutations: "SNPs: 12.4M, Indels: 1.1M",
+            phylogeny: "Perciformes, Familia Cichlidae",
+            biomedical: "Modelos de comportamiento social"
+        },
+        dog: {
+            species: "Canis lupus familiaris",
+            chromosomes: "39 pares (2n=78)",
+            genomeSize: "2.41 Gb",
+            genes: "19,856 genes codificantes",
+            proteins: "19,074 proteínas únicas",
+            gcContent: "41.5%",
+            repetitiveElements: "31.2%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,334 tRNA, 45 rRNA",
+            functionalDomains: "Olfato avanzado, Comunicación social, Domesticación",
+            mutations: "SNPs: 58.6M, Indels: 4.2M",
+            phylogeny: "Carnívoros, Familia Canidae",
+            biomedical: "Modelos de cáncer, epilepsia, cardiomiopatía"
+        },
+        acot: {
+            species: "Acotylosaurus arcuatus",
+            chromosomes: "18 pares (2n=36)",
+            genomeSize: "1.8 Gb",
+            genes: "21,334 genes codificantes",
+            proteins: "20,156 proteínas únicas",
+            gcContent: "38.9%",
+            repetitiveElements: "42.1%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,567 tRNA, 45 rRNA",
+            functionalDomains: "Metabolismo herbívoro, Defensa corporal",
+            mutations: "SNPs: 28.9M, Indels: 2.3M",
+            phylogeny: "Dinosauria, Familia Nodosauridae",
+            biomedical: "Paleogenómica, Evolución de armaduras"
+        },
+        tort: {
+            species: "Chelonia mydas (Tortuga Verde)",
+            chromosomes: "26 pares (2n=52)",
+            genomeSize: "2.24 Gb",
+            genes: "21,796 genes codificantes",
+            proteins: "20,623 proteínas únicas",
+            gcContent: "42.3%",
+            repetitiveElements: "39.7%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,445 tRNA, 45 rRNA",
+            functionalDomains: "Longevidad extrema, Navegación magnética, Caparazón",
+            mutations: "SNPs: 35.2M, Indels: 2.7M",
+            phylogeny: "Reptilia, Familia Cheloniidae",
+            biomedical: "Estudios de longevidad, resistencia a cáncer"
+        },
+        ham: {
+            species: "Sus scrofa (Jamón de Cerdo)",
+            chromosomes: "19 pares (2n=38)",
+            genomeSize: "2.8 Gb",
+            genes: "21,640 genes codificantes",
+            proteins: "20,823 proteínas únicas",
+            gcContent: "42.1%",
+            repetitiveElements: "38.5%",
+            mitochondrialGenes: "37 genes",
+            rnaGenes: "1,789 tRNA, 45 rRNA",
+            functionalDomains: "Metabolismo lipídico, Desarrollo muscular, Producción cárnica",
+            mutations: "SNPs: 8.9M, Indels: 1.2M",
+            phylogeny: "Artiodáctilos, Familia Suidae",
+            biomedical: "Xenotrasplantes, modelos de obesidad, investigación nutricional"
+        },
+                 pollo: {
+             species: "Gallus gallus domesticus",
+             chromosomes: "39 pares (2n=78)",
+             genomeSize: "1.23 Gb",
+             genes: "20,867 genes codificantes",
+             proteins: "17,954 proteínas únicas",
+             gcContent: "41.2%",
+             repetitiveElements: "9.7%",
+             mitochondrialGenes: "37 genes",
+             rnaGenes: "1,234 tRNA, 45 rRNA",
+             functionalDomains: "Producción de huevos, Metabolismo rápido, Vuelo limitado",
+             mutations: "SNPs: 19.8M, Indels: 1.4M",
+             phylogeny: "Aves, Familia Phasianidae",
+             biomedical: "Modelos de desarrollo embrionario, vacunas aviares"
+         }
+    };
+    
+    // Verificar si el modelo existe
+    if (!genomicStats[modelName]) {
+        showError(`Modelo '${modelName}' no encontrado. Modelos disponibles: ${Object.keys(genomicStats).join(', ')}`, output);
+        return;
+    }
+    
+    const stats = genomicStats[modelName];
+    
+    // Marcar el panel como contenedor de texto y estadísticas genómicas
+    panel.hasText = true;
+    panel.isStatgPanel = true; // NUEVO: Identificar como panel de estadísticas genómicas
+    panel.statgModelName = modelName; // NUEVO: Guardar el modelo actual
+    
+    // Crear o actualizar el contenedor de texto
+    createPanelText(panel, currentGridParams.cellSize);
+    
+    // Generar el texto de estadísticas genómicas
+    const statsText = `ESTADÍSTICAS GENÓMICAS - ${modelName.toUpperCase()}
+
+═══════════════════════════════════════════════════════════
+
+INFORMACIÓN TAXONÓMICA
+Especie: ${stats.species}
+Filogenia: ${stats.phylogeny}
+
+ARQUITECTURA GENÓMICA
+Cromosomas: ${stats.chromosomes}
+Tamaño del genoma: ${stats.genomeSize}
+Contenido GC: ${stats.gcContent}
+Elementos repetitivos: ${stats.repetitiveElements}
+
+ANOTACIÓN GÉNICA
+Genes codificantes: ${stats.genes}
+Proteínas únicas: ${stats.proteins}
+Genes mitocondriales: ${stats.mitochondrialGenes}
+Genes de RNA: ${stats.rnaGenes}
+
+VARIACIÓN GENÉTICA
+Mutaciones: ${stats.mutations}
+
+DOMINIOS FUNCIONALES
+${stats.functionalDomains}
+
+APLICACIONES BIOMÉDICAS
+${stats.biomedical}
+
+═══════════════════════════════════════════════════════════
+Datos generados por BioPrint Genomics Suite v2.1
+Actualizado: ${new Date().toLocaleDateString('es-ES')}`;
+    
+    // Establecer el texto en el panel
+    setPanelText(panel, statsText, currentGridParams.cellSize);
+    
+    showSuccess(`Estadísticas genómicas de ${modelName} (${stats.species}) cargadas en el panel seleccionado`, output);
+    
+    // Mostrar resumen en la terminal
+    const summaryDiv = document.createElement('div');
+    summaryDiv.innerHTML = `
+        <br>📊 Resumen para ${stats.species}:
+        <br>🧬 Cromosomas: ${stats.chromosomes}
+        <br>💾 Genoma: ${stats.genomeSize}
+        <br>🔬 Genes: ${stats.genes}
+        <br>🎯 Especialización: ${stats.functionalDomains.split(',')[0]}
+    `;
+    output.appendChild(summaryDiv);
 }

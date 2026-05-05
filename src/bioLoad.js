@@ -127,6 +127,114 @@ export function createProgressPanel(panel, currentGridParams) {
     return progressPanel;
 }
 
+// Crear un panel para la barra de progreso cíclica
+export function createCyclicProgressPanel(panel, currentGridParams) {
+    const cyclicPanel = {
+        group: null,
+        minCellIndex: { 
+            x: panel.minCellIndex.x, 
+            y: panel.maxCellIndex.y + 1  // 1 unidad por encima de la barra principal
+        },
+        maxCellIndex: { 
+            x: panel.maxCellIndex.x, 
+            y: panel.maxCellIndex.y + 1
+        },
+        orderNumber: panel.orderNumber + 2,
+        hasText: true,
+        cycleProgress: 0,
+        cycleSpeed: 2  // Velocidad de llenado (% por frame)
+    };
+    
+    // Crear canvas para la barra de progreso cíclica
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = LOAD_CONFIG.width;
+    canvas.height = LOAD_CONFIG.height / 2;  // Mitad de altura que la barra principal
+    
+    // Crear textura y material
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.encoding = THREE.sRGBEncoding;
+    texture.repeat.set(1, 1);
+    texture.offset.set(0, 0);
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    
+    const progressMaterial = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide
+    });
+    
+    // Función para actualizar la barra cíclica
+    function updateCyclicBar() {
+        // Incrementar y reiniciar si es necesario
+        cyclicPanel.cycleProgress += cyclicPanel.cycleSpeed;
+        if (cyclicPanel.cycleProgress > 100) {
+            cyclicPanel.cycleProgress = 0;
+        }
+        
+        // Dibujar la barra cíclica
+        updateProgressBar(ctx, canvas.width, canvas.height, cyclicPanel.cycleProgress, 0.5);
+        texture.needsUpdate = true;
+    }
+    
+    // Asignar función de actualización
+    cyclicPanel.updateCyclicBar = updateCyclicBar;
+    
+    return cyclicPanel;
+}
+
+// Función simplificada para actualizar la barra de progreso en un canvas
+export function updateProgressBar(ctx, width, height, progress, pulse = 0) {
+    ctx.clearRect(0, 0, width, height);
+    
+    // Dibujar fondo
+    ctx.fillStyle = LOAD_CONFIG.colors.background;
+    ctx.fillRect(0, 0, width, height);
+    
+    // Calcular ancho de progreso (sin usar padding para ocupar todo el ancho)
+    const progressWidth = Math.floor(width * (progress / 100));
+    
+    // Crear gradiente para la barra
+    const gradient = ctx.createLinearGradient(
+        0, 0, 
+        progressWidth, 0
+    );
+    const baseOpacity = 0.6 + pulse * 0.2;
+    gradient.addColorStop(0, LOAD_CONFIG.colors.progressStart.replace('0.8', baseOpacity));
+    gradient.addColorStop(1, LOAD_CONFIG.colors.progressEnd.replace('0.8', baseOpacity));
+    
+    // Dibujar barra de progreso (sin padding)
+    ctx.fillStyle = gradient;
+    ctx.fillRect(
+        0, 
+        0, 
+        progressWidth, 
+        height
+    );
+    
+    // Efecto de brillo en el borde
+    if (progressWidth > 0) {
+        const glowWidth = Math.min(8, progressWidth / 4);
+        const glowGradient = ctx.createLinearGradient(
+            progressWidth - glowWidth, 0, 
+            progressWidth + glowWidth, 0
+        );
+        glowGradient.addColorStop(0, LOAD_CONFIG.colors.glow);
+        glowGradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+        ctx.fillStyle = glowGradient;
+        ctx.fillRect(
+            progressWidth - glowWidth, 
+            0, 
+            glowWidth * 2, 
+            height
+        );
+    }
+    
+    // Ya no dibujamos el porcentaje ni las líneas de orilla
+}
+
 // Limpiar recursos del panel de progreso
 export function cleanupProgressPanel(progressPanel, scene, panels) {
     if (progressPanel.group) {

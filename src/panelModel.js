@@ -1,19 +1,104 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 
 // Estado global para modelos
 const panelModelState = new Map();
 const modelCache = new Map();
-const loader = new OBJLoader();
+const objLoader = new OBJLoader();
+const fbxLoader = new FBXLoader();
 
-// Constantes para vista isométrica
+// Constantes para vista isométrica ajustada para modelos altos
 const ISO_ANGLE = -Math.PI / 4; // -45 grados
-const MODEL_FORWARD_OFFSET = -2; // Cambiado a negativo para mover hacia atrás
+const MODEL_FORWARD_OFFSET = -1.5; // Reducido para dar más espacio vertical
 
 // Constantes para rotación
 const DEFAULT_ROTATION_SPEED = 0.005;
 const MIN_ROTATION_SPEED = 0.001;
 const MAX_ROTATION_SPEED = 0.1;
+
+// Objetos reutilizables para evitar allocaciones en cada frame
+const _tempVector3 = new THREE.Vector3();
+const _tempVector3_2 = new THREE.Vector3();
+const _tempVector3_3 = new THREE.Vector3();
+const _tempMatrix4 = new THREE.Matrix4();
+
+// Función auxiliar para calcular posiciones deformadas de un SkinnedMesh (optimizada)
+function computeDeformedPositions(skinnedMesh) {
+    const geometry = skinnedMesh.geometry;
+    const skeleton = skinnedMesh.skeleton;
+    
+    if (!skeleton || !geometry.attributes.position) return null;
+    
+    const positions = geometry.attributes.position;
+    const skinIndex = geometry.attributes.skinIndex;
+    const skinWeight = geometry.attributes.skinWeight;
+    
+    if (!skinIndex || !skinWeight) return null;
+    
+    // Actualizar skeleton (más eficiente que actualizar cada bone individualmente)
+    skeleton.update();
+    
+    const deformedPositions = new Float32Array(positions.count * 3);
+    const boneMatrices = skeleton.boneMatrices;
+    const bindMatrix = skinnedMesh.bindMatrix;
+    const bindMatrixInverse = skinnedMesh.bindMatrixInverse;
+    
+    // Procesar vértices optimizado para mejor cache locality
+    for (let i = 0; i < positions.count; i++) {
+        // Leer posición directamente del buffer
+        const px = positions.getX(i);
+        const py = positions.getY(i);
+        const pz = positions.getZ(i);
+        
+        // Aplicar bindMatrix directamente (sin clonar)
+        _tempVector3.set(px, py, pz);
+        _tempVector3.applyMatrix4(bindMatrix);
+        const bx = _tempVector3.x;
+        const by = _tempVector3.y;
+        const bz = _tempVector3.z;
+        
+        // Inicializar acumulador
+        let vx = 0, vy = 0, vz = 0;
+        
+        // Leer índices y pesos de skinning
+        const skinIndices = new THREE.Vector4();
+        const skinWeights = new THREE.Vector4();
+        skinIndices.fromBufferAttribute(skinIndex, i);
+        skinWeights.fromBufferAttribute(skinWeight, i);
+        
+        // Procesar hasta 4 bones por vértice
+        for (let j = 0; j < 4; j++) {
+            const boneIndex = skinIndices.getComponent(j);
+            const weight = skinWeights.getComponent(j);
+            
+            if (weight > 0 && boneIndex >= 0 && boneIndex < skeleton.bones.length) {
+                // Obtener matriz del bone directamente del array
+                const boneMatrixOffset = boneIndex * 16;
+                _tempMatrix4.fromArray(boneMatrices, boneMatrixOffset);
+                
+                // Aplicar transformación (reutilizar vector temporal)
+                _tempVector3_2.set(bx, by, bz);
+                _tempVector3_2.applyMatrix4(_tempMatrix4);
+                
+                // Acumular con peso
+                vx += _tempVector3_2.x * weight;
+                vy += _tempVector3_2.y * weight;
+                vz += _tempVector3_2.z * weight;
+            }
+        }
+        
+        // Aplicar bindMatrixInverse
+        _tempVector3_3.set(vx, vy, vz);
+        _tempVector3_3.applyMatrix4(bindMatrixInverse);
+        
+        deformedPositions[i * 3] = _tempVector3_3.x;
+        deformedPositions[i * 3 + 1] = _tempVector3_3.y;
+        deformedPositions[i * 3 + 2] = _tempVector3_3.z;
+    }
+    
+    return deformedPositions;
+}
 
 // Función para cargar y ajustar un modelo a un panel
 export async function loadModelToPanel(panel, modelUrl, gridSize) {
@@ -65,14 +150,141 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
             panelModelState.delete(panel);
         }
 
+        // Detectar tipo de archivo por extensión (necesario para todo el scope)
+        const fileExtension = modelUrl.toLowerCase().split('.').pop();
+
+        // Función para clonar correctamente modelos FBX con SkinnedMesh
+        function cloneFBXModel(originalModel) {
+            const clonedModel = originalModel.clone();
+            
+            // Recopilar todos los SkinnedMesh del modelo original en orden
+            const originalSkinnedMeshes = [];
+            originalModel.traverse((child) => {
+                if (child instanceof THREE.SkinnedMesh && child.skeleton) {
+                    originalSkinnedMeshes.push(child);
+                }
+            });
+            
+            // Recopilar todos los SkinnedMesh del modelo clonado en el mismo orden
+            const clonedSkinnedMeshes = [];
+            clonedModel.traverse((child) => {
+                if (child instanceof THREE.SkinnedMesh) {
+                    clonedSkinnedMeshes.push(child);
+                }
+            });
+            
+            // Para cada par de SkinnedMesh (original y clonado), clonar el skeleton
+            originalSkinnedMeshes.forEach((originalMesh, index) => {
+                if (index < clonedSkinnedMeshes.length) {
+                    const clonedMesh = clonedSkinnedMeshes[index];
+                    const originalSkeleton = originalMesh.skeleton;
+                    
+                    // Crear nuevo skeleton
+                    const clonedSkeleton = new THREE.Skeleton([]);
+                    
+                    // Mapa para relacionar bones originales con clonados
+                    const boneMap = new Map();
+                    
+                    // Clonar todos los bones
+                    clonedSkeleton.bones = originalSkeleton.bones.map((originalBone) => {
+                        const clonedBone = originalBone.clone();
+                        boneMap.set(originalBone, clonedBone);
+                        return clonedBone;
+                    });
+                    
+                    // Reconstruir la jerarquía de bones
+                    clonedSkeleton.bones.forEach((clonedBone, boneIndex) => {
+                        const originalBone = originalSkeleton.bones[boneIndex];
+                        
+                        // Limpiar hijos
+                        clonedBone.children = [];
+                        
+                        // Restaurar la jerarquía padre-hijo
+                        if (originalBone.parent && boneMap.has(originalBone.parent)) {
+                            const clonedParent = boneMap.get(originalBone.parent);
+                            clonedBone.parent = clonedParent;
+                            clonedParent.children.push(clonedBone);
+                        }
+                        
+                        // Copiar bindMatrixInverse
+                        clonedBone.bindMatrixInverse.copy(originalBone.bindMatrixInverse);
+                    });
+                    
+                    // Copiar bindMatrix y bindMatrixInverse del mesh original
+                    if (originalMesh.bindMatrix) {
+                        clonedMesh.bindMatrix.copy(originalMesh.bindMatrix);
+                    }
+                    if (originalMesh.bindMatrixInverse) {
+                        clonedMesh.bindMatrixInverse.copy(originalMesh.bindMatrixInverse);
+                    }
+                    
+                    // Vincular el skeleton clonado al mesh clonado
+                    clonedMesh.bind(clonedSkeleton, clonedMesh.bindMatrix);
+                    
+                    console.log(`Skeleton clonado y vinculado para SkinnedMesh: ${clonedMesh.name || 'sin nombre'}, bones: ${clonedSkeleton.bones.length}`);
+                }
+            });
+            
+            return clonedModel;
+        }
+        
         // Intentar obtener modelo del cache primero
         let model;
         if (modelCache.has(modelUrl)) {
             console.log('Usando modelo en caché:', modelUrl);
-            model = modelCache.get(modelUrl).clone();
+            // Usar función de clonado personalizada para FBX
+            if (fileExtension === 'fbx') {
+                model = cloneFBXModel(modelCache.get(modelUrl));
+            } else {
+                model = modelCache.get(modelUrl).clone();
+            }
         } else {
             console.log('Cargando modelo desde URL:', modelUrl);
+            
             try {
+                if (fileExtension === 'fbx') {
+                    // Cargar archivo FBX (binario)
+                    model = await new Promise((resolve, reject) => {
+                        fbxLoader.load(
+                            modelUrl,
+                            (loadedModel) => {
+                                console.log('Modelo FBX cargado exitosamente');
+                                console.log('  Tipo:', loadedModel.type);
+                                console.log('  Hijos:', loadedModel.children.length);
+                                console.log('  Animaciones:', loadedModel.animations ? loadedModel.animations.length : 0);
+                                
+                                // Log de la estructura del modelo
+                                let childCount = 0;
+                                let meshCount = 0;
+                                let skinnedMeshCount = 0;
+                                loadedModel.traverse((child) => {
+                                    childCount++;
+                                    if (child instanceof THREE.Mesh) {
+                                        meshCount++;
+                                        console.log(`  - Mesh: ${child.name || 'sin nombre'}, visible: ${child.visible}, geometry: ${child.geometry ? 'sí' : 'no'}`);
+                                    } else if (child instanceof THREE.SkinnedMesh) {
+                                        skinnedMeshCount++;
+                                        console.log(`  - SkinnedMesh: ${child.name || 'sin nombre'}, visible: ${child.visible}, geometry: ${child.geometry ? 'sí' : 'no'}`);
+                                    }
+                                });
+                                console.log(`  Total de objetos en el árbol: ${childCount} (${meshCount} Mesh, ${skinnedMeshCount} SkinnedMesh)`);
+                                
+                                resolve(loadedModel);
+                            },
+                            (progress) => {
+                                if (progress.lengthComputable) {
+                                    const percentComplete = (progress.loaded / progress.total) * 100;
+                                    console.log(`Cargando FBX: ${percentComplete.toFixed(1)}%`);
+                                }
+                            },
+                            (error) => {
+                                console.error('Error cargando FBX:', error);
+                                reject(error);
+                            }
+                        );
+                    });
+                } else if (fileExtension === 'obj') {
+                    // Cargar archivo OBJ (texto)
                 const response = await fetch(modelUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -80,13 +292,36 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
                 const modelText = await response.text();
                 
                 // Verificar que el texto recibido parece un archivo OBJ válido
+                    // Si contiene HTML, significa que el servidor devolvió una página de error
+                    if (modelText.includes('<!DOCTYPE') || modelText.includes('<html')) {
+                        throw new Error('El archivo no existe o el servidor devolvió HTML en lugar del modelo');
+                    }
+                    
                 if (!modelText.includes('v ') || !modelText.includes('f ')) {
                     throw new Error('El archivo no parece ser un modelo OBJ válido');
                 }
                 
-                model = loader.parse(modelText);
-                console.log('Modelo cargado exitosamente, guardando en caché');
-                modelCache.set(modelUrl, model.clone());
+                    model = objLoader.parse(modelText);
+                    console.log('Modelo OBJ cargado exitosamente');
+                } else {
+                    throw new Error(`Formato de archivo no soportado: ${fileExtension}. Formatos soportados: .obj, .fbx`);
+                }
+                
+                // Guardar en caché (para FBX, usar función de clonado personalizada)
+                if (fileExtension === 'fbx') {
+                    // Para FBX, guardar una copia profunda que incluya skeletons correctamente
+                    const cachedModel = model.clone();
+                    // Asegurar que los skeletons se guarden correctamente
+                    cachedModel.traverse((child) => {
+                        if (child instanceof THREE.SkinnedMesh && child.skeleton) {
+                            // El skeleton ya está vinculado, solo necesitamos asegurar que se guarde
+                            child.skeleton.update();
+                        }
+                    });
+                    modelCache.set(modelUrl, cachedModel);
+                } else {
+                    modelCache.set(modelUrl, model.clone());
+                }
             } catch (error) {
                 console.error('Error al cargar el modelo:', error);
                 throw new Error(`No se pudo cargar el modelo desde ${modelUrl}: ${error.message}`);
@@ -97,7 +332,21 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
         const panelWidth = (panel.maxCellIndex.x - panel.minCellIndex.x + 1) * gridSize;
         const panelHeight = (panel.maxCellIndex.y - panel.minCellIndex.y + 1) * gridSize;
 
-        // Material sólido para las caras con mejor apariencia
+        // Material x-ray para modelos FBX (transparente, efecto de rayos X)
+        const xrayMaterial = new THREE.MeshPhongMaterial({
+            color: 0xcccccc, // Gris claro
+            specular: 0xffffff,
+            shininess: 100,
+            transparent: true,
+            opacity: 0.04, // 96% transparente (4% opaco)
+            side: THREE.DoubleSide, // Ver ambos lados
+            depthTest: true,
+            depthWrite: false, // No escribir en depth buffer para efecto x-ray
+            emissive: 0x888888, // Emisivo gris claro
+            emissiveIntensity: 0.8 // Más intensidad para efecto más claro
+        });
+        
+        // Material sólido para modelos OBJ (mantener azul para compatibilidad)
         const solidMaterial = new THREE.MeshPhongMaterial({
             color: 0x0066cc, // Azul más brillante
             specular: 0x111111,
@@ -117,11 +366,11 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
             depthWrite: false
         });
 
-        // Material para bordes resaltados mejorado
+        // Material para bordes resaltados (solo orillas, no wireframe completo)
         const edgesMaterial = new THREE.LineBasicMaterial({
             color: 0x00ffff, // Cyan
-            transparent: true,
-            opacity: 0.8,
+            transparent: false, // No transparente para mejor visibilidad
+            opacity: 1.0,
             depthTest: true,
             depthWrite: false,
             linewidth: 2 // Nota: esto solo funciona en WebGL1
@@ -132,11 +381,11 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
         modelGroup.name = 'ModelGroup';
         modelGroup.renderOrder = 1;
         
-        // Grupo para la rotación isométrica
+        // Grupo para la rotación isométrica con ajuste dinámico
         const isoGroup = new THREE.Group();
         isoGroup.name = 'IsoGroup';
         isoGroup.rotation.x = ISO_ANGLE;
-        isoGroup.position.z = MODEL_FORWARD_OFFSET;
+        // La posición Z se ajustará después de calcular el tamaño del modelo
 
         // Marcar el grupo como modelo
         modelGroup.userData = {
@@ -147,8 +396,127 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
         };
 
         // Aplicar materiales y optimizar geometría
+        let meshCount = 0;
+        let skinnedMeshCount = 0;
+        
+        // Para modelos FBX, mantener la estructura original, aplicar material oscuro y agregar wireframe
+        // Para modelos OBJ, procesar con wireframe y bordes
+        if (fileExtension === 'fbx') {
+            // Para FBX, aplicar material oscuro y agregar wireframe
+            const meshesToProcess = [];
+            
+            model.traverse((child) => {
+                const isMesh = child instanceof THREE.Mesh;
+                const isSkinnedMesh = child instanceof THREE.SkinnedMesh;
+                
+                if (isMesh || isSkinnedMesh) {
+                    if (isSkinnedMesh) {
+                        skinnedMeshCount++;
+                        meshesToProcess.push(child); // También procesar SkinnedMesh
+                    } else {
+                        meshCount++;
+                        meshesToProcess.push(child);
+                    }
+                    
+                    // Aplicar material x-ray manteniendo la estructura original
+                    if (!child.material) {
+                        child.material = xrayMaterial.clone();
+                    } else if (Array.isArray(child.material)) {
+                        // Si tiene múltiples materiales, aplicar el material x-ray a todos
+                        child.material = child.material.map(() => xrayMaterial.clone());
+                    } else {
+                        // Aplicar material x-ray
+                        child.material = xrayMaterial.clone();
+                    }
+                    // Asegurar que el mesh sea visible
+                    child.visible = true;
+                }
+            });
+            
+            // Agregar edges (bordes) a cada mesh (Mesh y SkinnedMesh)
+            meshesToProcess.forEach((mesh) => {
+                if (!mesh.geometry) return;
+                
+                const isSkinned = mesh instanceof THREE.SkinnedMesh;
+                
+                // Asegurar que la geometría tenga normales calculadas
+                if (!mesh.geometry.attributes.normal || mesh.geometry.attributes.normal.count === 0) {
+                    mesh.geometry.computeVertexNormals();
+                }
+                
+                let edgesGeometry;
+                
+                if (isSkinned && mesh.skeleton) {
+                    // Para SkinnedMesh, calcular posiciones deformadas iniciales
+                    const deformedPositions = computeDeformedPositions(mesh);
+                    
+                    if (deformedPositions) {
+                        // Crear geometría temporal con posiciones deformadas
+                        const tempGeometry = new THREE.BufferGeometry();
+                        tempGeometry.setAttribute('position', new THREE.BufferAttribute(deformedPositions, 3));
+                        
+                        // Copiar normales si existen
+                        if (mesh.geometry.attributes.normal) {
+                            tempGeometry.setAttribute('normal', mesh.geometry.attributes.normal.clone());
+                        }
+                        
+                        // Crear edges desde geometría deformada
+                        edgesGeometry = new THREE.EdgesGeometry(tempGeometry, 15);
+                        tempGeometry.dispose();
+                    } else {
+                        // Fallback: usar geometría original
+                        edgesGeometry = new THREE.EdgesGeometry(mesh.geometry, 15);
+                    }
+                } else {
+                    // Para Mesh normal, usar geometría directamente
+                    edgesGeometry = new THREE.EdgesGeometry(mesh.geometry, 15);
+                }
+                
+                const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial.clone());
+                edges.name = 'Edges';
+                edges.renderOrder = 10;
+                edges.visible = true;
+                
+                // Asegurar que el material sea visible
+                if (edges.material) {
+                    edges.material.visible = true;
+                    edges.material.transparent = false;
+                    edges.material.opacity = 1.0;
+                }
+                
+                // Configurar edges para que hereden correctamente las transformaciones del mesh padre
+                edges.matrixAutoUpdate = false; // Desactivar auto-update para control manual
+                edges.frustumCulled = false;
+                
+                // Para SkinnedMesh, guardar referencia para actualización dinámica
+                if (isSkinned && mesh.skeleton) {
+                    mesh.userData.edgesToUpdate = edges;
+                    // Asegurar que los edges estén en el mismo espacio que el mesh (transformación identidad)
+                    edges.position.set(0, 0, 0);
+                    edges.rotation.set(0, 0, 0);
+                    edges.scale.set(1, 1, 1);
+                    edges.matrix.identity();
+                    // No copiar matrixWorld - dejar que Three.js lo calcule desde el padre
+                }
+                
+                // Agregar los edges como hijo del mesh original
+                mesh.add(edges);
+                
+                console.log(`Edges agregados a ${isSkinned ? 'SkinnedMesh' : 'Mesh'}: ${mesh.name || 'sin nombre'}, vértices: ${mesh.geometry.attributes.position.count}`);
+            });
+            
+            console.log(`Modelo FBX procesado: ${meshCount} Mesh(es), ${skinnedMeshCount} SkinnedMesh(es) - Material x-ray y edges aplicados`);
+        } else {
+            // Para OBJ, procesar con wireframe y bordes como antes
+            const processedMeshes = new Set(); // Evitar procesar el mismo mesh múltiples veces
+            
         model.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
+                const isMesh = child instanceof THREE.Mesh;
+                
+                if (isMesh && !processedMeshes.has(child)) {
+                    processedMeshes.add(child);
+                    meshCount++;
+                    
                 const geometry = child.geometry.clone();
                 
                 // Optimizar la geometría
@@ -187,24 +555,184 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
                 }
             }
         });
+            console.log(`Modelo OBJ procesado: ${meshCount} Mesh(es) con wireframe y bordes`);
+        }
 
         // Calcular bounding box y escala
+        // Primero actualizar las matrices del mundo para obtener posiciones correctas
+        model.updateMatrixWorld(true);
+        
+        // Calcular bounding box desde el objeto completo
         const bbox = new THREE.Box3().setFromObject(model);
         const modelSize = new THREE.Vector3();
         bbox.getSize(modelSize);
+        
+        console.log(`Bounding box calculado: min=${bbox.min.x.toFixed(2)},${bbox.min.y.toFixed(2)},${bbox.min.z.toFixed(2)} max=${bbox.max.x.toFixed(2)},${bbox.max.y.toFixed(2)},${bbox.max.z.toFixed(2)}`);
+        console.log(`Tamaño del modelo: ${modelSize.x.toFixed(2)} x ${modelSize.y.toFixed(2)} x ${modelSize.z.toFixed(2)}`);
+        
+        // Si el bounding box está vacío, intentar calcular desde geometrías individuales
+        if (modelSize.x === 0 && modelSize.y === 0 && modelSize.z === 0 || 
+            isNaN(modelSize.x) || isNaN(modelSize.y) || isNaN(modelSize.z)) {
+            console.warn('⚠️ Bounding box vacío o inválido - intentando recalcular desde geometrías individuales');
+            
+            // Resetear el bounding box
+            bbox.makeEmpty();
+            
+            // Calcular desde cada geometría individual
+            model.traverse((child) => {
+                if (child.geometry) {
+                    // Calcular bounding box de la geometría si no existe
+                    if (!child.geometry.boundingBox) {
+                        child.geometry.computeBoundingBox();
+                    }
+                    
+                    if (child.geometry.boundingBox) {
+                        // Obtener los 8 vértices del bounding box
+                        const box = child.geometry.boundingBox;
+                        const vertices = [
+                            new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+                            new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+                            new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+                            new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+                            new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+                            new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+                            new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+                            new THREE.Vector3(box.max.x, box.max.y, box.max.z)
+                        ];
+                        
+                        // Aplicar la matriz del objeto a cada vértice y expandir el bbox
+                        vertices.forEach(vertex => {
+                            vertex.applyMatrix4(child.matrixWorld);
+                            bbox.expandByPoint(vertex);
+                        });
+                    }
+                }
+            });
+            
+            bbox.getSize(modelSize);
+            console.log(`Bounding box recalculado: ${modelSize.x.toFixed(2)} x ${modelSize.y.toFixed(2)} x ${modelSize.z.toFixed(2)}`);
+        }
+        
+        // Si aún está vacío, usar un tamaño por defecto
+        if (modelSize.x === 0 && modelSize.y === 0 && modelSize.z === 0 || 
+            isNaN(modelSize.x) || isNaN(modelSize.y) || isNaN(modelSize.z)) {
+            console.error('❌ No se pudo calcular el tamaño del modelo - usando tamaño por defecto');
+            modelSize.set(1, 1, 1); // Tamaño por defecto
+            bbox.setFromCenterAndSize(new THREE.Vector3(0, 0, 0), modelSize);
+        }
 
-        // Calcular escala con mejor ajuste
-        const scaleX = panelWidth / modelSize.x;
-        const scaleY = panelHeight / modelSize.y;
-        const scaleZ = Math.min(panelWidth, panelHeight) / modelSize.z;
-        const scale = Math.min(scaleX, scaleY, scaleZ) * 0.85;
+        // Calcular escala considerando rotación isométrica para modelos altos
+        // Después de rotar 90° en X, la dimensión Y se convierte en Z (altura visual)
+        // y Z se convierte en Y (profundidad visual)
+        const rotatedHeight = modelSize.z; // La altura original se convierte en profundidad visual
+        const rotatedDepth = modelSize.y;  // La profundidad original se convierte en altura visual
+        
+        // Calcular escalas para cada dimensión considerando el viewport del panel
+        const scaleX = (panelWidth * 0.9) / modelSize.x;   // Ancho disponible con margen
+        const scaleY = (panelHeight * 0.9) / rotatedDepth; // Altura disponible considerando rotación
+        const scaleZ = (Math.min(panelWidth, panelHeight) * 0.7) / rotatedHeight; // Profundidad más conservadora
+        
+        // Usar la escala más restrictiva para mantener proporciones y evitar clipping
+        let scale = Math.min(scaleX, scaleY, scaleZ) * 0.75; // Factor más conservador para modelos altos
+        
+        // Para modelos FBX, usar escala más conservadora para evitar clipping
+        if (fileExtension === 'fbx') {
+            scale = Math.min(scaleX, scaleY, scaleZ) * 0.6; // Escala más pequeña para evitar clipping
+        }
+        
+        // Aumentar escala 300% (3x más grande)
+        scale = scale * 3;
+
+        // Ajustar posición Z del grupo isométrico basándose en la altura del modelo para evitar clipping
+        const heightFactor = Math.max(modelSize.z / Math.max(modelSize.x, modelSize.y), 1.0);
+        let dynamicOffset = MODEL_FORWARD_OFFSET * Math.min(heightFactor, 2.0);
+        
+        // Para modelos FBX escalados 3x, alejar el modelo de la cámara para evitar clipping
+        if (fileExtension === 'fbx') {
+            // Alejar el modelo moviéndolo más hacia adelante (offset positivo o menos negativo)
+            // La cámara está en z=10, así que mover el modelo hacia z=0 o positivo lo aleja
+            // Con escala 3x, necesitamos alejar significativamente el modelo
+            dynamicOffset = 2.0; // Offset positivo para alejar el modelo de la cámara
+        }
+        // Ajustar clip plane de la cámara ANTES de posicionar el modelo
+        // Calcular el tamaño máximo del modelo escalado
+        const maxScaledSize = Math.max(modelSize.x, modelSize.y, modelSize.z) * scale;
+        // Asegurar que el far plane sea suficiente para el modelo escalado
+        // Usar al menos 5x el tamaño máximo del modelo más la distancia de la cámara
+        const requiredFar = Math.max(1000, maxScaledSize * 5 + 20);
+        
+        // Reducir el near plane para evitar recortes cuando el modelo está cerca
+        // Usar un valor extremadamente pequeño para permitir que el modelo esté muy cerca de la cámara
+        // Con modelos escalados 3x, necesitamos un near plane muy pequeño
+        // Para modelos grandes cerca de la cámara, usar un near plane aún más pequeño
+        const requiredNear = 0.0001; // Extremadamente pequeño para evitar recortes con modelos grandes escalados
+        
+        // Ajustar clip plane ANTES de posicionar el modelo
+        if (typeof window !== 'undefined' && window.camera) {
+            let needsUpdate = false;
+            
+            // Ajustar far plane si es necesario
+            if (window.camera.far < requiredFar) {
+                window.camera.far = requiredFar;
+                needsUpdate = true;
+            }
+            
+            // Ajustar near plane para evitar recortes cercanos (siempre reducir si es necesario)
+            if (window.camera.near > requiredNear) {
+                window.camera.near = requiredNear;
+                needsUpdate = true;
+            }
+            
+            if (needsUpdate) {
+                window.camera.updateProjectionMatrix();
+                console.log(`Clip plane ajustado: near = ${requiredNear}, far = ${requiredFar.toFixed(2)} para modelo escalado (300%)`);
+            }
+        }
+        
+        isoGroup.position.z = dynamicOffset;
+        
+        // Intentar acceder a la cámara global si está disponible
+        if (typeof window !== 'undefined' && window.camera) {
+            let needsUpdate = false;
+            
+            // Ajustar far plane si es necesario
+            if (window.camera.far < requiredFar) {
+                window.camera.far = requiredFar;
+                needsUpdate = true;
+            }
+            
+            // Ajustar near plane para evitar recortes cercanos
+            if (window.camera.near > requiredNear) {
+                window.camera.near = requiredNear;
+                needsUpdate = true;
+            }
+            
+            if (needsUpdate) {
+                window.camera.updateProjectionMatrix();
+                console.log(`Clip plane ajustado: near = ${requiredNear}, far = ${requiredFar.toFixed(2)} para modelo escalado (300%)`);
+            }
+        }
 
         model.scale.set(scale, scale, scale);
 
-        // Centrar modelo con más precisión
+        // Centrar modelo con más precisión considerando el escalado conservador
         const center = new THREE.Vector3();
         bbox.getCenter(center);
-        model.position.set(-center.x * scale, -center.y * scale, 0);
+        
+        // Posicionar el modelo centrado en el panel
+        // Para modelos FBX escalados 3x, ajustar Z para alejar el modelo de la cámara
+        let zOffset = -center.z * scale * 0.2; // Elevar ligeramente del suelo del panel
+        if (fileExtension === 'fbx') {
+            // Para FBX escalado 3x, alejar el modelo moviéndolo más hacia adelante
+            // Usar offset positivo o menos negativo para alejar del near plane
+            zOffset = -center.z * scale * 0.05; // Muy poca elevación para alejar del near plane
+        }
+        
+        model.position.set(
+            -center.x * scale,  // Centrar horizontalmente
+            -center.y * scale,  // Centrar en profundidad (será la altura visual después de rotar)
+            zOffset
+        );
 
         // Rotar el modelo 90 grados en X para acostarlo
         model.rotation.x = Math.PI / 2;
@@ -213,16 +741,115 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
         isoGroup.add(model);
         modelGroup.add(isoGroup);
         panel.group.add(modelGroup);
+        
+        // Para modelos FBX, hacer invisible el panel (solo mostrar el modelo)
+        if (fileExtension === 'fbx' && panel.group) {
+            // Hacer invisible el fillMesh y borderLines del panel
+            if (panel.fillMesh) {
+                panel.fillMesh.visible = false;
+                // Deshabilitar raycasts para que no intercepte clicks
+                if (panel.fillMesh.userData) {
+                    panel.fillMesh.userData.ignoreRaycast = true;
+                } else {
+                    panel.fillMesh.userData = { ignoreRaycast: true };
+                }
+            }
+            
+            if (panel.borderLines) {
+                panel.borderLines.forEach(line => {
+                    line.visible = false;
+                    // Deshabilitar raycasts
+                    if (line.userData) {
+                        line.userData.ignoreRaycast = true;
+                    } else {
+                        line.userData = { ignoreRaycast: true };
+                    }
+                });
+            }
+            
+            // Hacer invisible otros elementos del panel pero mantener el modelo visible
+            // Solo ocultar hijos directos del panel que NO sean el modelGroup
+            panel.group.children.forEach((child) => {
+                // No ocultar el modelGroup que contiene el modelo
+                if (child !== modelGroup && !child.userData?.isModel) {
+                    if (child.visible !== undefined) {
+                        child.visible = false;
+                    }
+                    // Deshabilitar raycasts
+                    if (child.userData) {
+                        child.userData.ignoreRaycast = true;
+                    } else {
+                        child.userData = { ignoreRaycast: true };
+                    }
+                }
+            });
+            
+            // Asegurar que el modelGroup y sus hijos sean visibles
+            modelGroup.visible = true;
+            isoGroup.visible = true;
+            model.visible = true;
+            
+            // Asegurar que todos los meshes y edges del modelo sean visibles
+            model.traverse((child) => {
+                if (child instanceof THREE.Mesh || child instanceof THREE.SkinnedMesh) {
+                    child.visible = true;
+                } else if (child instanceof THREE.LineSegments && child.name === 'Edges') {
+                    // Asegurar que los edges sean visibles
+                    child.visible = true;
+                    if (child.material) {
+                        child.material.visible = true;
+                        child.material.transparent = false; // No transparente para mejor visibilidad
+                        child.material.opacity = 1.0;
+                    }
+                }
+            });
+            
+            console.log('Panel oculto para modelo FBX - solo se muestra el modelo');
+        }
+
+        // Detectar y configurar animaciones FBX
+        // Nota: Las animaciones se configuran después de clonar, ya que cada instancia necesita su propio mixer
+        let animationMixer = null;
+        let animationAction = null;
+        let hasAnimation = false;
+        
+        // Verificar si el modelo tiene animaciones (funciona tanto para modelos nuevos como clonados)
+        if (fileExtension === 'fbx' && model.animations && model.animations.length > 0) {
+            console.log(`Modelo FBX tiene ${model.animations.length} animación(es)`);
+            hasAnimation = true;
+            
+            // Crear AnimationMixer para el modelo (cada instancia necesita su propio mixer)
+            animationMixer = new THREE.AnimationMixer(model);
+            
+            // Obtener la primera animación (o la principal)
+            const animationClip = model.animations[0];
+            console.log(`Animación: ${animationClip.name}, duración: ${animationClip.duration}s`);
+            
+            // Crear AnimationAction
+            animationAction = animationMixer.clipAction(animationClip);
+            
+            // Configurar para reproducir una vez y detenerse en el último frame
+            animationAction.setLoop(THREE.LoopOnce, 1);
+            animationAction.clampWhenFinished = true; // Mantener en el último frame
+            
+            // Reproducir la animación
+            animationAction.play();
+            console.log('Animación FBX iniciada, se detendrá en el último frame');
+        }
 
         // Guardar estado del modelo con más información
         const modelState = {
             model: model,
             rotationSpeed: 0.005,
-            isRotating: true,
+            isRotating: true, // Rotar constantemente en Y
             lastRotationTime: performance.now(),
+            lastAnimationTime: performance.now(), // Tiempo separado para animaciones
             initialRotation: model.rotation.y,
             loadTime: Date.now(),
-            url: modelUrl
+            url: modelUrl,
+            animationMixer: animationMixer, // Guardar mixer para actualización
+            animationAction: animationAction, // Guardar action para control
+            hasAnimation: hasAnimation // Flag para saber si tiene animación
         };
         
         panelModelState.set(panel, modelState);
@@ -234,7 +861,11 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
             }
         });
         
-        console.log('Modelo cargado y configurado exitosamente con rotación automática activada');
+        console.log(`Modelo cargado exitosamente: ${modelUrl}`);
+        console.log(`  - Tamaño original: ${modelSize.x.toFixed(2)} x ${modelSize.y.toFixed(2)} x ${modelSize.z.toFixed(2)}`);
+        console.log(`  - Panel: ${panelWidth.toFixed(2)} x ${panelHeight.toFixed(2)}`);
+        console.log(`  - Escala aplicada: ${scale.toFixed(3)}`);
+        console.log(`  - Factor altura: ${heightFactor.toFixed(2)}, Offset Z: ${dynamicOffset.toFixed(2)}`);
 
         return true;
     } catch (error) {
@@ -316,8 +947,103 @@ export function animateModels() {
         const modelParent = modelState.model.parent;
         if (!modelParent) return;
 
+        // Actualizar animaciones FBX si existen
+        if (modelState.hasAnimation && modelState.animationMixer) {
+            const deltaTime = (currentTime - (modelState.lastAnimationTime || currentTime)) / 1000;
+            modelState.lastAnimationTime = currentTime;
+            
+            // Actualizar el mixer de animación (esto actualiza los skeletons)
+            modelState.animationMixer.update(deltaTime);
+            
+            // Actualizar edges de SkinnedMesh después de que el skeleton se haya actualizado
+            // Throttle agresivo: solo actualizar cada 66ms (~15fps) para máximo rendimiento
+            // Los edges son visuales secundarios, no críticos para la animación principal
+            const shouldUpdateEdges = !modelState.lastEdgeUpdate || (currentTime - modelState.lastEdgeUpdate) > 66;
+            if (shouldUpdateEdges) {
+                modelState.lastEdgeUpdate = currentTime;
+                
+                modelState.model.traverse((child) => {
+                    if (child instanceof THREE.SkinnedMesh && child.skeleton && child.userData.edgesToUpdate) {
+                        const edges = child.userData.edgesToUpdate;
+                        
+                        try {
+                            // Los edges son hijos del mesh, así que deben estar en espacio local del mesh
+                            // Solo actualizar matrices si realmente cambiaron
+                            if (edges.matrixAutoUpdate !== false) {
+                                edges.position.set(0, 0, 0);
+                                edges.rotation.set(0, 0, 0);
+                                edges.scale.set(1, 1, 1);
+                                edges.matrix.identity();
+                                edges.updateMatrix();
+                            }
+                            
+                            // Calcular posiciones deformadas (optimizado)
+                            const deformedPositions = computeDeformedPositions(child);
+                            if (!deformedPositions) return;
+                            
+                            // Reutilizar geometría temporal
+                            let tempGeometry = edges.userData.tempGeometry;
+                            if (!tempGeometry) {
+                                tempGeometry = new THREE.BufferGeometry();
+                                edges.userData.tempGeometry = tempGeometry;
+                            }
+                            
+                            // Actualizar posiciones
+                            if (!tempGeometry.attributes.position || tempGeometry.attributes.position.count !== deformedPositions.length / 3) {
+                                tempGeometry.setAttribute('position', new THREE.BufferAttribute(deformedPositions, 3));
+                            } else {
+                                tempGeometry.attributes.position.array.set(deformedPositions);
+                                tempGeometry.attributes.position.needsUpdate = true;
+                            }
+                            
+                            // Reutilizar EdgesGeometry
+                            let newEdgesGeometry = edges.userData.edgesGeometryCache;
+                            if (!newEdgesGeometry || !newEdgesGeometry.attributes.position || 
+                                newEdgesGeometry.attributes.position.count !== deformedPositions.length / 3) {
+                                if (newEdgesGeometry) {
+                                    newEdgesGeometry.dispose();
+                                }
+                                newEdgesGeometry = new THREE.EdgesGeometry(tempGeometry, 15);
+                                edges.userData.edgesGeometryCache = newEdgesGeometry;
+                            } else {
+                                newEdgesGeometry.setAttribute('position', tempGeometry.attributes.position);
+                            }
+                            
+                            // Actualizar posiciones del edges
+                            const edgesPositions = edges.geometry.attributes.position;
+                            const newPositions = newEdgesGeometry.attributes.position;
+                            
+                            if (edgesPositions && newPositions && edgesPositions.count === newPositions.count) {
+                                edgesPositions.array.set(newPositions.array);
+                                edgesPositions.needsUpdate = true;
+                            } else {
+                                if (edges.geometry) {
+                                    edges.geometry.dispose();
+                                }
+                                edges.geometry = newEdgesGeometry;
+                                edges.userData.edgesGeometryCache = null;
+                            }
+                        } catch (error) {
+                            console.warn('Error actualizando edges de SkinnedMesh:', error);
+                        }
+                    }
+                });
+            }
+            
+            // Verificar si la animación ha terminado
+            if (modelState.animationAction && modelState.animationAction.paused) {
+                // La animación ya está pausada en el último frame
+                // No hacer nada más
+            }
+        }
+
+        // 🧬 En modo HOMO PRINTEMPS, continuar rotación desde centro del grid
+        // (El modelo ya está posicionado en Z=0 por setModelToFlatlayPosition)
+        const isHomoPrintemps = modelState.isHomoPrintemps === true;
+        
         // Si isRotating es true o no está definido, rotar el modelo
         // El valor por defecto es true para compatibilidad con modelos existentes
+        // Rotar incluso si tiene animación FBX
         if (modelState.isRotating !== false) {
             // Asegurar que isRotating siempre esté definido
             if (modelState.isRotating === undefined) {
@@ -334,8 +1060,10 @@ export function animateModels() {
             // Rotar el modelo usando deltaTime para mantener velocidad constante
             const rotationAmount = rotationSpeed * deltaTime * 60;
             
-            // Aplicar rotación al modelo
-            modelState.model.rotation.y = (modelState.model.rotation.y + rotationAmount) % (Math.PI * 2);
+            // Aplicar rotación al modelo (asegurar que rote incluso con animación)
+            if (modelState.model) {
+                modelState.model.rotation.y = (modelState.model.rotation.y + rotationAmount) % (Math.PI * 2);
+            }
 
             // Aplicar efectos visuales durante la rotación
             if (modelState.model.children.length > 0) {
@@ -363,6 +1091,16 @@ export function animateModels() {
 export function cleanupPanelModels() {
     panelModelState.forEach((modelState, panel) => {
         if (modelState && modelState.model) {
+            // Limpiar animaciones si existen
+            if (modelState.animationMixer) {
+                // Detener todas las acciones
+                if (modelState.animationAction) {
+                    modelState.animationAction.stop();
+                }
+                // Limpiar el mixer
+                modelState.animationMixer.uncacheRoot(modelState.model);
+            }
+            
             const parent = modelState.model.parent;
             if (parent) {
                 parent.remove(modelState.model);

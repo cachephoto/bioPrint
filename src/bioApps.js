@@ -216,6 +216,8 @@ function applyTextureToPanel(panelData, texture, lineMaterials) {
     
     // Marcar el panel como que tiene textura y guardar los materiales para los diferentes estados
     panelData.hasTexture = true;
+    panelData.textureType = 'app'; // 🔥 Guardar tipo para snapshots
+    panelData.texturePath = texture.image?.src || null; // 🔥 Guardar ruta si está disponible
     panelData.textureMaterials = {
         normal: normalMaterial,
         hover: hoverMaterial,
