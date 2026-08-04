@@ -860,6 +860,24 @@ function saveBioFXVisualStyle() {
 // Color base por perfil de interfaz (se aplica la primera vez que se usa el perfil)
 const PROFILE_BASE_COLOR = { v1: '#0096ff', v2: '#00ff66' };
 
+// Nombre propio de cada versión de la interfaz. La clave interna ('v1'/'v2') no
+// cambia nunca: es la que forma las claves de localStorage donde viven los slots,
+// así que renombrar aquí no mueve ni un diseño guardado.
+const PROFILE_INFO = {
+    v1: { label: 'ZENG',         color: 'azul',  alias: ['v1', 'zeng', 'azul'] },
+    v2: { label: 'BIOPRINT 2.0', color: 'verde', alias: ['v2', '2.0', 'bp2', 'verde', 'terminal'] }
+};
+
+function profileInfo(key) {
+    return PROFILE_INFO[key] || { label: key, color: '?', alias: [] };
+}
+
+/** Acepta la clave interna o cualquiera de los alias legibles. */
+function resolveProfile(name) {
+    const n = String(name || '').toLowerCase().trim();
+    return Object.keys(PROFILE_INFO).find(k => k === n || PROFILE_INFO[k].alias.includes(n)) || null;
+}
+
 // El verde brilla mucho más que el azul a igual luminancia: con el umbral de
 // bloom por defecto la pantalla se quema y el texto deja de leerse. Cada perfil
 // arranca con su propio ajuste de glow.
@@ -879,7 +897,7 @@ function loadBioFXVisualStyle() {
             if (base && colorPicker) {
                 colorPicker.value = base;
                 if (typeof updateBioFXEffect === 'function') updateBioFXEffect();
-                console.log(`Perfil ${prof}: color base ${base} aplicado`);
+                console.log(`Versión ${profileInfo(prof).label}: color base ${base} aplicado`);
             }
             const fx = PROFILE_BASE_FX[prof];
             if (fx) {
@@ -888,7 +906,7 @@ function loadBioFXVisualStyle() {
                 if (glowRadiusSlider)    glowRadiusSlider.value    = fx.glowRadius;
                 if (glowThresholdSlider) glowThresholdSlider.value = fx.glowThreshold;
                 if (typeof updateBioFXEffect === 'function') updateBioFXEffect();
-                console.log(`Perfil ${prof}: glow base aplicado`, fx);
+                console.log(`Versión ${profileInfo(prof).label}: glow base aplicado`, fx);
             }
             return false;
         }
@@ -9109,18 +9127,21 @@ function processTerminalCommand(command) {
         case 'version': {
             // 🗂️ Cambiar de versión de interfaz. Cada perfil tiene sus propios 30 slots
             // y su propio color base. Uso: perfil v1 | perfil v2 | perfil (muestra actual)
-            const PROFILE_COLORS = { v1: 'azul', v2: 'verde' };
-            const name = (args[0] || '').toLowerCase();
-            if (!name) {
-                showInfo(`Perfil actual: ${getProfile()}. Disponibles: v1 (azul), v2 (verde). Uso: perfil v2`, output);
+            const arg = (args[0] || '').toLowerCase();
+            if (!arg) {
+                const actual = profileInfo(getProfile());
+                const lista = Object.values(PROFILE_INFO)
+                    .map(i => `${i.label} (${i.color})`).join(' · ');
+                showInfo(`Versión actual: ${actual.label} (${actual.color}). Disponibles: ${lista}. Uso: perfil 2.0`, output);
                 break;
             }
-            if (!PROFILE_COLORS[name]) {
-                showError('Perfil desconocido. Usa: perfil v1 | perfil v2', output);
+            const key = resolveProfile(arg);
+            if (!key) {
+                showError('Versión desconocida. Usa: perfil zeng | perfil 2.0', output);
                 break;
             }
-            setProfileKey(name);
-            showSuccess(`Perfil "${name}" activado (${PROFILE_COLORS[name]}). Recargando…`, output);
+            setProfileKey(key);
+            showSuccess(`Versión "${PROFILE_INFO[key].label}" activada (${PROFILE_INFO[key].color}). Recargando…`, output);
             // Recargar para reinicializar slots y color del perfil
             setTimeout(() => location.reload(), 600);
             break;
