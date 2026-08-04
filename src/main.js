@@ -6037,7 +6037,17 @@ function getSerializableConfig() {
             }
             },
             appVersion: '1.1.0', // Agregar versión de la aplicación
-            bioKeybVisible: bioKeybVisible // Guardar estado del teclado
+            bioKeybVisible: bioKeybVisible, // Guardar estado del teclado
+            // El teclado se recrea siempre en su sitio por defecto; sin guardar
+            // su esquina, al recargar una página se va a donde no toca.
+            bioKeybOrigin: (() => {
+                const ks = panels.filter(p => p.isKeyboardKey);
+                if (!ks.length) return null;
+                return {
+                    x: Math.min(...ks.map(k => k.minCellIndex.x)),
+                    y: Math.min(...ks.map(k => k.minCellIndex.y))
+                };
+            })()
     };
     } catch (error) {
         console.error("Error en getSerializableConfig:", error);
@@ -6241,6 +6251,9 @@ function loadConfiguration() {
         // Cargar el teclado si estaba visible o si no hay información sobre visibilidad
         if (bioKeybVisible) {
             loadBioKeyb(true); // Cargar teclado sin guardar configuración
+            if (config.bioKeybOrigin) {
+                setTimeout(() => placeKeyboardAt(config.bioKeybOrigin), 60);
+            }
         }
         
         // Recrear los paneles guardados (que no son del teclado)
@@ -6411,7 +6424,9 @@ function loadConfiguration() {
                         if (panelInfo.behavior.modelData && panelInfo.behavior.modelData.modelUrl) {
                             const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName, userScale } = panelInfo.behavior.modelData;
                             loadModelToPanel(panelData, modelUrl, currentGridParams.cellSize).then(() => {
-                                if (typeof userScale === 'number' && userScale !== 1) { panelData.modelData.userScale = 1; scalePanelModel(panelData, userScale); }
+                                // OJO: en los paneles-botón modelData aún no existe en este punto; sin la
+                                // guarda, esta línea lanza y se pierde el resto de la restauración.
+                                if (typeof userScale === 'number' && userScale !== 1) { if (!panelData.modelData) panelData.modelData = {}; panelData.modelData.userScale = 1; scalePanelModel(panelData, userScale); }
                                 // 🔥 CRITICAL: Asegurar que modelData existe
                                 if (!panelData.modelData) {
                                     panelData.modelData = {};
@@ -8157,6 +8172,9 @@ async function applyConfigurationFromData(configData) {
     }
     if (bioKeybVisible) {
         await loadBioKeyb(true); // Cargar teclado sin guardar configuración, si estaba visible
+        if (configData.bioKeybOrigin) {
+            placeKeyboardAt(configData.bioKeybOrigin);
+        }
         console.log("Teclado bioKeyb restaurado según configuración.");
     }
 
@@ -8392,7 +8410,9 @@ async function applyConfigurationFromData(configData) {
                         const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName, userScale } = panelInfo.behavior.modelData;
                         console.log(`Restaurando modelo ${modelUrl} para panel P${orderNumber}`);
                         await loadModelToPanel(panel, modelUrl, currentGridParams.cellSize).then(() => {
-                            if (typeof userScale === 'number' && userScale !== 1) { panel.modelData.userScale = 1; scalePanelModel(panel, userScale); }
+                            // OJO: en los paneles-botón modelData aún no existe en este punto; sin la
+                            // guarda, esta línea lanza y se pierde el resto de la restauración.
+                            if (typeof userScale === 'number' && userScale !== 1) { if (!panel.modelData) panel.modelData = {}; panel.modelData.userScale = 1; scalePanelModel(panel, userScale); }
                             // 🔥 CRITICAL: Asegurar que modelData existe
                             if (!panel.modelData) {
                                 panel.modelData = {};
@@ -8732,6 +8752,11 @@ function processTerminalCommand(command) {
         case 'restore':
             if (args[0] === 'file') importStateFromFile(output);
             else importStateFromDisk(args[0] || undefined, output);
+            break;
+        // 🧬 VERSIÓN 2.0 — catálogo de especímenes
+        case 'models2':
+        case 'especimenes':
+            buildV2ModelsScreen(output);
             break;
         // 💻 VERSIÓN 2.0 — pantalla de arranque terminal/hacker
         case 'boot2':
@@ -15319,7 +15344,9 @@ async function restorePanelBehaviorFromData(panel, behaviorData, currentGridPara
         // Si hay URL de modelo, cargarlo
         if (modelUrl) {
             await loadModelToPanel(panel, modelUrl, currentGridParams.cellSize).then(() => {
-                if (typeof userScale === 'number' && userScale !== 1) { panel.modelData.userScale = 1; scalePanelModel(panel, userScale); }
+                // OJO: en los paneles-botón modelData aún no existe en este punto; sin la
+                // guarda, esta línea lanza y se pierde el resto de la restauración.
+                if (typeof userScale === 'number' && userScale !== 1) { if (!panel.modelData) panel.modelData = {}; panel.modelData.userScale = 1; scalePanelModel(panel, userScale); }
                 // 🔥 CRITICAL: Asegurar que modelData existe
                 if (!panel.modelData) {
                     panel.modelData = {};
@@ -18114,6 +18141,20 @@ async function pastePanels() {
 
 // Mueve el teclado completo (todas las teclas con isKeyboardKey:true) como un bloque.
 // Valida que ninguna tecla se salga del grid ni colisione con paneles no-teclado.
+/** Lleva el teclado a una esquina concreta del grid (la que se guardó con la página). */
+function placeKeyboardAt(origin) {
+    if (!origin || typeof origin.x !== 'number') return false;
+    const ks = panels.filter(p => p.isKeyboardKey);
+    if (!ks.length) return false;
+    const x0 = Math.min(...ks.map(k => k.minCellIndex.x));
+    const y0 = Math.min(...ks.map(k => k.minCellIndex.y));
+    const dx = origin.x - x0, dy = origin.y - y0;
+    if (dx === 0 && dy === 0) return true;
+    // moveKeyboard rechaza el movimiento si choca con paneles ya creados, así que
+    // esto debe llamarse antes de recrear el resto de la página.
+    return moveKeyboard(dx, dy);
+}
+
 function moveKeyboard(dx, dy) {
     const gridParams = getCurrentGridParams();
     if (!gridParams) return false;
@@ -18937,6 +18978,14 @@ async function buildV2BootScreen(output) {
 }
 
 window.buildV2BootScreen = buildV2BootScreen;
+// Utilidades de inspección: hoja de contactos para identificar los modelos
+window.loadModelToPanel = loadModelToPanel;
+window.loadBioKeyb = loadBioKeyb;
+window.moveKeyboard = moveKeyboard;
+window.createPanelFromCells = (minX, maxX, minY, maxY) =>
+    createPanelFromBoundingBox({ minX, maxX, minY, maxY }, getCurrentGridParams());
+window.clearAllPanels = clearAllPanels;
+window.waitForStableGrid = waitForStableGrid;
 window.saveToSlot = saveToSlot;
 window.loadFromSlot = loadFromSlot;
 window.makeTerminalStream = makeTerminalStream;
@@ -19081,3 +19130,165 @@ seedFromRepoIfEmpty();
 window.exportStateToDisk = exportStateToDisk;
 window.importStateFromDisk = importStateFromDisk;
 window.downloadStateFile = downloadStateFile;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// 🧬 BIOPRINT 2.0 — PANTALLA 2: CATÁLOGO DE ESPECÍMENES
+// ════════════════════════════════════════════════════════════════════════════
+// Barra lateral de registros · rejilla 3x3 de modelos · visor grande a la
+// derecha · teclado abajo al centro. Al hacer click en un modelo se carga en
+// el visor (la misma mecánica que el catálogo de ZENG).
+// ════════════════════════════════════════════════════════════════════════════
+
+// Fila de arriba a abajo tal como se ve en pantalla.
+const V2_SPECIMENS = [
+    ['acot',   'tlaloc',  'tort'    ],  // arriba
+    ['discus', 'her',     'corazon' ],  // medio
+    ['burg',   'hueso',   'axolotl' ]   // abajo
+];
+const V2_VIEWER_MODEL = 'axolotl';   // el que aparece cargado en el visor grande
+const V2_STATUS_TEXT  = 'Escaneo de óptica interrumpido.';
+
+/**
+ * Verifica que el modelo de un panel quepa en su recuadro y, si se sale, lo
+ * encoge hasta que quepa. El auto-fit de panelModel usa la caja del modelo en
+ * reposo; después de un zoom manual hay que volver a comprobarlo.
+ * Sólo reduce, nunca agranda ni reposiciona.
+ */
+function fitModelInsidePanel(panel, margin = 0.96) {
+    const gp = getCurrentGridParams();
+    if (!panel || !panel.group || !gp) return false;
+    const modelGroup = panel.group.children.find(c => c.userData && c.userData.isModel);
+    if (!modelGroup) return false;
+
+    const box = {
+        x0: panel.minCellIndex.x * gp.cellSize - gp.halfWidth,
+        x1: (panel.maxCellIndex.x + 1) * gp.cellSize - gp.halfWidth,
+        y0: panel.minCellIndex.y * gp.cellSize - gp.halfHeight,
+        y1: (panel.maxCellIndex.y + 1) * gp.cellSize - gp.halfHeight
+    };
+    const limitW = (box.x1 - box.x0) * margin;
+    const limitH = (box.y1 - box.y0) * margin;
+
+    modelGroup.updateWorldMatrix(true, true);
+    const bb = new THREE.Box3().setFromObject(modelGroup);
+    const size = new THREE.Vector3();
+    bb.getSize(size);
+    if (size.x <= 0 || size.y <= 0) return false;
+
+    const shrink = Math.min(limitW / size.x, limitH / size.y, 1);
+    if (shrink < 0.999) {
+        scalePanelModel(panel, shrink);
+        modelGroup.updateWorldMatrix(true, true);
+    }
+
+    // Algunos .obj tienen la geometría descentrada respecto al origen del grupo:
+    // caben de sobra pero asoman por un lado. Se recentra en el recuadro.
+    const bb2 = new THREE.Box3().setFromObject(modelGroup);
+    const center = bb2.getCenter(new THREE.Vector3());
+    const dx = (box.x0 + box.x1) / 2 - center.x;
+    const dy = (box.y0 + box.y1) / 2 - center.y;
+    if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+        // El desplazamiento se calcula en mundo; hay que pasarlo al espacio del
+        // padre, que puede estar escalado.
+        const parentScale = new THREE.Vector3(1, 1, 1);
+        if (modelGroup.parent) modelGroup.parent.getWorldScale(parentScale);
+        modelGroup.position.x += dx / (parentScale.x || 1);
+        modelGroup.position.y += dy / (parentScale.y || 1);
+    }
+    return true;
+}
+
+async function buildV2ModelsScreen(output) {
+    const gp = await waitForStableGrid();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+
+    clearAllPanels(true, true);
+    terminalStreams.clear();
+    await new Promise(r => setTimeout(r, 300));
+
+    // ── Teclado primero: es lo único que no puedo colocar libremente, así que
+    //    el resto del diseño se acomoda alrededor de él ──
+    await loadBioKeyb(true);
+    await new Promise(r => setTimeout(r, 900));
+    const keys = panels.filter(p => p.isKeyboardKey);
+    if (keys.length) {
+        const bb = keys.reduce((a, k) => ({
+            x0: Math.min(a.x0, k.minCellIndex.x), y0: Math.min(a.y0, k.minCellIndex.y)
+        }), { x0: 99, y0: 99 });
+        moveKeyboard(11 - bb.x0, 0 - bb.y0);
+    }
+
+    const mk = (minX, maxX, minY, maxY) =>
+        createPanelFromBoundingBox({ minX, maxX, minY, maxY }, gp);
+
+    // ── Franjas de cabecera ──
+    [[11, 21], [23, 31], [33, 41]].forEach(([a, b]) => mk(a, b, 22, 23));
+
+    // ── Barra lateral: registros del sistema ──
+    for (let y = 21; y >= 7; y -= 2) mk(1, 9, y, y);
+
+    // Estado, al pie de la barra. La columna necesita 9 celdas: con 7 el texto
+    // se partía a media palabra.
+    const statusPanel = mk(1, 9, 2, 5);
+    window.setTextOnPanel(statusPanel, V2_STATUS_TEXT, 0.75, 'left',
+        { font: 'terminal', vAlign: 'top' });
+
+    // ── Visor grande (derecha) ──
+    const viewer = mk(27, 41, 10, 21);
+    // ── Panel inferior derecho ──
+    mk(39, 41, 0, 8);
+
+    // ── Rejilla 3x3 de especímenes ──
+    // Celdas de 5x4: el teclado ocupa las 10 filas de abajo, así que la rejilla
+    // vive entre él y las franjas de cabecera.
+    const gridPanels = [];
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+            const minX = 11 + col * 5;
+            const minY = 18 - row * 4;          // row 0 = fila de arriba
+            const p = mk(minX, minX + 4, minY, minY + 3);
+            gridPanels.push({ panel: p, name: V2_SPECIMENS[row][col] });
+        }
+    }
+
+    // ── Cargar el visor primero: los botones necesitan un display ya poblado ──
+    const okViewer = await loadModelToPanel(viewer, `./models/${V2_VIEWER_MODEL}.obj`, gp.cellSize);
+    if (okViewer) {
+        viewer.modelData = {
+            name: V2_VIEWER_MODEL,
+            url: `./models/${V2_VIEWER_MODEL}.obj`,
+            isRotating: true,
+            rotationSpeed: 0.004,
+            isModelDisplay: true,
+            isFromModelCommand: true,
+            isViewer: true
+        };
+        viewer.isViewer = true;
+    }
+
+    // ── Cargar los 9 modelos como botones ──
+    for (const { panel, name } of gridPanels) {
+        const url = `./models/${name}.obj`;
+        const ok = await loadModelToPanel(panel, url, gp.cellSize);
+        if (!ok) { console.warn(`No cargó el modelo ${name}`); continue; }
+        panel.modelData = {
+            name,
+            url,
+            isRotating: true,
+            rotationSpeed: 0.004 + Math.random() * 0.004,
+            isModelButton: true,
+            isFromModelsGrid: true
+        };
+        // El auto-fit los deja pequeños dentro de la celda; en la referencia
+        // llenan su recuadro. La contención evita que alguno se pase de la raya.
+        scalePanelModel(panel, 1.2);
+        fitModelInsidePanel(panel);
+    }
+
+    if (output) showSuccess('Catálogo de especímenes 2.0 construido', output);
+    return true;
+}
+
+window.buildV2ModelsScreen = buildV2ModelsScreen;
+window.fitModelInsidePanel = fitModelInsidePanel;
