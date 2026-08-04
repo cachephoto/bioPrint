@@ -1212,3 +1212,40 @@ export function getModelRotation(panel) {
 
     return modelState.model.rotation.y;
 } 
+/**
+ * Estado de la animación FBX de un panel (el megazord es el único que la usa).
+ * Permite saber en qué punto del ensamblaje va, para sincronizar la interfaz
+ * con lo que se ve en pantalla.
+ */
+export function getPanelAnimation(panel) {
+    const st = panelModelState.get(panel);
+    if (!st || !st.hasAnimation || !st.animationAction) return null;
+    const clip = st.animationAction.getClip();
+    return {
+        time: st.animationAction.time,
+        duration: clip ? clip.duration : 0,
+        progress: clip && clip.duration ? st.animationAction.time / clip.duration : 0,
+        running: st.animationAction.isRunning(),
+        finished: !!clip && st.animationAction.time >= clip.duration - 1e-3
+    };
+}
+
+/** Coloca la animación en un instante concreto (para medir o para reencuadrar). */
+export function setPanelAnimationTime(panel, t) {
+    const st = panelModelState.get(panel);
+    if (!st || !st.animationMixer || !st.animationAction) return false;
+    st.animationAction.paused = true;
+    st.animationAction.time = t;
+    st.animationMixer.update(0);
+    return true;
+}
+
+/** Reinicia la animación desde cero (para volver a filmar la toma). */
+export function replayPanelAnimation(panel) {
+    const st = panelModelState.get(panel);
+    if (!st || !st.animationAction) return false;
+    st.animationAction.reset();
+    st.animationAction.paused = false;
+    st.animationAction.play();
+    return true;
+}

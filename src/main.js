@@ -77,8 +77,7 @@ import {
     animateModels, 
     cleanupPanelModels, 
     preserveModel, 
-    restoreModel 
-} from './panelModel.js';
+    restoreModel, getPanelAnimation, setPanelAnimationTime, replayPanelAnimation} from './panelModel.js';
 import { loadGenomToPanel, animateGenoms, cleanupGenomModels, loadGTACToPanel } from './genomModel.js';
 import { 
     initBioKeyb, 
@@ -3955,6 +3954,9 @@ function animate() {
 
     // 💻 Terminales con texto corriendo (versión 2.0)
     updateTerminalStreams();
+
+    // 🔩 Textos que esperan a que la máquina termine de armarse
+    updateAssemblyReveals();
     
     controls.update();
     renderBioFX();
@@ -5982,6 +5984,7 @@ function getSerializableConfig() {
                     stepperMax: typeof panel.stepperMax === 'number' ? panel.stepperMax : null,
                     stepperUnit: panel.stepperUnit || null,
                     termStream: panel.termStreamData ? JSON.parse(JSON.stringify(panel.termStreamData)) : null, // 💻 Terminal con texto corriendo
+                    revealOnAssembly: !!panel.wasAssemblyReveal, // 🔩 Texto que espera al ensamblaje
                     paramValue: typeof panel.paramValue === 'number' ? panel.paramValue : null, // 🎚️ Parámetro ajustable
                     paramStep: typeof panel.paramStep === 'number' ? panel.paramStep : null,
                     paramMin: typeof panel.paramMin === 'number' ? panel.paramMin : null,
@@ -6355,6 +6358,9 @@ function loadConfiguration() {
                             // 🔀 Restaurar botón de navegación
                             if (panelInfo.behavior.termStream) {
                                 makeTerminalStream(panelData, panelInfo.behavior.termStream);
+                            }
+                            if (panelInfo.behavior.revealOnAssembly) {
+                                armAssemblyReveal(panelData);
                             }
                             if (typeof panelInfo.behavior.navTargetSlot === 'number') {
                                 panelData.navTargetSlot = panelInfo.behavior.navTargetSlot;
@@ -8344,6 +8350,9 @@ async function applyConfigurationFromData(configData) {
                         if (panelInfo.behavior.termStream) {
                             makeTerminalStream(panel, panelInfo.behavior.termStream);
                         }
+                        if (panelInfo.behavior.revealOnAssembly) {
+                            armAssemblyReveal(panel);
+                        }
                         if (typeof panelInfo.behavior.navTargetSlot === 'number') {
                             panel.navTargetSlot = panelInfo.behavior.navTargetSlot;
                         }
@@ -8752,6 +8761,11 @@ function processTerminalCommand(command) {
         case 'restore':
             if (args[0] === 'file') importStateFromFile(output);
             else importStateFromDisk(args[0] || undefined, output);
+            break;
+        // 🔩 Rearmar la secuencia de ensamblaje (para repetir la toma)
+        case 'replay':
+        case 'rearmar':
+            replayAssembly(output);
             break;
         // 🧬 VERSIÓN 2.0 — catálogo de especímenes
         case 'models2':
@@ -18959,9 +18973,11 @@ async function buildV2BootScreen(output) {
         }
     })();
 
-    // Título en arcade — el contraste con la terminal es lo que da el look
+    // Título en arcade — el contraste con la terminal es lo que da el look.
+    // Se queda oculto hasta que los dos bloques del megazord terminan de unirse.
     window.setTextOnPanel(readyPanel, 'ALL SYSTEMS READY', 2.2, 'center',
         { font: 'arcade' });
+    armAssemblyReveal(readyPanel);
 
     // Log corriendo
     makeTerminalStream(logPanel, {
@@ -19291,4 +19307,71 @@ async function buildV2ModelsScreen(output) {
 }
 
 window.buildV2ModelsScreen = buildV2ModelsScreen;
+window.getPanelAnimation = getPanelAnimation;
+window.setPanelAnimationTime = setPanelAnimationTime;
+window.replayPanelAnimation = replayPanelAnimation;
 window.fitModelInsidePanel = fitModelInsidePanel;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// 🔩 APARICIÓN SINCRONIZADA CON EL ENSAMBLAJE DEL MEGAZORD
+// ════════════════════════════════════════════════════════════════════════════
+// "ALL SYSTEMS READY" no debe estar puesto desde el principio: aparece en el
+// momento en que los dos bloques de la máquina terminan de unirse. Medido sobre
+// el esqueleto del FBX, los huesos convergen de forma continua hasta el final
+// del clip (12.54 s), así que el enganche va al tramo final.
+// `var` + guarda: animate() ya está corriendo cuando se evalúa esta línea.
+var assemblyReveals = new Set();
+const ASSEMBLY_PROGRESS = 0.95;   // ≈11.9 s de 12.54 s
+
+/** Muestra u oculta el texto de un panel sin borrarlo (se conserva al guardar). */
+function setPanelTextVisible(panel, visible) {
+    if (!panel || !panel.group) return;
+    panel.group.children.forEach(c => {
+        if (c.userData && c.userData.isDynamicTextElement) c.visible = visible;
+    });
+}
+
+/** Oculta el texto y lo deja esperando a que la máquina termine de armarse. */
+function armAssemblyReveal(panel) {
+    if (!panel) return;
+    panel.revealOnAssembly = true;
+    panel.wasAssemblyReveal = true;   // para poder rearmar la secuencia después
+    setPanelTextVisible(panel, false);
+    assemblyReveals.add(panel);
+}
+
+function updateAssemblyReveals() {
+    if (!assemblyReveals || assemblyReveals.size === 0) return;
+
+    // El modelo animado es el FBX de la pantalla (el megazord)
+    const source = panels.find(p => p.modelData && typeof p.modelData.url === 'string'
+        && /\.fbx$/i.test(p.modelData.url));
+
+    assemblyReveals.forEach(panel => {
+        if (!panel.group || !panels.includes(panel)) { assemblyReveals.delete(panel); return; }
+        if (!source) return;                      // el modelo aún no carga
+        const anim = getPanelAnimation(source);
+        if (!anim) return;
+        if (anim.finished || anim.progress >= ASSEMBLY_PROGRESS) {
+            setPanelTextVisible(panel, true);
+            panel.revealOnAssembly = false;
+            assemblyReveals.delete(panel);
+            hapticFeedbackAll(0);                 // el golpe visual cae con el ensamblaje
+        }
+    });
+}
+
+/** Rearma la secuencia completa: máquina desde cero y READY otra vez oculto. */
+function replayAssembly(output) {
+    const source = panels.find(p => p.modelData && typeof p.modelData.url === 'string'
+        && /\.fbx$/i.test(p.modelData.url));
+    if (!source) { if (output) showError('No hay modelo animado en esta pantalla', output); return false; }
+    panels.filter(p => p.wasAssemblyReveal).forEach(p => armAssemblyReveal(p));
+    replayPanelAnimation(source);
+    if (output) showSuccess('Secuencia de ensamblaje reiniciada', output);
+    return true;
+}
+
+window.armAssemblyReveal = armAssemblyReveal;
+window.replayAssembly = replayAssembly;
