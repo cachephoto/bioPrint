@@ -18915,7 +18915,7 @@ async function waitForStableGrid(timeoutMs = 20000) {
 }
 
 async function buildV2BootScreen(output) {
-    const gp = await waitForStableGrid();
+    const gp = await useV2Grid();
     if (!gp) { showError('Grid no disponible', output); return false; }
 
     // El teclado estorba en la pantalla de arranque: fuera.
@@ -18927,21 +18927,21 @@ async function buildV2BootScreen(output) {
         createPanelFromBoundingBox({ minX, maxX, minY, maxY }, gp);
 
     // ── Cabecera: logo (izq) + datos de sistema (der) ──
-    const logoPanel   = mk(2, 20, 19, 23);
-    const headerPanel = mk(22, 40, 19, 23);
+    const logoPanel   = mk(4, 42, 40, 48);
+    const headerPanel = mk(46, 84, 40, 48);
 
     // ── Zona principal: visor megazord (izq) + log de arranque (der) ──
-    const viewerPanel = mk(2, 24, 6, 17);
-    const logPanel    = mk(26, 40, 6, 17);
+    const viewerPanel = mk(4, 50, 13, 36);
+    const logPanel    = mk(54, 84, 13, 36);
 
     // ── Estado ──
-    const readyPanel  = mk(2, 40, 2, 4);
+    const readyPanel  = mk(4, 84, 4, 9);
 
     // Logo BIOPRINT
     applyLogoTextureToPanel(logoPanel);
 
     // Cabecera en tipografía terminal, alineada a la izquierda
-    window.setTextOnPanel(headerPanel, V2_HEADER_LINES.join('\n'), 0.7, 'left',
+    window.setTextOnPanel(headerPanel, V2_HEADER_LINES.join('\n'), 1.4, 'left',
         { font: 'terminal', vAlign: 'top' });
 
     // Megazord animado dentro del recuadro grande
@@ -18975,7 +18975,7 @@ async function buildV2BootScreen(output) {
 
     // Título en arcade — el contraste con la terminal es lo que da el look.
     // Se queda oculto hasta que los dos bloques del megazord terminan de unirse.
-    window.setTextOnPanel(readyPanel, 'ALL SYSTEMS READY', 2.2, 'center',
+    window.setTextOnPanel(readyPanel, 'ALL SYSTEMS READY', 4.4, 'center',
         { font: 'arcade' });
     armAssemblyReveal(readyPanel);
 
@@ -18984,7 +18984,7 @@ async function buildV2BootScreen(output) {
         lines: V2_BOOT_LINES,
         speed: 200,
         rows: 11,
-        fontSize: 1.0,
+        fontSize: 2.0,
         loop: true,
         cursor: true
     });
@@ -19157,6 +19157,23 @@ window.downloadStateFile = downloadStateFile;
 // ════════════════════════════════════════════════════════════════════════════
 
 // Fila de arriba a abajo tal como se ve en pantalla.
+// La referencia de rodaje está diseñada sobre el grid original de 50 divisiones
+// (celdas chicas). A 24 divisiones el teclado —que mide 27 celdas fijas— ocupaba
+// el 63% del ancho en vez del 30% que mide en la foto. Medida de control: en la
+// referencia el teclado y la rejilla 3x3 son igual de anchos.
+const V2_DIVISIONS = 50;
+
+/** Deja el grid en la densidad de la 2.0 y devuelve sus parámetros ya estables. */
+async function useV2Grid() {
+    await waitForStableGrid();
+    if (currentDivisions !== V2_DIVISIONS) {
+        setGridDivisions(V2_DIVISIONS);
+        saveBioFXVisualStyle();          // que sobreviva a la recarga
+        await new Promise(r => setTimeout(r, 700));
+    }
+    return getCurrentGridParams();
+}
+
 const V2_SPECIMENS = [
     ['acot',   'tlaloc',  'tort'    ],  // arriba
     ['discus', 'her',     'corazon' ],  // medio
@@ -19186,8 +19203,26 @@ function fitModelInsidePanel(panel, margin = 0.96) {
     const limitW = (box.x1 - box.x0) * margin;
     const limitH = (box.y1 - box.y0) * margin;
 
+    // Los modelos giran sobre su eje Y, así que barren más ancho que su caja
+    // en un instante dado. Se muestrea la vuelta completa y se usa el peor caso;
+    // si no, el modelo cabe al construir y se sale unos segundos después.
+    const spinner = modelGroup.children.find(c => c.name === 'IsoGroup') || modelGroup;
+    const spun = [];
+    let target = null;
+    modelGroup.traverse(o => { if (!target && (o.isMesh || o.isSkinnedMesh)) target = o; });
+    const rotRoot = (target && target.parent) ? target.parent : spinner;
+    const angle0 = rotRoot.rotation.y;
+    const bb = new THREE.Box3();
+    for (let i = 0; i < 12; i++) {
+        rotRoot.rotation.y = angle0 + (i * Math.PI * 2) / 12;
+        modelGroup.updateWorldMatrix(true, true);
+        const b = new THREE.Box3().setFromObject(modelGroup);
+        if (i === 0) bb.copy(b); else bb.union(b);
+        spun.push(i);
+    }
+    rotRoot.rotation.y = angle0;
     modelGroup.updateWorldMatrix(true, true);
-    const bb = new THREE.Box3().setFromObject(modelGroup);
+
     const size = new THREE.Vector3();
     bb.getSize(size);
     if (size.x <= 0 || size.y <= 0) return false;
@@ -19196,11 +19231,21 @@ function fitModelInsidePanel(panel, margin = 0.96) {
     if (shrink < 0.999) {
         scalePanelModel(panel, shrink);
         modelGroup.updateWorldMatrix(true, true);
+        bb.getSize(size);
     }
 
     // Algunos .obj tienen la geometría descentrada respecto al origen del grupo:
-    // caben de sobra pero asoman por un lado. Se recentra en el recuadro.
-    const bb2 = new THREE.Box3().setFromObject(modelGroup);
+    // caben de sobra pero asoman por un lado. Se recentra usando el mismo
+    // barrido, para que quede centrado en cualquier ángulo del giro.
+    const bb2 = new THREE.Box3();
+    for (let i = 0; i < 12; i++) {
+        rotRoot.rotation.y = angle0 + (i * Math.PI * 2) / 12;
+        modelGroup.updateWorldMatrix(true, true);
+        const b = new THREE.Box3().setFromObject(modelGroup);
+        if (i === 0) bb2.copy(b); else bb2.union(b);
+    }
+    rotRoot.rotation.y = angle0;
+    modelGroup.updateWorldMatrix(true, true);
     const center = bb2.getCenter(new THREE.Vector3());
     const dx = (box.x0 + box.x1) / 2 - center.x;
     const dy = (box.y0 + box.y1) / 2 - center.y;
@@ -19216,59 +19261,65 @@ function fitModelInsidePanel(panel, margin = 0.96) {
 }
 
 async function buildV2ModelsScreen(output) {
-    const gp = await waitForStableGrid();
+    const gp = await useV2Grid();
     if (!gp) { showError('Grid no disponible', output); return false; }
 
     clearAllPanels(true, true);
     terminalStreams.clear();
     await new Promise(r => setTimeout(r, 300));
 
-    // ── Teclado primero: es lo único que no puedo colocar libremente, así que
-    //    el resto del diseño se acomoda alrededor de él ──
+    // ── Teclado primero: mide 27x10 celdas fijas y no es escalable, así que el
+    //    resto del diseño se acomoda alrededor de él. Sobre el grid de 50
+    //    divisiones ocupa el 30% del ancho, como en la referencia ──
     await loadBioKeyb(true);
     await new Promise(r => setTimeout(r, 900));
+    const KEYB_X = 22, KEYB_Y = 4;
     const keys = panels.filter(p => p.isKeyboardKey);
     if (keys.length) {
         const bb = keys.reduce((a, k) => ({
             x0: Math.min(a.x0, k.minCellIndex.x), y0: Math.min(a.y0, k.minCellIndex.y)
-        }), { x0: 99, y0: 99 });
-        moveKeyboard(11 - bb.x0, 0 - bb.y0);
+        }), { x0: 999, y0: 999 });
+        moveKeyboard(KEYB_X - bb.x0, KEYB_Y - bb.y0);
     }
 
     const mk = (minX, maxX, minY, maxY) =>
         createPanelFromBoundingBox({ minX, maxX, minY, maxY }, gp);
 
+    // ── Columnas: barra lateral · centro (rejilla + teclado) · visor ──
+    const SIDE_X0 = 2,  SIDE_X1 = 19;    // 18 celdas
+    const MID_X0  = 22, MID_X1  = 48;    // 27 celdas — mismo ancho que el teclado
+    const VIEW_X0 = 51, VIEW_X1 = 76;    // 26 celdas
+    const FAR_X0  = 79, FAR_X1  = 86;
+
     // ── Franjas de cabecera ──
-    [[11, 21], [23, 31], [33, 41]].forEach(([a, b]) => mk(a, b, 22, 23));
+    [[MID_X0, 33], [35, 48], [VIEW_X0, VIEW_X1]].forEach(([a, b]) => mk(a, b, 46, 49));
 
-    // ── Barra lateral: registros del sistema ──
-    for (let y = 21; y >= 7; y -= 2) mk(1, 9, y, y);
+    // ── Barra lateral: registros del sistema (10 barras de 2 celdas) ──
+    for (let y = 44; y >= 17; y -= 3) mk(SIDE_X0, SIDE_X1, y, y + 1);
 
-    // Estado, al pie de la barra. La columna necesita 9 celdas: con 7 el texto
-    // se partía a media palabra.
-    const statusPanel = mk(1, 9, 2, 5);
-    window.setTextOnPanel(statusPanel, V2_STATUS_TEXT, 0.75, 'left',
+    // Estado al pie. Con 18 celdas de ancho el texto ya cabe sin partirse.
+    const statusPanel = mk(SIDE_X0, SIDE_X1, 4, 12);
+    window.setTextOnPanel(statusPanel, V2_STATUS_TEXT, 1.5, 'left',
         { font: 'terminal', vAlign: 'top' });
 
-    // ── Visor grande (derecha) ──
-    const viewer = mk(27, 41, 10, 21);
-    // ── Panel inferior derecho ──
-    mk(39, 41, 0, 8);
+    // ── Visor grande y panel del borde derecho ──
+    const viewer = mk(VIEW_X0, VIEW_X1, 17, 43);
+    mk(FAR_X0, FAR_X1, 17, 43);
+    mk(FAR_X0, FAR_X1, KEYB_Y, KEYB_Y + 9);
 
-    // ── Rejilla 3x3 de especímenes ──
-    // Celdas de 5x4: el teclado ocupa las 10 filas de abajo, así que la rejilla
-    // vive entre él y las franjas de cabecera.
+    // ── Rejilla 3x3: celdas de 9x9, cuadradas como en la referencia ──
+    const CELL = 9;
     const gridPanels = [];
     for (let row = 0; row < 3; row++) {
         for (let col = 0; col < 3; col++) {
-            const minX = 11 + col * 5;
-            const minY = 18 - row * 4;          // row 0 = fila de arriba
-            const p = mk(minX, minX + 4, minY, minY + 3);
+            const minX = MID_X0 + col * CELL;
+            const minY = 35 - row * CELL;        // row 0 = fila de arriba
+            const p = mk(minX, minX + CELL - 1, minY, minY + CELL - 1);
             gridPanels.push({ panel: p, name: V2_SPECIMENS[row][col] });
         }
     }
 
-    // ── Cargar el visor primero: los botones necesitan un display ya poblado ──
+    // ── El visor va primero: los botones necesitan un display ya poblado ──
     const okViewer = await loadModelToPanel(viewer, `./models/${V2_VIEWER_MODEL}.obj`, gp.cellSize);
     if (okViewer) {
         viewer.modelData = {
@@ -19281,9 +19332,10 @@ async function buildV2ModelsScreen(output) {
             isViewer: true
         };
         viewer.isViewer = true;
+        fitModelInsidePanel(viewer);
     }
 
-    // ── Cargar los 9 modelos como botones ──
+    // ── Los 9 especímenes, como botones ──
     for (const { panel, name } of gridPanels) {
         const url = `./models/${name}.obj`;
         const ok = await loadModelToPanel(panel, url, gp.cellSize);
@@ -19296,8 +19348,7 @@ async function buildV2ModelsScreen(output) {
             isModelButton: true,
             isFromModelsGrid: true
         };
-        // El auto-fit los deja pequeños dentro de la celda; en la referencia
-        // llenan su recuadro. La contención evita que alguno se pase de la raya.
+        // El auto-fit los deja chicos; en la referencia llenan su recuadro.
         scalePanelModel(panel, 1.2);
         fitModelInsidePanel(panel);
     }
