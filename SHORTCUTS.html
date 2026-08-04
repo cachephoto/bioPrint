@@ -45,6 +45,15 @@ densidad de cuadrícula por separado. ZENG usa 24 divisiones (cuadros grandes);
 BIOPRINT 2.0 usa 50 (cuadros chicos), que es la densidad de las referencias de
 rodaje. Cambiar de perfil no toca el otro.</div>
 
+<h2>Páginas de BIOPRINT 2.0</h2>
+<table class="pages">
+  <tr><td>1</td><td><b>ARRANQUE</b> — logo · megazord ensamblándose · log corriendo · ALL SYSTEMS READY</td></tr>
+  <tr><td>2</td><td><b>ESPECÍMENES</b> — rejilla 3×3 · visor grande · teclado</td></tr>
+</table>
+<div class="note">Escribe <span class="cmd">1</span> o <span class="cmd">2</span> en la
+terminal, o pulsa esa tecla, para cambiar de página. <span class="cmd">paginas</span>
+lista las de la versión activa. La app abre sola en la página 1.</div>
+
 <h2>BIOPRINT 2.0 (verde) — pantalla 2: especímenes</h2>
 <div class="flow">  ▤ registros  |   ▣ ▣ ▣    |
   ▤ registros  |   ▣ ▣ ▣    |   VISOR GRANDE
@@ -52,7 +61,7 @@ rodaje. Cambiar de perfil no toca el otro.</div>
   ▤ registros  |
   estado       |   [ T E C L A D O ]   |  ▤</div>
 <table>
-  <tr><td class="cmd">models2</td><td>Construye el catálogo (slot 1)</td></tr>
+  <tr><td class="cmd">models2</td><td>Reconstruye el catálogo (página 2)</td></tr>
   <tr><td>click en un modelo</td><td>Lo carga en el visor + háptico; su nombre científico sale en la cabecera</td></tr>
 </table>
 <div class="flow">Arriba:  CRAY FISH  ·  TLALOC     ·  TRACHEMYS
@@ -67,7 +76,7 @@ Abajo:   BURGUER    ·  T-BONE     ·  AMBYSTOMA</div>
   ─────────────────────────────────────────────
             ALL SYSTEMS READY  (arcade, aparece al final)</div>
 <table>
-  <tr><td class="cmd">boot2</td><td>Reconstruye la pantalla (slot 0, carga sola al abrir)</td></tr>
+  <tr><td class="cmd">boot2</td><td>Reconstruye la pantalla (página 1, carga sola al abrir)</td></tr>
   <tr><td class="cmd">replay</td><td>Reinicia el ensamblaje para repetir la toma</td></tr>
 </table>
 <div class="note"><b>ALL SYSTEMS READY no está desde el primer frame</b>: el

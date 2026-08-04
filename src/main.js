@@ -375,7 +375,7 @@ function startGridAnimation24Frames() {
                 // 4. El grid está en su escala final (scale = 1)
                 const gridIsReady = currentGrid && 
                                    !gridAnimationInProgress && 
-                                   currentDivisions === 24 &&
+                                   currentDivisions >= 2 &&
                                    Math.abs(currentGrid.scale.x - 1) < 0.01; // Escala final
                 
                 if (gridIsReady) {
@@ -391,12 +391,13 @@ function startGridAnimation24Frames() {
                         // 🔥 Cargar estilo visual de bioFX (incluyendo resolución del grid)
                         loadBioFXVisualStyle();
                         
-                        // Cargar slot 0 por defecto
+                        // Cargar la página de inicio del perfil activo
+                        const homeSlot = profileHomePage();
                         const output = document.getElementById('terminal-output');
                         if (output) {
-                            showInfo('Cargando slot 0 por defecto...', output);
+                            showInfo(`Cargando página ${homeSlot}...`, output);
                         }
-                        loadFromSlot(0);
+                        loadFromSlot(homeSlot);
 
                         // 🔤 Re-renderizar el texto cuando las fuentes web terminen de
                         // cargar (VT323/Press Start 2P), para que la fuente elegida no
@@ -869,6 +870,35 @@ const PROFILE_INFO = {
 
 function profileInfo(key) {
     return PROFILE_INFO[key] || { label: key, color: '?', alias: [] };
+}
+
+// 📄 Páginas numeradas de cada versión. El número ES el slot, así que la tecla
+// del número y el comando del mismo nombre llevan a la misma página.
+const PROFILE_PAGES = {
+    v1: {
+        0: 'LOGIN', 1: 'PRINT', 4: '3D PRINT', 5: 'WELCOME',
+        6: 'TERMS', 7: 'APPS', 8: 'ACCESS DENIED', 9: 'SETTINGS'
+    },
+    v2: {
+        1: 'ARRANQUE',
+        2: 'ESPECIMENES'
+    }
+};
+
+/** Página que se abre al arrancar cada versión. */
+function profileHomePage() {
+    const nums = Object.keys(PROFILE_PAGES[getProfile()] || { 0: '' }).map(Number);
+    return nums.length ? Math.min(...nums) : 0;
+}
+
+function listProfilePages(output) {
+    const prof = getProfile();
+    const pages = PROFILE_PAGES[prof] || {};
+    const nums = Object.keys(pages).map(Number).sort((a, b) => a - b);
+    if (!nums.length) { showInfo('Esta versión no tiene páginas numeradas', output); return; }
+    showInfo(`Páginas de ${profileInfo(prof).label}:`, output);
+    nums.forEach(n => showInfo(`  ${n} · ${pages[n]}`, output));
+    showInfo('Escribe el número (o púlsalo en el teclado) para ir a esa página.', output);
 }
 
 /** Acepta la clave interna o cualquiera de los alias legibles. */
@@ -8730,6 +8760,19 @@ function processTerminalCommand(command) {
         return;
     }
 
+    // 📄 Un número suelto ("1", "2") salta a esa página de la versión activa.
+    if (/^\d{1,2}$/.test(cmd)) {
+        const n = parseInt(cmd, 10);
+        const pages = PROFILE_PAGES[getProfile()] || {};
+        if (pages[n]) {
+            showSuccess(`Página ${n} · ${pages[n]}`, output);
+        } else {
+            showInfo(`Página ${n} (sin nombre en esta versión)`, output);
+        }
+        loadFromSlot(n);
+        return;
+    }
+
     switch (cmd.toLowerCase()) {
         case 'help':
             showHelp(output);
@@ -8761,6 +8804,11 @@ function processTerminalCommand(command) {
         case 'restore':
             if (args[0] === 'file') importStateFromFile(output);
             else importStateFromDisk(args[0] || undefined, output);
+            break;
+        // 📄 Listado de páginas numeradas de la versión activa
+        case 'paginas':
+        case 'páginas':
+            listProfilePages(output);
             break;
         // 🔩 Rearmar la secuencia de ensamblaje (para repetir la toma)
         case 'replay':
