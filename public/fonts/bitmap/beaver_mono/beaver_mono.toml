@@ -1,0 +1,892 @@
+cols = 14
+rows = 13
+tile_w = 6
+tile_h = 9
+baseline = 8
+line_gap = 0
+space_w = 6
+
+[[glyphs]]
+chr = "\u0000"
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '!'
+lsb = 2
+adv = 6
+
+[[glyphs]]
+chr = '"'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '#'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '$'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '%'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '&'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = "'"
+lsb = 2
+adv = 6
+
+[[glyphs]]
+chr = '('
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = ')'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '*'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '+'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = ','
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '-'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '.'
+lsb = 2
+adv = 6
+
+[[glyphs]]
+chr = '/'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '0'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '1'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '2'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '3'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '4'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '5'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '6'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '7'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '8'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '9'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = ':'
+lsb = 2
+adv = 6
+
+[[glyphs]]
+chr = ';'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '<'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '='
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '>'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '?'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '@'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'A'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'B'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'C'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'D'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'E'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'F'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'G'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'H'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'I'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'J'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'K'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'L'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'M'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'N'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'O'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'P'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Q'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'R'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'S'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'T'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'U'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'V'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'W'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'X'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Y'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Z'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '['
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '\'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = ']'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '^'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '_'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '`'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'a'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'b'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'c'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'd'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'e'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'f'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'g'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'h'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'i'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'j'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'k'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'l'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'm'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'n'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'o'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'p'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'q'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'r'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 's'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 't'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'u'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'v'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'w'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'x'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'y'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'z'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '{'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '|'
+lsb = 2
+adv = 6
+
+[[glyphs]]
+chr = '}'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '~'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '¡'
+lsb = 2
+adv = 6
+
+[[glyphs]]
+chr = '¢'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '£'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '¥'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '©'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '«'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '®'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '°'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '»'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '¿'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'À'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Á'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Â'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ã'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ä'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Å'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Æ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ç'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'È'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'É'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ê'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ë'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ì'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Í'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Î'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ï'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ñ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ò'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ó'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ô'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Õ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ö'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ù'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ú'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Û'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ü'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ß'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'à'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'á'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'â'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ã'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ä'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'å'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'æ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ç'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'è'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'é'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ê'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ë'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ì'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'í'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'î'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ï'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ñ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ò'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ó'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ô'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'õ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ö'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ù'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ú'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'û'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ü'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ÿ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Œ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'œ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'Ÿ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'ẞ'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '–'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '—'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '‘'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '’'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '‚'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '“'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '”'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '„'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '•'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '…'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '‹'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '›'
+lsb = 1
+adv = 6
+
+[[glyphs]]
+chr = '€'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '™'
+lsb = 0
+adv = 6

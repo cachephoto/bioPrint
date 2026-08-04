@@ -1,0 +1,10102 @@
+cols = 14
+rows = 13
+tile_w = 10
+tile_h = 20
+baseline = 16
+line_gap = 0
+space_w = 3
+
+[[glyphs]]
+chr = "\u0000"
+lsb = 0
+adv = 11
+
+[[glyphs]]
+chr = '!'
+lsb = 0
+adv = 3
+
+[[glyphs]]
+chr = '"'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '#'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '$'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '%'
+lsb = 0
+adv = 11
+
+[[glyphs]]
+chr = '&'
+lsb = 0
+adv = 10
+
+[[glyphs]]
+chr = "'"
+lsb = 0
+adv = 3
+
+[[glyphs]]
+chr = '('
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = ')'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '*'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '+'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = ','
+lsb = 0
+adv = 4
+
+[[glyphs]]
+chr = '-'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '.'
+lsb = 0
+adv = 3
+
+[[glyphs]]
+chr = '/'
+lsb = 0
+adv = 7
+
+[[glyphs]]
+chr = '0'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '1'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '2'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '3'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '4'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '5'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '6'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '7'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '8'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '9'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = ':'
+lsb = 0
+adv = 3
+
+[[glyphs]]
+chr = ';'
+lsb = 0
+adv = 4
+
+[[glyphs]]
+chr = '<'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '='
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '>'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '?'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '@'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'A'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'B'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'C'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'D'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'E'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'F'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'G'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'H'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'I'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'J'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'K'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'L'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'M'
+lsb = 0
+adv = 11
+
+[[glyphs]]
+chr = 'N'
+lsb = 0
+adv = 10
+
+[[glyphs]]
+chr = 'O'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'P'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Q'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'R'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'S'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'T'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'U'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'V'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'W'
+lsb = 0
+adv = 11
+
+[[glyphs]]
+chr = 'X'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Y'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Z'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '['
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '\'
+lsb = 0
+adv = 7
+
+[[glyphs]]
+chr = ']'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '^'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '_'
+lsb = 0
+adv = 10
+
+[[glyphs]]
+chr = '`'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = 'a'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'b'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'c'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'd'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'e'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'f'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'g'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'h'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'i'
+lsb = 0
+adv = 7
+
+[[glyphs]]
+chr = 'j'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'k'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'l'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'm'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'n'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'o'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'p'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'q'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'r'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 's'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 't'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'u'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'v'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'w'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'x'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'y'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'z'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '{'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '|'
+lsb = 0
+adv = 3
+
+[[glyphs]]
+chr = '}'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '~'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '¡'
+lsb = 0
+adv = 3
+
+[[glyphs]]
+chr = '¢'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '£'
+lsb = 0
+adv = 10
+
+[[glyphs]]
+chr = '¥'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '©'
+lsb = 0
+adv = 11
+
+[[glyphs]]
+chr = '«'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '®'
+lsb = 0
+adv = 11
+
+[[glyphs]]
+chr = '°'
+lsb = 0
+adv = 6
+
+[[glyphs]]
+chr = '»'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = '¿'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'À'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Á'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Â'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ã'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ä'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Å'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Æ'
+lsb = 0
+adv = 10
+
+[[glyphs]]
+chr = 'Ç'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'È'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'É'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ê'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ë'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ì'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Í'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Î'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ï'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ñ'
+lsb = 0
+adv = 10
+
+[[glyphs]]
+chr = 'Ò'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ó'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ô'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Õ'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ö'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ù'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ú'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Û'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Ü'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'ß'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'à'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'á'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'â'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ã'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ä'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'å'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'æ'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'ç'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'è'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'é'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ê'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ë'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ì'
+lsb = 0
+adv = 7
+
+[[glyphs]]
+chr = 'í'
+lsb = 0
+adv = 7
+
+[[glyphs]]
+chr = 'î'
+lsb = 0
+adv = 7
+
+[[glyphs]]
+chr = 'ï'
+lsb = 0
+adv = 7
+
+[[glyphs]]
+chr = 'ñ'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ò'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ó'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ô'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'õ'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ö'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ù'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ú'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'û'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ü'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'ÿ'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'Œ'
+lsb = 0
+adv = 10
+
+[[glyphs]]
+chr = 'œ'
+lsb = 0
+adv = 8
+
+[[glyphs]]
+chr = 'Ÿ'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = 'ẞ'
+lsb = 0
+adv = 10
+
+[[glyphs]]
+chr = '–'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '—'
+lsb = 0
+adv = 10
+
+[[glyphs]]
+chr = '‘'
+lsb = 0
+adv = 4
+
+[[glyphs]]
+chr = '’'
+lsb = 0
+adv = 4
+
+[[glyphs]]
+chr = '‚'
+lsb = 0
+adv = 4
+
+[[glyphs]]
+chr = '“'
+lsb = 0
+adv = 7
+
+[[glyphs]]
+chr = '”'
+lsb = 0
+adv = 7
+
+[[glyphs]]
+chr = '„'
+lsb = 0
+adv = 7
+
+[[glyphs]]
+chr = '•'
+lsb = 0
+adv = 5
+
+[[glyphs]]
+chr = '…'
+lsb = 0
+adv = 9
+
+[[glyphs]]
+chr = '‹'
+lsb = 0
+adv = 5
+
+[[glyphs]]
+chr = '›'
+lsb = 0
+adv = 5
+
+[[glyphs]]
+chr = '€'
+lsb = 0
+adv = 10
+
+[[glyphs]]
+chr = '™'
+lsb = 0
+adv = 9
+
+[[kerning]]
+left = "\u0000"
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '#'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '#'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '#'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '#'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '#'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '#'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '#'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '#'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '#'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '#'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '#'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '$'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '$'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '$'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '$'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '$'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '%'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '&'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '&'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '#'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '$'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '&'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '+'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = ','
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '-'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '.'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '/'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = ':'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = ';'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '<'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '='
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '>'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '_'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'a'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'c'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'g'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'm'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'o'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'q'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 's'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '~'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '£'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '©'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '®'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'à'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'á'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'â'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'ä'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'å'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'æ'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'ç'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'ò'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'ó'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'ô'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'ö'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'œ'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = 'ẞ'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '–'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '—'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '…'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '›'
+kern = -1
+
+[[kerning]]
+left = "'"
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '1'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '2'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = ':'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'I'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'X'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'i'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'x'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'Ì'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'Í'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'Î'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'Ï'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'ì'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'í'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'î'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'ï'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '+'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '1'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '2'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = ':'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'I'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'X'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'i'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'x'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'Ì'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'Í'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'Î'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'Ï'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'ì'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'í'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'î'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'ï'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '-'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '.'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '#'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '='
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '£'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '/'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = '0'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '0'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '0'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '1'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '2'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '2'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '2'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '3'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '3'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '3'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '4'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '4'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '4'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '5'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '5'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '5'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '6'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '6'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '6'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '#'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '$'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = ':'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '='
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'a'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'c'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'g'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'm'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'o'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'q'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 's'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '£'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '©'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '®'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'à'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'á'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'â'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'ä'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'å'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'æ'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'ç'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'ò'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'ó'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'ô'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'ö'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'œ'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = 'ẞ'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = '7'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '8'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '8'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '8'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '9'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '9'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '9'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '<'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '<'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '='
+right = ','
+kern = -1
+
+[[kerning]]
+left = '='
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '='
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '='
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '='
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '='
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '='
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '='
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '='
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '='
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '='
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '='
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '='
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '1'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '2'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '3'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '9'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = ':'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'I'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'S'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'X'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'i'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'x'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'z'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'Ì'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'Í'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'Î'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'Ï'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'ì'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'í'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'î'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'ï'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = '>'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '@'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '@'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '@'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '@'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '@'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '@'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '@'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '@'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '@'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'A'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'A'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'A'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'B'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'B'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'B'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'C'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'C'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'C'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'C'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'C'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'C'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'D'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'D'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'D'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'E'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'F'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'F'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'F'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'F'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'F'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 'F'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'F'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'F'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'F'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'G'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'G'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'G'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'H'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'H'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'H'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'I'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'J'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'J'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'J'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'K'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'L'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'M'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'M'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'M'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'N'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'N'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'N'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'O'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'O'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'O'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'P'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'Q'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Q'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Q'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'R'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'R'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'R'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'R'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'R'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'R'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'R'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'R'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'R'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'S'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'S'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'S'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '#'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '$'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = ':'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '='
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'a'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'c'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'g'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'm'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'o'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'q'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 's'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '£'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '©'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '®'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'à'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'á'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'â'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'ä'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'å'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'æ'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'ç'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'ò'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'ó'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'ô'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'ö'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'œ'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = 'ẞ'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = 'T'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'U'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'U'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'U'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '#'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '='
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '£'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'V'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = 'W'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'W'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'W'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'X'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '#'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '='
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '£'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'Y'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'Z'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '\'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '_'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'a'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'a'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'a'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'a'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'a'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'a'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'b'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'b'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'b'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'b'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'b'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'b'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'c'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'c'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'c'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'c'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'c'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'c'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'c'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'c'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'd'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'd'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'd'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'd'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'd'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'd'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'e'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'f'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'f'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'f'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'f'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'f'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'f'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'f'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'f'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'f'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = 'g'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'h'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'h'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'h'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'h'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'i'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'j'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'j'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'j'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'j'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'k'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'l'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'm'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'm'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'm'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'm'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'm'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'm'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'n'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'n'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'n'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'n'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'o'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'o'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'o'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'o'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'o'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'o'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = 'I'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = 'X'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = 'Ì'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = 'Í'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = 'Î'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = 'Ï'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'p'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'q'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'q'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'q'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'q'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'q'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'q'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'r'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'r'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'r'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'r'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'r'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'r'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 's'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = 's'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '£'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 't'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'u'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'u'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'u'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'u'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'v'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'w'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'w'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'w'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'w'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'x'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '£'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'y'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'z'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'z'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'z'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'z'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'z'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'z'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'z'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'z'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'z'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'z'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '|'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '1'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '2'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '3'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'I'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'X'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'i'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'x'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'z'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'Ì'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'Í'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'Î'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'Ï'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'ì'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'í'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'î'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'ï'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '~'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '¡'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '¡'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '¢'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '¢'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '¢'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '¢'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '¢'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '¢'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '¢'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '¢'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '£'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '¥'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '¥'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '¥'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '¥'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '©'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '©'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '©'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '©'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '©'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '©'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '©'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '©'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '®'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '®'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '®'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '®'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '®'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '®'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '®'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '®'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '='
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '@'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '¥'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '©'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '®'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '¿'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'À'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'À'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'À'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Á'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Á'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Á'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Â'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Â'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Â'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ã'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ã'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ã'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ä'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ä'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ä'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Å'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Å'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Å'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Æ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Æ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Æ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ç'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ç'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ç'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'Ç'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'Ç'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ç'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'È'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'É'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'Ê'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'Ë'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'Ì'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'Í'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'Î'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'Ï'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = 'Ñ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ñ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ñ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ò'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ò'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ò'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ó'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ó'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ó'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ô'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ô'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ô'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Õ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Õ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Õ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ö'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ö'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ö'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ù'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ù'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ù'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ú'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ú'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ú'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Û'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Û'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Û'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ü'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ü'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ü'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = 'ß'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'à'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'à'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'à'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'à'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'à'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'à'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'á'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'á'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'á'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'á'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'á'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'á'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'â'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'â'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'â'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'â'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'â'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'â'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ã'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ã'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'ã'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ã'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'ã'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ã'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ä'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ä'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'ä'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ä'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'ä'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ä'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'å'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'å'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'å'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'å'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'å'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'å'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'æ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'æ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'æ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'æ'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ç'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ç'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'ç'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ç'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'ç'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'ç'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ç'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'ç'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'è'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'é'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'ê'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'ë'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'ì'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'í'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'î'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'ï'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ñ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ñ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ñ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ñ'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ò'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ò'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'ò'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ò'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'ò'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ò'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ó'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ó'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'ó'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ó'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'ó'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ó'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ô'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ô'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'ô'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ô'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'ô'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ô'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'õ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'õ'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'õ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'õ'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'õ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'õ'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ö'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ö'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'ö'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ö'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'ö'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ö'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ù'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ù'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ù'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ù'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ú'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ú'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ú'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ú'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'û'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'û'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'û'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'û'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ü'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ü'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ü'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ü'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '£'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'ÿ'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'Œ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Œ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Œ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'œ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'œ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'œ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'œ'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '#'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '='
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '£'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = 'Ÿ'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = ','
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = 'ẞ'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '1'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '2'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = ':'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'I'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'X'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'i'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'x'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'Ì'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'Í'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'Î'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'Ï'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'ì'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'í'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'î'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'ï'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '–'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '1'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '2'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = ':'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'I'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'X'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'i'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'x'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'Ì'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'Í'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'Î'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'Ï'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'ì'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'í'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'î'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'ï'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '—'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '#'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '='
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '£'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '’'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '#'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '$'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '&'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '0'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '3'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '5'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '6'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '8'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '9'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '='
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '@'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'C'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'G'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'J'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'O'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Q'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'S'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'U'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'W'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'c'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'g'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'j'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'o'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'q'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 's'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'u'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'w'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '¥'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '©'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '®'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Ç'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Ò'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Ó'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Ô'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Õ'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Ö'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Ù'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Ú'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Û'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Ü'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'ç'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'ò'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'ó'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'ô'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'õ'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'ö'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'ù'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'ú'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'û'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'ü'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Œ'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'œ'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '‚'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '+'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '-'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '4'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '¢'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '–'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '—'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '€'
+kern = -1
+
+[[kerning]]
+left = '…'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = '‹'
+kern = -1
+
+[[kerning]]
+left = '‹'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '%'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '.'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '/'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '1'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '2'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '3'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '7'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '9'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = ':'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '>'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '?'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'I'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'S'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'T'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'V'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'X'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'Y'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'Z'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '\'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '_'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'i'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 't'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'v'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'x'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'y'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'z'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '°'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'Ì'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'Í'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'Î'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'Ï'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'ì'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'í'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'î'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'ï'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'ÿ'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = 'Ÿ'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '‚'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '…'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '›'
+kern = -1
+
+[[kerning]]
+left = '›'
+right = '™'
+kern = -1
+
+[[kerning]]
+left = '€'
+right = ','
+kern = -1
+
+[[kerning]]
+left = '€'
+right = ';'
+kern = -1
+
+[[kerning]]
+left = '€'
+right = '<'
+kern = -1
+
+[[kerning]]
+left = '€'
+right = '~'
+kern = -1
+
+[[kerning]]
+left = '€'
+right = '¿'
+kern = -1
+
+[[kerning]]
+left = '€'
+right = '‹'
+kern = -1

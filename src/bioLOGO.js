@@ -14,7 +14,7 @@ export function createLogo(scene) {
         updateLogoPosition();
     });
     
-    texture.encoding = THREE.sRGBEncoding;
+    if (THREE.SRGBColorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace; // r155+ API
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
     

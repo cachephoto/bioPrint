@@ -1,0 +1,181 @@
+<meta charset="UTF-8">
+<title>bioPrint — Guía de rodaje</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#04070f; color:#cfe4ff; font-family:'VT323',monospace;
+    font-size:19px; padding:28px 32px 70px; line-height:1.45;
+    background-image:
+      linear-gradient(rgba(90,150,255,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(90,150,255,.05) 1px, transparent 1px);
+    background-size:34px 34px;
+  }
+  h1 { font-family:'Press Start 2P',monospace; font-size:17px; color:#9ec7ff;
+       letter-spacing:2px; margin-bottom:6px; }
+  .sub { color:#6f9fd8; margin-bottom:22px; }
+  h2 { font-family:'Press Start 2P',monospace; font-size:12px; color:#7fb4ff;
+       letter-spacing:2px; margin:26px 0 10px; border-bottom:1px solid rgba(90,150,255,.25);
+       padding-bottom:6px; }
+  .cols { columns:2; column-gap:40px; }
+  section { break-inside:avoid; margin-bottom:20px; display:block; }
+  table { width:100%; border-collapse:collapse; }
+  td { padding:3px 8px 3px 0; vertical-align:top; }
+  td:first-child { white-space:nowrap; width:1%; }
+  .k { background:#7fb4ff; color:#04070f; padding:1px 7px; border-radius:3px;
+       font-weight:bold; font-size:17px; }
+  .cmd { color:#9ec7ff; }
+  .flow { background:rgba(20,40,80,.4); border-left:2px solid #4a8fd8;
+          padding:12px 16px; margin:10px 0; white-space:pre-wrap; color:#bfe0ff; }
+  .note { color:#ffcc66; }
+  .pages td:first-child { color:#7fb4ff; font-weight:bold; }
+</style>
+
+<h1>bioPrint · Guía de rodaje</h1>
+<div class="sub">Secuencia completa, atajos y comandos</div>
+
+<h2>Dos interfaces en la misma app</h2>
+<table class="pages">
+  <tr><td>v1</td><td><b>ZENG</b> — azul · 8 páginas terminadas · comando <span class="cmd">perfil v1</span></td></tr>
+  <tr><td>v2</td><td><b>2.0</b> — verde, estilo terminal · comando <span class="cmd">perfil v2</span></td></tr>
+</table>
+<div class="note">Cada perfil guarda sus 30 slots y su ajuste de imagen por separado. Cambiar de perfil no toca el otro.</div>
+
+<h2>Versión 2.0 (verde) — pantalla 1</h2>
+<div class="flow">  logo BIOPRINT      |  datos de sistema (terminal)
+  ─────────────────────────────────────────────
+  visor MEGAZORD     |  log de arranque corriendo
+   (animado)         |   (se repite en bucle)
+  ─────────────────────────────────────────────
+            ALL SYSTEMS READY  (arcade)</div>
+<table>
+  <tr><td class="cmd">boot2</td><td>Reconstruye la pantalla de arranque 2.0</td></tr>
+  <tr><td class="cmd">save 0</td><td>Guardarla (ya está en el slot 0, carga sola al abrir)</td></tr>
+</table>
+<div class="note">Mezcla tipografías: arcade para titulares, terminal (VT323) para las corridas de texto.</div>
+
+<h2>Mapa de páginas — versión ZENG (v1)</h2>
+<table class="pages">
+  <tr><td>0</td><td><b>LOGIN</b> — BIOCORP_ID · PASSWORD · LOGIN WITH SOCIAL MEDIA → pág. 6</td></tr>
+  <tr><td>1</td><td><b>PRINT</b> — dbl-click → Are you sure? → YES → PRINTING → RENDERING</td></tr>
+  <tr><td>4</td><td><b>3D PRINT</b> — 6 modelos Zeng · SETTINGS → 9 · PRINT → 1 · ADVANCED MODELS → 8</td></tr>
+  <tr><td>5</td><td><b>WELCOME @ZENG</b> — 3D PRINT → pág. 4</td></tr>
+  <tr><td>6</td><td><b>TERMS</b> — I AGREE ×15 → pág. 7 · DECLINE → pág. 0</td></tr>
+  <tr><td>7</td><td><b>APPS</b> — ACCEPT → pág. 5 · DECLINE → pág. 0</td></tr>
+  <tr><td>8</td><td><b>ACCESS DENIED</b> 🔴 parpadea — BIOCORP_ID · PASSWORD · RETRY → pág. 4</td></tr>
+  <tr><td>9</td><td><b>SETTINGS</b> — 6 parámetros · BACK → pág. 4</td></tr>
+</table>
+
+<h2>Flujo de la secuencia</h2>
+<div class="flow">[BOOT splash]  →  cualquier tecla lo salta
+
+  0  LOGIN
+  ↓  click LOGIN WITH SOCIAL MEDIA
+  6  TERMS  →  I AGREE ×15 (el texto avanza en cada click)
+  ↓
+  7  APPS   →  ACCEPT
+  ↓
+  5  WELCOME @ZENG  →  3D PRINT
+  ↓
+  4  3D PRINT (catálogo Zeng)
+       ├─ click en un modelo → háptico + carga en viewer
+       ├─ SETTINGS  →  9  (BACK vuelve)
+       ├─ PRINT     →  1  → dbl-click → YES → PRINTING
+       └─ ADVANCED MODELS → 🔴 8 ACCESS DENIED → RETRY vuelve</div>
+
+<h2>Catálogo de modelos (Zeng)</h2>
+<div class="flow">Arriba:  DISK FISH   ·  T-BONE      ·  BONE
+Abajo:   BURGER MEAT ·  LANGOSTA    ·  POLLO</div>
+
+<div class="cols">
+
+<section>
+  <h2>Navegación</h2>
+  <table>
+    <tr><td><span class="k">0</span>–<span class="k">9</span></td><td>Saltar a esa página (cámara normalizada)</td></tr>
+    <tr><td><span class="k">PgUp</span>/<span class="k">PgDn</span></td><td>Página anterior / siguiente</td></tr>
+    <tr><td class="cmd">pages</td><td>Menú visual de slots</td></tr>
+    <tr><td class="cmd">new</td><td>Lienzo limpio (slots intactos)</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Teclas globales</h2>
+  <table>
+    <tr><td><span class="k">T</span></td><td>Terminal de comandos</td></tr>
+    <tr><td><span class="k">G</span></td><td>Menú rápido</td></tr>
+    <tr><td><span class="k">C</span></td><td>Panel de calibración</td></tr>
+    <tr><td><span class="k">V</span></td><td>Menú de slots</td></tr>
+    <tr><td><span class="k">K</span></td><td>Teclado virtual</td></tr>
+    <tr><td><span class="k">B</span></td><td>Bypass login</td></tr>
+    <tr><td><span class="k">Esc</span></td><td>Deseleccionar</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Imagen — ajuste rápido</h2>
+  <table>
+    <tr><td><span class="k">]</span> / <span class="k">[</span></td><td>Subir / bajar brillo</td></tr>
+    <tr><td><span class="k">}</span> / <span class="k">{</span></td><td>Más / menos azul</td></tr>
+    <tr><td class="cmd">brillo 0-10</td><td>Brillo general (5 = normal)</td></tr>
+    <tr><td class="cmd">saturacion 0-10</td><td>Tinte (7 = actual)</td></tr>
+    <tr><td class="cmd">color azul|rojo…</td><td>Color del grade</td></tr>
+    <tr><td class="cmd">opacity 0.1-1</td><td>Opacidad global</td></tr>
+  </table>
+  <div class="note">La tecla C abre todo esto con sliders.</div>
+</section>
+
+<section>
+  <h2>Durante el print</h2>
+  <table>
+    <tr><td><span class="k">Espacio</span></td><td>Saltar el progreso a 95%</td></tr>
+    <tr><td>dbl-click</td><td>Activar botones (PRINT NOW, YES/NO)</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Edición de paneles</h2>
+  <table>
+    <tr><td>Click derecho</td><td>Menú: justificar, mover, escalar, borrar</td></tr>
+    <tr><td>Shift+Click</td><td>Multi-selección</td></tr>
+    <tr><td><span class="k">Ctrl+C</span>/<span class="k">V</span></td><td>Copiar / pegar paneles</td></tr>
+    <tr><td>Flechas</td><td>Mover selección</td></tr>
+    <tr><td><span class="k">X</span></td><td>Eliminar selección</td></tr>
+    <tr><td class="cmd">tidy</td><td>Auto-acomodar y centrar</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Teclado bioKeyb</h2>
+  <table>
+    <tr><td>Alt+Flechas</td><td>Mover el teclado (1 celda)</td></tr>
+    <tr><td>Alt+Shift+Flechas</td><td>Mover 5 celdas</td></tr>
+    <tr><td class="cmd">movekeyb dir</td><td>Desde terminal</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Contenido</h2>
+  <table>
+    <tr><td class="cmd">models</td><td>Grid 3×2 de modelos Zeng</td></tr>
+    <tr><td class="cmd">model &lt;nombre&gt;</td><td>Cargar modelo en panel</td></tr>
+    <tr><td class="cmd">viewer</td><td>Panel como visor</td></tr>
+    <tr><td class="cmd">logo</td><td>Logo BIOPRINT</td></tr>
+    <tr><td class="cmd">terms</td><td>Términos y condiciones</td></tr>
+    <tr><td class="cmd">apps</td><td>Grid de apps</td></tr>
+    <tr><td class="cmd">social</td><td>Login social</td></tr>
+    <tr><td class="cmd">font3d arcade</td><td>Tipografía (persiste)</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Guardado</h2>
+  <table>
+    <tr><td class="cmd">save &lt;n&gt;</td><td>Guardar página en slot n</td></tr>
+    <tr><td class="cmd">load &lt;n&gt;</td><td>Cargar slot n</td></tr>
+    <tr><td class="cmd">pages list</td><td>Ver los 30 slots</td></tr>
+  </table>
+  <div class="note">Todo persiste en el navegador. Recargar no pierde nada.</div>
+</section>
+
+</div>

@@ -1,0 +1,12983 @@
+{
+  "cols": 14,
+  "rows": 13,
+  "tile_w": 11,
+  "tile_h": 18,
+  "baseline": 15,
+  "line_gap": 0,
+  "space_w": 4,
+  "glyphs": [
+    {
+      "chr": "\u0000",
+      "lsb": 0,
+      "adv": 12
+    },
+    {
+      "chr": "!",
+      "lsb": 0,
+      "adv": 8
+    },
+    {
+      "chr": "\"",
+      "lsb": 0,
+      "adv": 8
+    },
+    {
+      "chr": "#",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "$",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "%",
+      "lsb": 0,
+      "adv": 8
+    },
+    {
+      "chr": "&",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "'",
+      "lsb": 0,
+      "adv": 4
+    },
+    {
+      "chr": "(",
+      "lsb": 0,
+      "adv": 7
+    },
+    {
+      "chr": ")",
+      "lsb": 0,
+      "adv": 7
+    },
+    {
+      "chr": "*",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "+",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": ",",
+      "lsb": 0,
+      "adv": 5
+    },
+    {
+      "chr": "-",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": ".",
+      "lsb": 0,
+      "adv": 4
+    },
+    {
+      "chr": "/",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": "0",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "1",
+      "lsb": 0,
+      "adv": 7
+    },
+    {
+      "chr": "2",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": "3",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": "4",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "5",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": "6",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": "7",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "8",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": "9",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": ":",
+      "lsb": 0,
+      "adv": 4
+    },
+    {
+      "chr": ";",
+      "lsb": 0,
+      "adv": 5
+    },
+    {
+      "chr": "<",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "=",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": ">",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "?",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": "@",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "A",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "B",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "C",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "D",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "E",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "F",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "G",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "H",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "I",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "J",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "K",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "L",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "M",
+      "lsb": 0,
+      "adv": 12
+    },
+    {
+      "chr": "N",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "O",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "P",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Q",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "R",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "S",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "T",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "U",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "V",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "W",
+      "lsb": 0,
+      "adv": 12
+    },
+    {
+      "chr": "X",
+      "lsb": 0,
+      "adv": 12
+    },
+    {
+      "chr": "Y",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Z",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "[",
+      "lsb": 0,
+      "adv": 7
+    },
+    {
+      "chr": "\\",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": "]",
+      "lsb": 0,
+      "adv": 7
+    },
+    {
+      "chr": "^",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": "_",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "`",
+      "lsb": 0,
+      "adv": 6
+    },
+    {
+      "chr": "a",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "b",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "c",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "d",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "e",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "f",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "g",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "h",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "i",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "j",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "k",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "l",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "m",
+      "lsb": 0,
+      "adv": 12
+    },
+    {
+      "chr": "n",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "o",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "p",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "q",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "r",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "s",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "t",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "u",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "v",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "w",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "x",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "y",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "z",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "{",
+      "lsb": 0,
+      "adv": 8
+    },
+    {
+      "chr": "|",
+      "lsb": 0,
+      "adv": 4
+    },
+    {
+      "chr": "}",
+      "lsb": 0,
+      "adv": 8
+    },
+    {
+      "chr": "~",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "¡",
+      "lsb": 0,
+      "adv": 8
+    },
+    {
+      "chr": "¢",
+      "lsb": 0,
+      "adv": 8
+    },
+    {
+      "chr": "£",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "¥",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "©",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "«",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "®",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "°",
+      "lsb": 0,
+      "adv": 8
+    },
+    {
+      "chr": "»",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "¿",
+      "lsb": 0,
+      "adv": 9
+    },
+    {
+      "chr": "À",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Á",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Â",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Ã",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Ä",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Å",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Æ",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "Ç",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "È",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "É",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "Ê",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "Ë",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "Ì",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "Í",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "Î",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "Ï",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "Ñ",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Ò",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Ó",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Ô",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Õ",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Ö",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Ù",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Ú",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Û",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Ü",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ß",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "à",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "á",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "â",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ã",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ä",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "å",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "æ",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ç",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "è",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "é",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "ê",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "ë",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "ì",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "í",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "î",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "ï",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "ñ",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "ò",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ó",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ô",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "õ",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ö",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ù",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ú",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "û",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ü",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ÿ",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Œ",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "œ",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "Ÿ",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "ẞ",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "–",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "—",
+      "lsb": 0,
+      "adv": 12
+    },
+    {
+      "chr": "‘",
+      "lsb": 0,
+      "adv": 5
+    },
+    {
+      "chr": "’",
+      "lsb": 0,
+      "adv": 5
+    },
+    {
+      "chr": "‚",
+      "lsb": 0,
+      "adv": 5
+    },
+    {
+      "chr": "“",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "”",
+      "lsb": 0,
+      "adv": 10
+    },
+    {
+      "chr": "„",
+      "lsb": 0,
+      "adv": 8
+    },
+    {
+      "chr": "•",
+      "lsb": 0,
+      "adv": 6
+    },
+    {
+      "chr": "…",
+      "lsb": 0,
+      "adv": 12
+    },
+    {
+      "chr": "‹",
+      "lsb": 0,
+      "adv": 6
+    },
+    {
+      "chr": "›",
+      "lsb": 0,
+      "adv": 6
+    },
+    {
+      "chr": "€",
+      "lsb": 0,
+      "adv": 11
+    },
+    {
+      "chr": "™",
+      "lsb": 0,
+      "adv": 12
+    }
+  ],
+  "kerning": [
+    {
+      "left": "#",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "#",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "#",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "#",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "#",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "#",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "#",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "#",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "$",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "%",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "%",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "%",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "%",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "%",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "%",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "%",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "&",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "&",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "&",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "&",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "&",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "&",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "&",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "&",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "&",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "&",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "#",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": ":",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "=",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "@",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "a",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "c",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "g",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "o",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "q",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "s",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "¢",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "à",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "á",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "â",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "ã",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "ä",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "å",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "æ",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "ç",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "ò",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "ó",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "ô",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "õ",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "ö",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "œ",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "ẞ",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "'",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "2",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "3",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": ">",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "Z",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "i",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "x",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "z",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "ì",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "í",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "î",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "ï",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "+",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "2",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "3",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": ">",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "Z",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "i",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "x",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "z",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "ì",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "í",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "î",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "ï",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "-",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": ".",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "#",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": ":",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "=",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "@",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "a",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "c",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "g",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "o",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "q",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "s",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "¢",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "à",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "á",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "â",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "ã",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "ä",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "å",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "æ",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "ç",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "ò",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "ó",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "ô",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "õ",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "ö",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "œ",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "ẞ",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "/",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "0",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "0",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "0",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "0",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "0",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "0",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "0",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "3",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "3",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "3",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "5",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "6",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "7",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "8",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "8",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "8",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "9",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "9",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "9",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "9",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "9",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "9",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "9",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "<",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "<",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "<",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "<",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "<",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "<",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "<",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "<",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "<",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "<",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "=",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "=",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "=",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "=",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "=",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "=",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "=",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "=",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "=",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "=",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "2",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "3",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": ">",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "Z",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "i",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "x",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "z",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "ì",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "í",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "î",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "ï",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": ">",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "Z",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "@",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "A",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "A",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "A",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "A",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "B",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "C",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "D",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "D",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "D",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "D",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "D",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "D",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "D",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "D",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "E",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "#",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": ":",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "=",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "@",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "a",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "c",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "g",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "o",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "q",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "s",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "¢",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "à",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "á",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "â",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "ã",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "ä",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "å",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "æ",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "ç",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "ò",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "ó",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "ô",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "õ",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "ö",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "œ",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "ẞ",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "F",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "G",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "G",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "G",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "G",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "G",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "G",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "G",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "G",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "G",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "I",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "J",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "J",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "J",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "K",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "L",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "O",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "O",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "O",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "O",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "O",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "O",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "O",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "O",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "Z",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "P",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Q",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Q",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Q",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Q",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "S",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "#",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": ":",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "=",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "@",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "a",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "c",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "g",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "o",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "q",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "s",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "¢",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "à",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "á",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "â",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "ã",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "ä",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "å",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "æ",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "ç",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "ò",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "ó",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "ô",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "õ",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "ö",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "œ",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "ẞ",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "T",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "U",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "U",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "U",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "U",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "=",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "a",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "c",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "g",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "o",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "q",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "¢",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "à",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "á",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "â",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "ã",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "ä",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "å",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "æ",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "ç",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "ò",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "ó",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "ô",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "õ",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "ö",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "œ",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "ẞ",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "V",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "W",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "W",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "W",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "W",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "X",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "Y",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Y",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Y",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Y",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "Z",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "#",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "%",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "=",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "@",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "C",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "G",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "O",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Q",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "U",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "W",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "c",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "g",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "o",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "q",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "u",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "w",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "¢",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Ç",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Ò",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Ó",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Ô",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Õ",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Ö",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Ù",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Ú",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Û",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Ü",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "ç",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "ò",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "ó",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "ô",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "õ",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "ö",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "ù",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "ú",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "û",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "ü",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Œ",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "œ",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "\\",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "_",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "a",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "b",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "c",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "d",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "e",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "f",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "g",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "i",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "i",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "i",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "i",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "i",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "i",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "i",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "i",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "j",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "j",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "j",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "k",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "k",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "k",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "k",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "k",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "k",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "k",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "k",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "l",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "o",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "2",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "3",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": ">",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "Z",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "i",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "x",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "z",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "ì",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "í",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "î",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "ï",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "p",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "q",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "q",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "q",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "q",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "q",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "q",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "r",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "r",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "r",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "r",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "r",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "r",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "s",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "t",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "u",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "u",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "u",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "u",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "v",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "w",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "w",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "w",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "w",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "x",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "x",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "x",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "x",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "x",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "x",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "x",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "x",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "y",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "y",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "y",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "y",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "z",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "z",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "z",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "z",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "z",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "z",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "z",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "z",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "2",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "3",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": ">",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "Z",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "i",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "x",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "z",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "ì",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "í",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "î",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "ï",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "~",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "¡",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "¢",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "¢",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "¢",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "¢",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "¢",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "¢",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "¢",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "£",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "¥",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "3",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "©",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "3",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "®",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "#",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "%",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "0",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "6",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "8",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "=",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": ">",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "@",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "C",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "G",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "O",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Q",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "U",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "W",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "c",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "g",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "o",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "q",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "u",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "w",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "¢",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Ç",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Ò",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Ó",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Ô",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Õ",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Ö",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Ù",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Ú",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Û",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Ü",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "ç",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "ò",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "ó",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "ô",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "õ",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "ö",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "ù",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "ú",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "û",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "ü",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Œ",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "œ",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "¿",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "À",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "À",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "À",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "À",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Á",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Á",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Á",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Á",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Â",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Â",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Â",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Â",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Ã",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Ã",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Ã",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Ã",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Ä",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Ä",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Ä",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Ä",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Å",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Å",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Å",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Å",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "Ç",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "È",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "É",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "Ê",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "Ë",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "Ì",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "Í",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "Î",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "Ï",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "Ò",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Ò",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Ò",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Ò",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Ò",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Ò",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Ò",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Ò",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Ó",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Ó",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Ó",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Ó",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Ó",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Ó",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Ó",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Ó",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Ô",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Ô",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Ô",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Ô",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Ô",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Ô",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Ô",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Ô",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Õ",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Õ",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Õ",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Õ",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Õ",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Õ",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Õ",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Õ",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Ö",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Ö",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Ö",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Ö",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "Ö",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "Ö",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "Ö",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Ö",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "Ù",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Ù",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Ù",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Ù",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Ú",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Ú",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Ú",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Ú",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Û",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Û",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Û",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Û",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Ü",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Ü",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Ü",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Ü",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "ß",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "à",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "á",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "â",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "ã",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "ä",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "å",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "ç",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "è",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "é",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "ê",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "ë",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "ì",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "ì",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "ì",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "ì",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "ì",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "ì",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "ì",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "ì",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "í",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "í",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "í",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "í",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "í",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "í",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "í",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "í",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "î",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "î",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "î",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "î",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "î",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "î",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "î",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "î",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "ï",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "ï",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "ï",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "ï",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "ï",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "ï",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "ï",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "ï",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "ò",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "ó",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "ô",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "õ",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "ö",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "ù",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ù",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "ù",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ù",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ú",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ú",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "ú",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ú",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "û",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "û",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "û",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "û",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ü",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ü",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "ü",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ü",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ÿ",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ÿ",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "ÿ",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ÿ",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "Ÿ",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "Ÿ",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "Ÿ",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "Ÿ",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ẞ",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "ẞ",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "ẞ",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "ẞ",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "2",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "3",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": ">",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "Z",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "i",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "x",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "z",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "ì",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "í",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "î",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "ï",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "–",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "2",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "3",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": ">",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "Z",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "i",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "x",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "z",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "ì",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "í",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "î",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "ï",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "—",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "£",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "’",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "#",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "%",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "&",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "=",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "@",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "C",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "G",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "J",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "O",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Q",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "U",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "W",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "c",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "g",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "j",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "o",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "q",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "u",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "w",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "¢",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Ç",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Ò",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Ó",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Ô",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Õ",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Ö",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Ù",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Ú",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Û",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Ü",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "ç",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "ò",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "ó",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "ô",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "õ",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "ö",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "ù",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "ú",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "û",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "ü",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Œ",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "œ",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "‚",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "$",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "1",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "4",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "9",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "Y",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "y",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "©",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "®",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "ÿ",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "Ÿ",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "€",
+      "kern": -1
+    },
+    {
+      "left": "…",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "‹",
+      "kern": -1
+    },
+    {
+      "left": "‹",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "!",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "%",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": ".",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "/",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "2",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "3",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "7",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": ">",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "?",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "I",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "T",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "V",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "X",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "Z",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "\\",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "_",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "i",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "t",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "v",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "x",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "z",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "¥",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "°",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "¿",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "Ì",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "Í",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "Î",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "Ï",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "ì",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "í",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "î",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "ï",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "‚",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "…",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "›",
+      "kern": -1
+    },
+    {
+      "left": "›",
+      "right": "™",
+      "kern": -1
+    },
+    {
+      "left": "€",
+      "right": "+",
+      "kern": -1
+    },
+    {
+      "left": "€",
+      "right": ",",
+      "kern": -1
+    },
+    {
+      "left": "€",
+      "right": "-",
+      "kern": -1
+    },
+    {
+      "left": "€",
+      "right": ";",
+      "kern": -1
+    },
+    {
+      "left": "€",
+      "right": "<",
+      "kern": -1
+    },
+    {
+      "left": "€",
+      "right": "~",
+      "kern": -1
+    },
+    {
+      "left": "€",
+      "right": "¡",
+      "kern": -1
+    },
+    {
+      "left": "€",
+      "right": "–",
+      "kern": -1
+    },
+    {
+      "left": "€",
+      "right": "—",
+      "kern": -1
+    },
+    {
+      "left": "€",
+      "right": "‹",
+      "kern": -1
+    }
+  ]
+}

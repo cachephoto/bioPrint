@@ -346,10 +346,11 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
             emissiveIntensity: 0.8 // Más intensidad para efecto más claro
         });
         
-        // Material sólido para modelos OBJ (mantener azul para compatibilidad)
+        // Material sólido para modelos OBJ — cuerpo oscuro azulado para que el
+        // wireframe blanco contraste encima
         const solidMaterial = new THREE.MeshPhongMaterial({
-            color: 0x0066cc, // Azul más brillante
-            specular: 0x111111,
+            color: 0x0a1a3a, // Azul muy oscuro (fondo del wireframe)
+            specular: 0x222222,
             shininess: 30,
             transparent: false,
             side: THREE.FrontSide,
@@ -357,19 +358,20 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
             depthWrite: true
         });
 
-        // Material wireframe mejorado
+        // 🔆 Wireframe BLANCO brillante — contrasta con el fondo azul y florece
+        // con el bloom cuando se sube el brillo (teclas [ y ])
         const wireframeMaterial = new THREE.LineBasicMaterial({
-            color: 0x00ffff, // Cyan
+            color: 0xe8f4ff, // Blanco hielo
             transparent: true,
-            opacity: 0.3,
+            opacity: 0.65, // más presencia blanca sobre el fondo azul
             depthTest: true,
             depthWrite: false
         });
 
-        // Material para bordes resaltados (solo orillas, no wireframe completo)
+        // Bordes resaltados: blanco puro, lo más brillante del modelo
         const edgesMaterial = new THREE.LineBasicMaterial({
-            color: 0x00ffff, // Cyan
-            transparent: false, // No transparente para mejor visibilidad
+            color: 0xffffff, // Blanco puro
+            transparent: false,
             opacity: 1.0,
             depthTest: true,
             depthWrite: false,
@@ -621,27 +623,27 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
             bbox.setFromCenterAndSize(new THREE.Vector3(0, 0, 0), modelSize);
         }
 
-        // Calcular escala considerando rotación isométrica para modelos altos
-        // Después de rotar 90° en X, la dimensión Y se convierte en Z (altura visual)
-        // y Z se convierte en Y (profundidad visual)
-        const rotatedHeight = modelSize.z; // La altura original se convierte en profundidad visual
-        const rotatedDepth = modelSize.y;  // La profundidad original se convierte en altura visual
-        
-        // Calcular escalas para cada dimensión considerando el viewport del panel
-        const scaleX = (panelWidth * 0.9) / modelSize.x;   // Ancho disponible con margen
-        const scaleY = (panelHeight * 0.9) / rotatedDepth; // Altura disponible considerando rotación
-        const scaleZ = (Math.min(panelWidth, panelHeight) * 0.7) / rotatedHeight; // Profundidad más conservadora
-        
-        // Usar la escala más restrictiva para mantener proporciones y evitar clipping
-        let scale = Math.min(scaleX, scaleY, scaleZ) * 0.75; // Factor más conservador para modelos altos
-        
-        // Para modelos FBX, usar escala más conservadora para evitar clipping
+        // 📐 ALTURA PROYECTADA REAL en pantalla tras la rotación isométrica.
+        // El grupo se rota ISO_ANGLE sobre X, así que la altura visible NO es solo `y`
+        // ni solo `z`: es la proyección combinada de ambas. Usar solo una hacía que los
+        // modelos se salieran de su recuadro contenedor.
+        const cosA = Math.abs(Math.cos(ISO_ANGLE));
+        const sinA = Math.abs(Math.sin(ISO_ANGLE));
+        const projectedHeight = modelSize.y * cosA + modelSize.z * sinA; // alto visible
+        const projectedWidth  = modelSize.x;                              // el ancho no rota
+
+        // Márgenes: el modelo ocupa como máximo el 80% del panel para dejar aire
+        const FIT_MARGIN = 0.70;
+        const scaleX = (panelWidth  * FIT_MARGIN) / Math.max(projectedWidth, 0.0001);
+        const scaleY = (panelHeight * FIT_MARGIN) / Math.max(projectedHeight, 0.0001);
+
+        // La escala más restrictiva garantiza que quepa completo en ambas dimensiones
+        let scale = Math.min(scaleX, scaleY);
+
+        // Los FBX suelen traer geometría extra; un poco más conservador
         if (fileExtension === 'fbx') {
-            scale = Math.min(scaleX, scaleY, scaleZ) * 0.6; // Escala más pequeña para evitar clipping
+            scale *= 0.85;
         }
-        
-        // Aumentar escala 300% (3x más grande)
-        scale = scale * 3;
 
         // Ajustar posición Z del grupo isométrico basándose en la altura del modelo para evitar clipping
         const heightFactor = Math.max(modelSize.z / Math.max(modelSize.x, modelSize.y), 1.0);
@@ -741,6 +743,32 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
         isoGroup.add(model);
         modelGroup.add(isoGroup);
         panel.group.add(modelGroup);
+
+        // 📦 AJUSTE FINAL DE CONTENCIÓN: medir el tamaño REAL ya rotado/escalado y,
+        // si excede el recuadro del panel, reducir hasta que quepa y recentrar.
+        // Esto captura el efecto de la rotación isométrica, wireframes y edges extra.
+        try {
+            isoGroup.updateMatrixWorld(true);
+            const fitBox = new THREE.Box3().setFromObject(isoGroup);
+            const fitSize = new THREE.Vector3();
+            const fitCenter = new THREE.Vector3();
+            fitBox.getSize(fitSize);
+            fitBox.getCenter(fitCenter);
+
+            if (isFinite(fitSize.x) && isFinite(fitSize.y) && fitSize.x > 0 && fitSize.y > 0) {
+                const limitW = panelWidth * FIT_MARGIN;
+                const limitH = panelHeight * FIT_MARGIN;
+                // Solo REDUCIR si excede — nunca mover (la posición ya está centrada
+                // por el offset del bbox; tocarla mezclaría coords locales y de mundo).
+                const shrink = Math.min(limitW / fitSize.x, limitH / fitSize.y, 1);
+                if (shrink < 0.999) {
+                    isoGroup.scale.multiplyScalar(shrink);
+                    isoGroup.updateMatrixWorld(true);
+                }
+            }
+        } catch (e) {
+            console.warn('Ajuste de contención del modelo falló:', e);
+        }
         
         // Para modelos FBX, hacer invisible el panel (solo mostrar el modelo)
         if (fileExtension === 'fbx' && panel.group) {
@@ -1107,7 +1135,12 @@ export function cleanupPanelModels() {
             }
             modelState.model.traverse((child) => {
                 if (child.geometry) child.geometry.dispose();
-                if (child.material) child.material.dispose();
+                // Los FBX (megazord) traen mallas con array de materiales
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(m => m && m.dispose && m.dispose());
+                } else if (child.material && child.material.dispose) {
+                    child.material.dispose();
+                }
             });
         }
     });

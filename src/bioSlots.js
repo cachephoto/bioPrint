@@ -17,7 +17,23 @@
 
 // Configuración de slots
 export const MAX_SLOTS = 30; // Aumentado de 10 a 30 slots
-const STORAGE_KEY = 'bioPrint_slots_data';
+// 🗂️ PERFILES DE INTERFAZ
+// Cada perfil guarda su propio juego de 30 slots, de modo que varias versiones
+// de la interfaz (distinto color/diseño) coexisten sin sobrescribirse.
+// El perfil 'v1' usa la clave histórica para no perder los diseños existentes.
+const PROFILE_KEY = 'bioPrint_profile';
+export function getProfile() {
+    try { return localStorage.getItem(PROFILE_KEY) || 'v1'; } catch (e) { return 'v1'; }
+}
+export function setProfileKey(name) {
+    try { localStorage.setItem(PROFILE_KEY, name); } catch (e) {}
+}
+function storageKey() {
+    const p = getProfile();
+    return p === 'v1' ? 'bioPrint_slots_data' : `bioPrint_slots_data__${p}`;
+}
+// Compatibilidad: el resto del módulo usa STORAGE_KEY como getter dinámico
+const STORAGE_KEY_LEGACY = 'bioPrint_slots_data';
 const OLD_MAX_SLOTS = 10; // Para migración
 
 // Variables de estado
@@ -77,7 +93,7 @@ export function persistSlotsToLocalStorage() {
         console.log('Intentando persistir slots. Contenido actual de slots antes de stringify:', slots);
         const slotsJSON = JSON.stringify(slots);
         console.log('Slots convertidos a JSON para localStorage:', slotsJSON);
-        localStorage.setItem(STORAGE_KEY, slotsJSON);
+        localStorage.setItem(storageKey(), slotsJSON);
         console.log('Slots persistidos en localStorage.');
     } catch (error) {
         console.error('Error al persistir slots en localStorage:', error);
@@ -90,7 +106,7 @@ export function persistSlotsToLocalStorage() {
  * Realiza migración automática si es necesario
  */
 export function loadSlotsFromLocalStorage() {
-    const storedSlotsData = localStorage.getItem(STORAGE_KEY);
+    const storedSlotsData = localStorage.getItem(storageKey());
     console.log('Datos crudos de slots leídos desde localStorage al iniciar:', storedSlotsData);
     
     if (storedSlotsData) {

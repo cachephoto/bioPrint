@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { toggleBioMenu, initBioMenu, bioMenuVisible, MODEL_LIST } from './bioMenu.js';
+import { initBioFont, changeBioFont, getAvailableFonts } from './bioFont.js';
 
 // Materiales base para paneles con textura
 const createPanelMaterials = (texture) => ({
@@ -34,6 +36,9 @@ function loadTexture(path, onLoad, onError) {
             console.log('Textura cargada exitosamente:', path);
             texture.minFilter = THREE.LinearFilter;
             texture.magFilter = THREE.LinearFilter;
+            // 🔥 COLOR FIX: marcar la textura como sRGB para que se interprete bien
+            // en el pipeline de color de Three.js r155+
+            if (THREE.SRGBColorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace;
             onLoad(texture);
         },
         (xhr) => {
@@ -56,9 +61,15 @@ import {
     cleanupPanelText,
     getPanelText,
     panelTextState,
-    TEXT_CONFIG
+    TEXT_CONFIG,
+    reloadPixelFont,
+    setTextBrightness,
+    getTextBrightness,
+    setPanelFont,
+    getPanelFonts,
+    getPanelFont
 } from './panelText.js';
-import { initBioFX, setColorEffect, render as renderBioFX, setBloomEffect, setGlitchEffect, updateGlitchTime, setGlitchParameters, disableGlitch } from './bioFX.js';
+import { initBioFX, setColorEffect, render as renderBioFX, setBloomEffect, setGlitchEffect, updateGlitchTime, setGlitchParameters, disableGlitch, resizeBioFX } from './bioFX.js';
 import { 
     loadModelToPanel, 
     toggleModelRotation, 
@@ -92,8 +103,16 @@ import {
     navigateToNextSlot,
     navigateToPreviousSlot,
     hasSlotData,
-    getSlotInfo
+    getSlotInfo,
+    getProfile,
+    setProfileKey
 } from './bioSlots.js';
+
+// 🗂️ Clave del estilo visual por perfil (v1 conserva la clave histórica)
+function visualStyleKey() {
+    const p = (typeof getProfile === 'function') ? getProfile() : 'v1';
+    return p === 'v1' ? 'bioFX_visualStyle' : `bioFX_visualStyle__${p}`;
+}
 import { 
     initBioHUD, 
     createHUD, 
@@ -151,16 +170,24 @@ let bioKeybModuleInitialized = false; // NUEVA variable para rastrear la inicial
 
 // Mapeo de nombres científicos para los modelos
 const modelScientificNames = {
+    // 🍖 Catálogo versión ZENG (comida / consumo)
+    burg: "BURGUER MEAT",
+    hueso: "T-BONE",
+    ham: "HAM",
+    pollo: "FRIED CHICKEN",
+    boot: "LEATHER BOOT",
+    petri: "PETRI CULTURE",
+    bioP: "BIOPRINT UNIT",
+    tlaloc: "TLALOC IDOL",
+    her: "HERITAGE PIECE",
+    megazord: "MEGAZORD",
+    // Legacy (siguen disponibles por comando, fuera del grid de Zeng)
     corazon: "HOMO SAPIENS SAPIENS",
-    hueso: "BONE", 
     axolotl: "AMBYSTOMA MEXICANUM",
     discus: "DISK FISH",
     dog: "CANIS LUPUS FAMILIARIS",
     acot: "CRAY FISH",
-    tort: "TRACHEMYS SCRIPTA ELEGANS",
-    ham: "HAM",
-    pollo: "FRIED CHICKEN",
-    burg: "BURGUER MEAT"
+    tort: "TRACHEMYS SCRIPTA ELEGANS"
 };
 
 // Variable global para controlar el estado de impresión
@@ -188,17 +215,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const splashScreen = document.getElementById('splash-screen');
   const appContainer = document.querySelector('.app-container');
   const loadingDots = document.getElementById('loading-dots');
-  
+
   // Asegurar que el grid se animará en la primera creación
   isFirstGridCreation = true;
-  
+
+  // ¿Saltar splash? Cualquiera de:
+  //   - localStorage 'bioprint_skip_login' = '1'
+  //   - URL ?skip o ?skiplogin
+  const urlParams = new URLSearchParams(window.location.search);
+  const persistSkip = (() => { try { return localStorage.getItem('bioprint_skip_login') === '1'; } catch(e) { return false; } })();
+  const urlSkip = urlParams.has('skip') || urlParams.has('skiplogin') || urlParams.has('nologin');
+  const skipSplash = persistSkip || urlSkip;
+
   // Animar los puntos suspensivos
   let dotCount = 0;
   const dotInterval = setInterval(() => {
     dotCount = (dotCount % 3) + 1;
     loadingDots.textContent = 'Iniciando' + '.'.repeat(dotCount) + ' '.repeat(3 - dotCount);
   }, 500);
-  
+
   // Crear un div negro que cubra toda la pantalla hasta que comience la animación
   const blackOverlay = document.createElement('div');
   blackOverlay.style.position = 'fixed';
@@ -210,34 +245,49 @@ document.addEventListener('DOMContentLoaded', () => {
   blackOverlay.style.zIndex = '1000'; // Por debajo del splash pero por encima de la escena
   blackOverlay.id = 'black-overlay';
   document.body.appendChild(blackOverlay);
-  
-  // Mostrar la aplicación después de 3 segundos
-  setTimeout(() => {
+
+  // Pista visible de cómo saltar el splash (si no es skip automático)
+  if (!skipSplash) {
+    const hint = document.createElement('div');
+    hint.style.cssText = 'position:absolute;bottom:20px;left:50%;transform:translateX(-50%);font-family:VT323,monospace;font-size:18px;color:#0f0;opacity:0.7;letter-spacing:1px;';
+    hint.textContent = '[ Pulsa cualquier tecla o haz click para continuar ]';
+    splashScreen.appendChild(hint);
+  }
+
+  let splashFinished = false;
+  function finishSplash() {
+    if (splashFinished) return;
+    splashFinished = true;
     clearInterval(dotInterval);
     splashScreen.style.opacity = '0';
     appContainer.style.opacity = '1';
-    
-    // Remover el splash screen después de la transición
+
     setTimeout(() => {
       splashScreen.style.display = 'none';
-      
-      // Limpiar completamente cualquier grid existente
       if (currentGrid) {
         scene.remove(currentGrid);
         currentGrid = null;
       }
-      
-      // Esperar un momento antes de iniciar la animación del grid
       setTimeout(() => {
-        // Eliminar el overlay negro justo antes de empezar la animación
-        document.body.removeChild(blackOverlay);
-        
-        // Iniciar la animación de 24 cuadros
+        if (blackOverlay.parentNode) document.body.removeChild(blackOverlay);
         startGridAnimation24Frames();
-      }, 200);
-      
-    }, 500);
-  }, 3000);
+      }, skipSplash ? 0 : 200);
+    }, skipSplash ? 0 : 500);
+  }
+
+  // Saltar instantáneamente con tecla, click o tap
+  const skipHandler = (e) => {
+    finishSplash();
+    document.removeEventListener('keydown', skipHandler);
+    document.removeEventListener('mousedown', skipHandler);
+    document.removeEventListener('touchstart', skipHandler);
+  };
+  document.addEventListener('keydown', skipHandler);
+  document.addEventListener('mousedown', skipHandler);
+  document.addEventListener('touchstart', skipHandler);
+
+  // Auto-skip o timeout normal de 3s
+  setTimeout(finishSplash, skipSplash ? 0 : 3000);
 });
 
 // Variables para la animación de 24 cuadros
@@ -299,10 +349,10 @@ function startGridAnimation24Frames() {
         // Si llegamos al último cuadro, detener animación
         if (animationFrame >= totalFrames) {
             clearInterval(animationInterval);
-            console.log("Animación de 24 cuadros completada - Se mantiene en 48 subdivisiones");
+            console.log("Animación completada - grid final en 24 subdivisiones (celdas grandes, look de referencia)");
             
-            // Establecer a 48 como nivel final después de la animación
-            currentDivisions = 48;
+            // Establecer a 24 como nivel final (celdas más grandes, como el metraje)
+            currentDivisions = 24;
             
             // Asegurar posición final correcta
             camera.position.z = finalZoom;
@@ -326,7 +376,7 @@ function startGridAnimation24Frames() {
                 // 4. El grid está en su escala final (scale = 1)
                 const gridIsReady = currentGrid && 
                                    !gridAnimationInProgress && 
-                                   currentDivisions === 48 &&
+                                   currentDivisions === 24 &&
                                    Math.abs(currentGrid.scale.x - 1) < 0.01; // Escala final
                 
                 if (gridIsReady) {
@@ -348,6 +398,17 @@ function startGridAnimation24Frames() {
                             showInfo('Cargando slot 0 por defecto...', output);
                         }
                         loadFromSlot(0);
+
+                        // 🔤 Re-renderizar el texto cuando las fuentes web terminen de
+                        // cargar (VT323/Press Start 2P), para que la fuente elegida no
+                        // caiga al fallback si aún no estaba lista al cargar el slot.
+                        if (document.fonts && document.fonts.ready) {
+                            document.fonts.ready.then(() => {
+                                if (typeof reloadPixelFont === 'function') reloadPixelFont();
+                                const gp = getCurrentGridParams();
+                                if (gp) panels.forEach(p => { if (p.hasText && p.group) createPanelText(p, gp.cellSize); });
+                            });
+                        }
                     }, 100);
                 } else {
                     // Reintentar después de un breve delay
@@ -560,41 +621,53 @@ function adjustCameraToGrid() {
     if (!currentGrid) return;
     
     const gridSize = calculateGridSize();
-    const aspect = window.innerWidth / window.innerHeight;
-    
-    // Ajustar el frustum de la cámara para que coincida exactamente con el viewport
-    if (aspect > 1) {
-        // Pantalla más ancha que alta
-        camera.left = -gridSize.width / 2;
-        camera.right = gridSize.width / 2;
-        camera.top = (gridSize.width / aspect) / 2;
-        camera.bottom = -(gridSize.width / aspect) / 2;
+    const winAspect = window.innerWidth / window.innerHeight;
+    const gridAspect = gridSize.width / gridSize.height;
+
+    // CONTAIN-FIT: el diseño completo (grid + teclado + paneles) siempre cabe
+    // entero en la ventana, escalado uniformemente. El espacio sobrante queda
+    // como margen negro (letterbox). Así "reacciona" a cualquier tamaño y
+    // proporción del navegador sin recortar ni deformar el diseño.
+    let viewW, viewH;
+    if (winAspect > gridAspect) {
+        // Ventana más ancha que el diseño → ajustar por alto, margen a los lados
+        viewH = gridSize.height;
+        viewW = gridSize.height * winAspect;
     } else {
-        // Pantalla más alta que ancha
-        camera.left = -gridSize.height * aspect / 2;
-        camera.right = gridSize.height * aspect / 2;
-        camera.top = gridSize.height / 2;
-        camera.bottom = -gridSize.height / 2;
+        // Ventana más angosta/alta que el diseño → ajustar por ancho, margen arriba/abajo
+        viewW = gridSize.width;
+        viewH = gridSize.width / winAspect;
     }
-    
+
+    camera.left = -viewW / 2;
+    camera.right = viewW / 2;
+    camera.top = viewH / 2;
+    camera.bottom = -viewH / 2;
     camera.near = 0.1;
     camera.far = 1000;
-    
-    // Ya no necesitamos ajustar position.z aquí, se maneja en la animación
     camera.updateProjectionMatrix();
+
+    // Grid decorativo hasta los bordes de la ventana (márgenes responsivos)
+    try { rebuildDecorGrid(); } catch (e) { /* aún no inicializado en el primer frame */ }
 }
 
 // Configuración del renderizador
 // 🔥 CRITICAL FIX: Manejo de errores para WebGL context
 let renderer;
 try {
-    renderer = new THREE.WebGLRenderer({ 
+    renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: false
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setClearColor(0x000000);
+    // 🔥 COLOR FIX: Three.js r155+ usa colorSpace en lugar del antiguo `encoding`.
+    // Forzar sRGB en la salida para que los colores se vean igual en cualquier display
+    // (incluyendo macOS Display P3) y no salgan apagados / desaturados.
+    if (THREE.SRGBColorSpace !== undefined) {
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+    }
     document.body.appendChild(renderer.domElement);
     
     // Inicializar efectos bioFX
@@ -755,7 +828,7 @@ function saveBioFXVisualStyle() {
             timestamp: new Date().toISOString()
         };
         
-        localStorage.setItem('bioFX_visualStyle', JSON.stringify(visualStyle));
+        localStorage.setItem(visualStyleKey(), JSON.stringify(visualStyle));
         console.log('✅ Estilo visual de bioFX guardado en localStorage:', visualStyle);
         
         // Feedback visual en el botón
@@ -784,11 +857,39 @@ function saveBioFXVisualStyle() {
     }
 }
 
+// Color base por perfil de interfaz (se aplica la primera vez que se usa el perfil)
+const PROFILE_BASE_COLOR = { v1: '#0096ff', v2: '#00ff66' };
+
+// El verde brilla mucho más que el azul a igual luminancia: con el umbral de
+// bloom por defecto la pantalla se quema y el texto deja de leerse. Cada perfil
+// arranca con su propio ajuste de glow.
+const PROFILE_BASE_FX = {
+    v1: null, // el azul se queda con los valores por defecto de bioFX
+    v2: { intensity: 1, glowIntensity: 0.55, glowRadius: 0.45, glowThreshold: 0.55 }
+};
+
 function loadBioFXVisualStyle() {
     try {
-        const savedStyle = localStorage.getItem('bioFX_visualStyle');
+        const savedStyle = localStorage.getItem(visualStyleKey());
         if (!savedStyle) {
             console.log('No hay estilo visual guardado de bioFX');
+            // Perfil nuevo: aplicar su color base (v2 = verde)
+            const prof = (typeof getProfile === 'function') ? getProfile() : 'v1';
+            const base = PROFILE_BASE_COLOR[prof];
+            if (base && colorPicker) {
+                colorPicker.value = base;
+                if (typeof updateBioFXEffect === 'function') updateBioFXEffect();
+                console.log(`Perfil ${prof}: color base ${base} aplicado`);
+            }
+            const fx = PROFILE_BASE_FX[prof];
+            if (fx) {
+                if (intensitySlider)     intensitySlider.value     = fx.intensity;
+                if (glowSlider)          glowSlider.value          = fx.glowIntensity;
+                if (glowRadiusSlider)    glowRadiusSlider.value    = fx.glowRadius;
+                if (glowThresholdSlider) glowThresholdSlider.value = fx.glowThreshold;
+                if (typeof updateBioFXEffect === 'function') updateBioFXEffect();
+                console.log(`Perfil ${prof}: glow base aplicado`, fx);
+            }
             return false;
         }
         
@@ -1129,6 +1230,331 @@ const panelFillMaterialSelected = new THREE.MeshBasicMaterial({
 let pendingBoundingBox = null; // Para almacenar el bbox al cambiar resolución
 let currentlyHoveredPanel = null;
 
+// =====================================================
+// 🔆 CALIBRACIÓN DE BRILLO (texto / grid / paneles / glow) y OPACIDAD global
+// =====================================================
+// Opacidades base de los materiales compartidos de panel (capturadas una vez)
+const PANEL_MAT_BASES = [
+    [panelLineMaterialNormal,   panelLineMaterialNormal.opacity],
+    [panelLineMaterialHover,    panelLineMaterialHover.opacity],
+    [panelLineMaterialSelected, panelLineMaterialSelected.opacity],
+    [panelFillMaterialNormal,   panelFillMaterialNormal.opacity],
+    [panelFillMaterialHover,    panelFillMaterialHover.opacity],
+    [panelFillMaterialSelected, panelFillMaterialSelected.opacity],
+];
+let gridBrightness = 1.0;
+let panelsBrightness = 1.0;
+
+function setGridBrightness(f) {
+    gridBrightness = Math.max(0.05, Math.min(1.5, f));
+    if (currentGrid) {
+        currentGrid.traverse(obj => {
+            if (obj.isLine && obj.material) {
+                obj.material.transparent = true;
+                obj.material.opacity = Math.min(1, gridBrightness);
+            }
+        });
+    }
+    if (decorGridGroup) {
+        decorGridGroup.traverse(obj => {
+            if (obj.isLine && obj.material) {
+                obj.material.opacity = Math.min(1, 0.35 * gridBrightness);
+            }
+        });
+    }
+    return gridBrightness;
+}
+
+function setPanelsBrightness(f) {
+    panelsBrightness = Math.max(0.05, Math.min(2, f));
+    PANEL_MAT_BASES.forEach(([mat, base]) => {
+        mat.opacity = Math.min(1, base * panelsBrightness);
+        mat.needsUpdate = true;
+    });
+    // Re-asignar materiales (los clones heredan la opacidad escalada)
+    if (typeof refreshAllPanelColors === 'function') refreshAllPanelColors();
+    return panelsBrightness;
+}
+
+// 🔆 BRILLO MAESTRO SIMPLE: un solo nivel 0-10 (5 = normal) que ajusta
+// texto + grid + paneles + glow juntos. Teclas rápidas: [ baja, ] sube.
+let masterBrightness = 5;
+function setMasterBrightness(level) {
+    masterBrightness = Math.max(0, Math.min(10, Math.round(level)));
+    const f = masterBrightness / 5; // 1.0 en el nivel 5
+    // Curvas por elemento: texto y modelos crecen a tope; los rellenos de panel
+    // crecen amortiguados para que NO ahoguen los wireframes blancos al subir.
+    setTextBrightness(f);
+    setGridBrightness(f * 0.85);
+    setPanelsBrightness(1 + (f - 1) * 0.35);
+    // Bloom con umbral alto: solo florecen los blancos (modelos, texto, logo),
+    // no los rellenos azules de los paneles.
+    setBloomEffect(
+        Math.max(0, Math.min(3, 0.71 * f)),
+        parseFloat(glowRadiusSlider?.value ?? 0.63),
+        parseFloat(glowThresholdSlider?.value ?? 0.5)
+    );
+    console.log(`🔆 Brillo: ${masterBrightness}/10`);
+    return masterBrightness;
+}
+
+// 🎨 SATURACIÓN / COLOR DEL GRADE — control simple 0-10 como el brillo.
+// Persiste en el estilo visual Y en el bioFX embebido de todos los slots,
+// para que las teclas numéricas no lo reviertan.
+const GRADE_COLORS = {
+    azul: '#0096ff', cyan: '#00e1ff', rojo: '#ff2020', verde: '#00ff66',
+    morado: '#8844ff', magenta: '#ff00cc', ambar: '#ffaa00', blanco: '#ffffff'
+};
+function persistGradeEverywhere() {
+    try {
+        // Estilo visual global
+        const rawStyle = localStorage.getItem(visualStyleKey());
+        const style = rawStyle ? JSON.parse(rawStyle) : {};
+        style.intensity = intensitySlider.value;
+        style.color = colorPicker.value;
+        style.glowThreshold = glowThresholdSlider.value; // mantener umbral (solo blancos florecen)
+        localStorage.setItem(visualStyleKey(), JSON.stringify(style));
+        // bioFX embebido en cada slot
+        const rawSlots = localStorage.getItem('bioPrint_slots_data');
+        if (rawSlots) {
+            const arr = JSON.parse(rawSlots);
+            const out = arr.map(s => {
+                if (!s) return s;
+                try {
+                    const cfg = JSON.parse(s);
+                    if (cfg.bioFX) {
+                        cfg.bioFX.intensity = parseFloat(intensitySlider.value);
+                        cfg.bioFX.color = parseInt(colorPicker.value.substring(1), 16);
+                        if (cfg.bioFX.glow) cfg.bioFX.glow.threshold = parseFloat(glowThresholdSlider.value);
+                    }
+                    return JSON.stringify(cfg);
+                } catch (e) { return s; }
+            });
+            localStorage.setItem('bioPrint_slots_data', JSON.stringify(out));
+        }
+    } catch (e) { console.warn('No se pudo persistir el grade:', e); }
+}
+let colorSaturation = 7; // nivel 0-10 (≈ intensity 0.70)
+function setColorSaturation(level) {
+    colorSaturation = Math.max(0, Math.min(10, Math.round(level)));
+    intensitySlider.value = String(colorSaturation / 10);
+    updateBioFXEffect();
+    persistGradeEverywhere();
+    console.log(`🎨 Saturación: ${colorSaturation}/10`);
+    return colorSaturation;
+}
+function setGradeColor(nameOrHex) {
+    const hex = GRADE_COLORS[String(nameOrHex).toLowerCase()] ||
+                (/^#[0-9a-fA-F]{6}$/.test(nameOrHex) ? nameOrHex : null);
+    if (!hex) return null;
+    colorPicker.value = hex;
+    updateBioFXEffect();
+    persistGradeEverywhere();
+    console.log(`🎨 Color del grade: ${hex}`);
+    return hex;
+}
+
+// 🔴 ALERTA ROJA PARPADEANTE (para la ventana ACCESS DENIED). Temporal, no persiste.
+let __redAlertInterval = null;
+let __redAlertPrevColor = null;
+function startRedAlert() {
+    stopRedAlert(false);
+    __redAlertPrevColor = colorPicker.value;
+    let on = true;
+    const apply = () => {
+        colorPicker.value = on ? GRADE_COLORS.rojo : '#200000';
+        updateBioFXEffect();
+        on = !on;
+    };
+    apply();
+    __redAlertInterval = setInterval(apply, 380);
+}
+function stopRedAlert(restore = true) {
+    if (__redAlertInterval) { clearInterval(__redAlertInterval); __redAlertInterval = null; }
+    if (restore && __redAlertPrevColor) {
+        colorPicker.value = __redAlertPrevColor;
+        updateBioFXEffect();
+    }
+    __redAlertPrevColor = null;
+}
+
+// =====================================================
+// 🎛️ PANEL DE CALIBRACIÓN — brillo / saturación / color / opacidad
+// Toggle: tecla C (sin Ctrl) o comando `calibrar`
+// =====================================================
+let calibPanelEl = null;
+
+function createCalibrationPanel() {
+    if (calibPanelEl) return;
+    calibPanelEl = document.createElement('div');
+    calibPanelEl.id = 'calib-panel';
+    const swatches = Object.entries(GRADE_COLORS)
+        .map(([name, hex]) => `<div class="calib-swatch" data-c="${hex}" title="${name}" style="background:${hex}"></div>`)
+        .join('');
+    calibPanelEl.innerHTML = `
+        <div class="calib-header"><span>CALIBRACIÓN</span><span class="calib-close">✕</span></div>
+        <div class="calib-row">
+            <label>BRILLO <span id="calib-bright-val">${masterBrightness}</span>/10</label>
+            <input type="range" id="calib-bright" min="0" max="10" step="1" value="${masterBrightness}">
+        </div>
+        <div class="calib-row">
+            <label>SATURACIÓN <span id="calib-sat-val">${colorSaturation}</span>/10</label>
+            <input type="range" id="calib-sat" min="0" max="10" step="1" value="${colorSaturation}">
+        </div>
+        <div class="calib-row">
+            <label>OPACIDAD <span id="calib-op-val">1.00</span></label>
+            <input type="range" id="calib-op" min="0.1" max="1" step="0.05" value="1">
+        </div>
+        <div class="calib-row">
+            <label>COLOR</label>
+            <div class="calib-swatches">${swatches}<input type="color" id="calib-color" value="${colorPicker.value}" title="color libre"></div>
+        </div>
+    `;
+    const style = document.createElement('style');
+    style.id = 'calib-styles';
+    style.textContent = `
+        #calib-panel {
+            position: fixed; top: 14px; right: 14px; z-index: 10005;
+            width: 240px; background: rgba(5, 12, 30, 0.94);
+            border: 1px solid #4488ff; border-radius: 6px;
+            font-family: 'VT323', monospace; color: #cfe4ff;
+            padding: 10px 14px 14px; display: none;
+            box-shadow: 0 0 24px rgba(60,130,255,.35);
+            backdrop-filter: blur(8px);
+        }
+        #calib-panel.visible { display: block; }
+        .calib-header { display: flex; justify-content: space-between;
+            font-size: 18px; letter-spacing: 3px; color: #7fb4ff;
+            border-bottom: 1px solid rgba(90,150,255,.3); padding-bottom: 6px; margin-bottom: 10px; }
+        .calib-close { cursor: pointer; color: #f66; }
+        .calib-row { margin-bottom: 10px; }
+        .calib-row label { display: block; font-size: 16px; letter-spacing: 2px; margin-bottom: 3px; color: #9ec7ff; }
+        .calib-row input[type=range] {
+            width: 100%; -webkit-appearance: none; height: 5px; border-radius: 3px;
+            background: #16305e; outline: none;
+        }
+        .calib-row input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+            background: #9ec7ff; box-shadow: 0 0 8px rgba(150,200,255,.8); cursor: pointer;
+        }
+        .calib-swatches { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .calib-swatch { width: 22px; height: 22px; border-radius: 4px; cursor: pointer;
+            border: 1px solid rgba(255,255,255,.35); }
+        .calib-swatch:hover { transform: scale(1.15); }
+        #calib-color { width: 30px; height: 26px; border: none; background: transparent; cursor: pointer; padding: 0; }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(calibPanelEl);
+
+    // Cerrar
+    calibPanelEl.querySelector('.calib-close').addEventListener('click', () => toggleCalibrationPanel(false));
+    // Evitar que las teclas globales se disparen mientras se usa el panel
+    calibPanelEl.addEventListener('keydown', e => e.stopPropagation());
+
+    // Brillo
+    calibPanelEl.querySelector('#calib-bright').addEventListener('input', e => {
+        const v = setMasterBrightness(parseInt(e.target.value));
+        calibPanelEl.querySelector('#calib-bright-val').textContent = v;
+    });
+    // Saturación
+    calibPanelEl.querySelector('#calib-sat').addEventListener('input', e => {
+        const v = setColorSaturation(parseInt(e.target.value));
+        calibPanelEl.querySelector('#calib-sat-val').textContent = v;
+    });
+    // Opacidad global
+    calibPanelEl.querySelector('#calib-op').addEventListener('input', e => {
+        const v = Math.max(0.1, Math.min(1, parseFloat(e.target.value)));
+        if (renderer && renderer.domElement) renderer.domElement.style.opacity = String(v);
+        calibPanelEl.querySelector('#calib-op-val').textContent = v.toFixed(2);
+    });
+    // Swatches de color
+    calibPanelEl.querySelectorAll('.calib-swatch').forEach(sw => {
+        sw.addEventListener('click', () => {
+            setGradeColor(sw.dataset.c);
+            calibPanelEl.querySelector('#calib-color').value = sw.dataset.c;
+        });
+    });
+    // Color libre
+    calibPanelEl.querySelector('#calib-color').addEventListener('input', e => {
+        setGradeColor(e.target.value);
+    });
+}
+
+function toggleCalibrationPanel(show) {
+    if (!calibPanelEl) createCalibrationPanel();
+    const visible = show !== undefined ? show : !calibPanelEl.classList.contains('visible');
+    calibPanelEl.classList.toggle('visible', visible);
+    if (visible) {
+        // Sincronizar valores actuales al abrir
+        calibPanelEl.querySelector('#calib-bright').value = String(masterBrightness);
+        calibPanelEl.querySelector('#calib-bright-val').textContent = String(masterBrightness);
+        calibPanelEl.querySelector('#calib-sat').value = String(colorSaturation);
+        calibPanelEl.querySelector('#calib-sat-val').textContent = String(colorSaturation);
+        calibPanelEl.querySelector('#calib-color').value = colorPicker.value;
+        const op = (renderer && renderer.domElement && renderer.domElement.style.opacity) || '1';
+        calibPanelEl.querySelector('#calib-op').value = String(parseFloat(op) || 1);
+        calibPanelEl.querySelector('#calib-op-val').textContent = (parseFloat(op) || 1).toFixed(2);
+    }
+}
+
+// =====================================================
+// 🧩 GRID DECORATIVO RESPONSIVO — llena los márgenes del navegador
+// =====================================================
+// El diseño mantiene su proporción fija (contain), pero el grid se extiende
+// visualmente hasta los bordes de la ventana para que no queden franjas negras.
+let decorGridGroup = null;
+let decorGridKey = '';
+
+function rebuildDecorGrid() {
+    if (!currentGrid || !currentGrid.userData) return;
+    const cellSize = currentGrid.userData.cellSize || 0.5;
+    const gridSize = calculateGridSize();
+    const winAspect = window.innerWidth / window.innerHeight;
+    const gridAspect = gridSize.width / gridSize.height;
+    let viewW, viewH;
+    if (winAspect > gridAspect) { viewH = gridSize.height; viewW = gridSize.height * winAspect; }
+    else { viewW = gridSize.width; viewH = gridSize.width / winAspect; }
+
+    const key = `${viewW.toFixed(2)}|${viewH.toFixed(2)}|${cellSize}`;
+    if (key === decorGridKey && decorGridGroup) return; // sin cambios
+    decorGridKey = key;
+
+    if (decorGridGroup) {
+        scene.remove(decorGridGroup);
+        decorGridGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+        decorGridGroup = null;
+    }
+
+    const group = new THREE.Group();
+    const mat = new THREE.LineBasicMaterial({
+        color: 0x3355cc,
+        transparent: true,
+        opacity: Math.min(1, 0.35 * gridBrightness)
+    });
+    const halfW = viewW / 2, halfH = viewH / 2;
+    // Líneas alineadas al grid principal (origen en el centro, paso = cellSize)
+    const startX = Math.floor(-halfW / cellSize) * cellSize;
+    for (let x = startX; x <= halfW; x += cellSize) {
+        const g = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(x, -halfH, -0.02), new THREE.Vector3(x, halfH, -0.02)
+        ]);
+        group.add(new THREE.Line(g, mat));
+    }
+    const startY = Math.floor(-halfH / cellSize) * cellSize;
+    for (let y = startY; y <= halfH; y += cellSize) {
+        const g = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(-halfW, y, -0.02), new THREE.Vector3(halfW, y, -0.02)
+        ]);
+        group.add(new THREE.Line(g, mat));
+    }
+    group.renderOrder = -1;
+    group.traverse(o => { if (o.raycast) o.raycast = () => null; });
+    group.userData.decorCellSize = cellSize;
+    scene.add(group);
+    decorGridGroup = group;
+    window.__decorInfo = { cellSize, lines: group.children.length };
+}
+
 // Variables para la animación del grid (ya declaradas arriba al inicio del archivo)
 
 // Variables para la animación de paneles
@@ -1150,6 +1576,21 @@ function startDoubleFlash(panelData) {
     startFlash(panelData);
     doubleFlashPending.set(panelData, 1); // Indica que queda 1 flash adicional después del primero
 }
+
+// ⚡ FEEDBACK HÁPTICO: doble parpadeo rápido en TODOS los paneles visibles.
+// `stagger` en ms añade un desfase por panel (0 = todos a la vez, >0 = efecto onda).
+function hapticFeedbackAll(stagger = 0) {
+    const targets = panels.filter(p => p.group && p.group.visible && !p.isKeyboardKey);
+    targets.forEach((p, i) => {
+        if (stagger > 0) {
+            setTimeout(() => startDoubleFlash(p), i * stagger);
+        } else {
+            startDoubleFlash(p);
+        }
+    });
+    return targets.length;
+}
+window.hapticFeedbackAll = hapticFeedbackAll;
 
 // Función para manejar doble click/tap en un panel
 function handlePanelDoubleClick(panelData) {
@@ -1446,9 +1887,11 @@ async function saveToSlot(slotIndex) {
 // Función para cargar el estado desde un slot (Ctrl+Numero)
 // Ahora usando bioSlots.js con soporte para popups
 async function loadFromSlot(slotIndex) {
+    // Detener cualquier alerta roja parpadeante al cambiar de página
+    stopRedAlert(false);
     // Cargar configuración usando el módulo bioSlots.js
     const config = bioSlotsLoadFromSlot(slotIndex);
-    
+
     if (!config) {
         console.warn(`Slot ${slotIndex} está vacío.`);
         // Indicación visual en el panel de slots
@@ -1915,24 +2358,20 @@ function navigateToPreviousSlotLocal() {
     }
 }
 
-// Función para calcular el tamaño del grid basado en el aspecto del canvas
+// 🔥 PROPORCIÓN DE DISEÑO FIJA
+// El grid ya NO cambia su número de celdas según la proporción del navegador.
+// Esto preserva el diseño: el teclado y los paneles mantienen su posición/forma
+// relativa, y la cámara escala TODO el conjunto para caber (contain) en cualquier
+// tamaño/proporción de ventana (con letterbox si la proporción difiere).
+const DESIGN_ASPECT = 16 / 9; // proporción de referencia del diseño
+const DESIGN_MAX = 24;        // unidades de mundo de la dimensión base
+
+// Función para calcular el tamaño del grid (FIJO, independiente del navegador)
 function calculateGridSize() {
-    const aspect = window.innerWidth / window.innerHeight;
-    const maxSize = 24; // Duplicado para llenar más la pantalla
-    
-    if (aspect > 1) {
-        // Canvas más ancho que alto
-        return {
-            width: maxSize * aspect,
-            height: maxSize
-        };
-    } else {
-        // Canvas más alto que ancho
-        return {
-            width: maxSize,
-            height: maxSize / aspect
-        };
-    }
+    return {
+        width: DESIGN_MAX * DESIGN_ASPECT, // ancho de diseño constante
+        height: DESIGN_MAX                  // alto de diseño constante
+    };
 }
 
 // Función para identificar paneles libres o reutilizables para especies
@@ -3205,9 +3644,14 @@ document.addEventListener('keydown', (event) => {
             break;
         case 'c':
         case 'C':
-            if (event.ctrlKey) { 
-                clearAllPanels(true, false);
+            // Ctrl+C / Cmd+C → copiar paneles. C sola → panel de calibración (brillo/sat/color)
+            if (event.ctrlKey || event.metaKey) {
+                event.preventDefault();
+                const n = copyPanels();
+                console.log(n > 0 ? `📋 Copiados ${n} panel(es) al portapapeles` : '📋 Sin paneles seleccionados para copiar');
+                return;
             }
+            toggleCalibrationPanel();
             return;
         case 'a':
         case 'A':
@@ -3215,7 +3659,15 @@ document.addEventListener('keydown', (event) => {
             return;
         case 'v':
         case 'V':
-            toggleControlPanels(); // Restaurar función original: mostrar/ocultar panel de slots
+            // Ctrl+V / Cmd+V → pegar paneles del portapapeles. V solo (sin Ctrl) → toggle slots panel
+            if (event.ctrlKey || event.metaKey) {
+                event.preventDefault();
+                pastePanels().then(n => {
+                    console.log(n > 0 ? `📋 Pegados ${n} panel(es)` : '📋 Portapapeles vacío');
+                });
+                return;
+            }
+            toggleControlPanels(); // V solo: mostrar/ocultar panel de slots
             return;
         case 'p':
         case 'P':
@@ -3251,8 +3703,39 @@ document.addEventListener('keydown', (event) => {
                     console.error("Error al mostrar bioKeyb con tecla K:", error);
                 });
             } else {
-                clearBioKeybOnly(); 
+                clearBioKeybOnly();
             }
+            return;
+        case 'b':
+        case 'B':
+            // BYPASS LOGIN: salta la pantalla de login social (simula acceso concedido)
+            {
+                const removed = bypassLogin();
+                console.log(removed > 0
+                    ? `🔓 Login saltado (tecla B): ${removed} elemento(s) removido(s)`
+                    : '🔓 No hay login activo para saltar');
+            }
+            return;
+        case '[':
+            // 🔆 Bajar brillo global (un nivel de 0-10)
+            setMasterBrightness(masterBrightness - 1);
+            return;
+        case ']':
+            // 🔆 Subir brillo global
+            setMasterBrightness(masterBrightness + 1);
+            return;
+        case '{':
+            // 🎨 Menos saturación de color (menos azul)
+            setColorSaturation(colorSaturation - 1);
+            return;
+        case '}':
+            // 🎨 Más saturación de color (más azul)
+            setColorSaturation(colorSaturation + 1);
+            return;
+        case 'g':
+        case 'G':
+            event.preventDefault();
+            toggleBioMenu();
             return;
         case 'Escape':
             if (isSelecting) { 
@@ -3333,10 +3816,21 @@ document.addEventListener('keydown', (event) => {
                 return;
             }
             
-            // Solo número sin modificadores: cargar en grid principal
+            // Solo número sin modificadores: cargar página/slot en grid principal
+            // 0 = inicio de la secuencia (login). 1-9 = páginas guardadas.
             if (!activelyWritingText && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
-                console.log(`Cargando slot ${slotIndex} desde teclado numérico`);
+                if (!hasSlotData(slotIndex)) {
+                    console.warn(`Tecla ${slotIndex}: slot vacío, nada que cargar`);
+                    event.preventDefault();
+                    return;
+                }
+                console.log(`Cargando página ${slotIndex} desde teclado numérico`);
                 loadFromSlot(slotIndex);
+                // 🔥 VISTA DE FILMACIÓN: normalizar la cámara SIEMPRE al saltar por número,
+                // aunque el slot haya guardado una cámara con zoom/popup.
+                setTimeout(() => {
+                    try { zoomOutCentered(null, 1); } catch (e) { /* cámara aún no lista */ }
+                }, 250);
                 event.preventDefault();
             }
             return;
@@ -3344,11 +3838,23 @@ document.addEventListener('keydown', (event) => {
 
     // Procesar cambios de resolución, movimiento, borrado
     if (resolutionChanged && newDivisions !== currentDivisions) {
-        updateGrid(newDivisions); 
+        updateGrid(newDivisions);
     } else if (moveDelta.dx !== 0 || moveDelta.dy !== 0) {
             const currentGridParams = getCurrentGridParams();
         if (!currentGridParams) {
             console.warn("No se pudo obtener la configuración actual del grid para mover paneles");
+            return;
+        }
+        // 🔥 MOVER TECLADO: Alt + flecha mueve el teclado bioKeyb completo (1 celda)
+        //    Alt + Shift + flecha mueve 5 celdas. Tiene prioridad sobre el movimiento de paneles.
+        if (event.altKey) {
+            const step = event.shiftKey ? 5 : 1;
+            const dx = moveDelta.dx * step;
+            const dy = moveDelta.dy * step;
+            const ok = moveKeyboard(dx, dy);
+            if (ok) {
+                event.preventDefault();
+            }
             return;
         }
         let somethingMoved = false;
@@ -3428,6 +3934,9 @@ function animate() {
     
     // Animar modelos de codón
     animateCodons();
+
+    // 💻 Terminales con texto corriendo (versión 2.0)
+    updateTerminalStreams();
     
     controls.update();
     renderBioFX();
@@ -3438,23 +3947,49 @@ animate();
 function handleResize() {
     const width = window.innerWidth;
     const height = window.innerHeight;
-    
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+
+    // Renderer
+    renderer.setPixelRatio(pixelRatio);
     renderer.setSize(width, height);
-    
-    // Ajustar la cámara ortográfica al nuevo tamaño
+
+    // 🔥 RESPONSIVE: redimensionar también el composer de post-proceso (bloom/glow/color)
+    if (typeof resizeBioFX === 'function') resizeBioFX(width, height, pixelRatio);
+
+    // Ajustar la cámara ortográfica al nuevo aspecto
     adjustCameraToGrid();
-    
+
     // Actualizar el tamaño del plano de oscurecimiento si existe
     updateDarkeningPlaneSize();
-    
-    // Actualizar el grid y adaptar paneles existentes
+
+    // Actualizar el grid y adaptar paneles existentes al nuevo tamaño
     updateGrid(currentDivisions);
 }
 
-window.addEventListener('resize', handleResize);
+// Debounce para no recalcular el grid en cada píxel mientras se arrastra el borde
+let __resizeTimer = null;
+function onWindowResize() {
+    // Ajuste inmediato barato (renderer + cámara) para que no se vea estirado
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(pixelRatio);
+    renderer.setSize(width, height);
+    if (typeof resizeBioFX === 'function') resizeBioFX(width, height, pixelRatio);
+    adjustCameraToGrid();
+    // Ajuste pesado (regenerar grid + reposicionar paneles) con debounce
+    if (__resizeTimer) clearTimeout(__resizeTimer);
+    __resizeTimer = setTimeout(() => {
+        updateDarkeningPlaneSize();
+        updateGrid(currentDivisions);
+    }, 150);
+}
 
-// Manejar cambios de pantalla completa
+window.addEventListener('resize', onWindowResize);
+
+// Manejar cambios de pantalla completa y rotación de dispositivo
 document.addEventListener('fullscreenchange', handleResize);
+window.addEventListener('orientationchange', handleResize);
 
 // Exportar funciones para controlar el grid desde la consola
 window.updateGrid = updateGrid;
@@ -4513,10 +5048,13 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                     }
                 } else {
                     // NUEVA FUNCIONALIDAD: Detectar click en BOTÓN de models y cargar en panel de DISPLAY
-                    if (clickedPanelData.modelData && 
-                        clickedPanelData.modelData.isModelButton && 
+                    if (clickedPanelData.modelData &&
+                        clickedPanelData.modelData.isModelButton &&
                         clickedPanelData.modelData.isFromModelsGrid) {
-                        
+
+                        // ⚡ FEEDBACK HÁPTICO: doble parpadeo rápido simultáneo en toda la interfaz
+                        hapticFeedbackAll(0);
+
                         // Este es un botón de la rejilla 3x3, buscar paneles de DISPLAY
                         const displayPanels = panels.filter(p => 
                             p !== clickedPanelData && 
@@ -4632,70 +5170,124 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                         }
                     }
 
+                    // 🎚️ PARÁMETRO AJUSTABLE (settings): click sube, Shift+click baja.
+                    if (typeof clickedPanelData.paramValue === 'number') {
+                        const step = clickedPanelData.paramStep || 5;
+                        const min = (typeof clickedPanelData.paramMin === 'number') ? clickedPanelData.paramMin : 0;
+                        const max = (typeof clickedPanelData.paramMax === 'number') ? clickedPanelData.paramMax : 200;
+                        const delta = event.shiftKey ? -step : step;
+                        clickedPanelData.paramValue = Math.max(min, Math.min(max, clickedPanelData.paramValue + delta));
+                        const suffix = clickedPanelData.paramSuffix || '%';
+                        if (typeof window.setTextOnPanel === 'function') {
+                            const st = panelTextState.get(clickedPanelData);
+                            const fs = st ? st.customFontSize : undefined;
+                            window.setTextOnPanel(clickedPanelData, `${clickedPanelData.paramValue}${suffix}`, fs, st ? st.textAlign : 'center');
+                        }
+                        startFlash(clickedPanelData);
+                        console.log(`🎚️ Parámetro → ${clickedPanelData.paramValue}${suffix}`);
+                        return;
+                    }
+
+                    // ➕➖ STEPPER: botón +/- que sube o baja el valor de su panel asociado
+                    if (typeof clickedPanelData.stepperDelta === 'number' &&
+                        typeof clickedPanelData.stepperTargetOrder === 'number') {
+                        const target = panels.find(p => p.orderNumber === clickedPanelData.stepperTargetOrder);
+                        if (target) {
+                            const min = typeof target.stepperMin === 'number' ? target.stepperMin : 0;
+                            const max = typeof target.stepperMax === 'number' ? target.stepperMax : 200;
+                            const cur = typeof target.stepperValue === 'number' ? target.stepperValue : 100;
+                            const next = Math.max(min, Math.min(max, cur + clickedPanelData.stepperDelta));
+                            target.stepperValue = next;
+                            const gpS = getCurrentGridParams();
+                            if (gpS) {
+                                const unit = target.stepperUnit || '%';
+                                setPanelText(target, `${next}${unit}`, gpS.cellSize);
+                            }
+                            startFlash(clickedPanelData);
+                            startFlash(target);
+                            console.log(`➕➖ ${clickedPanelData.stepperDelta > 0 ? '+' : ''}${clickedPanelData.stepperDelta} → ${next}`);
+                        }
+                        return;
+                    }
+
+                    // 🔀 BOTÓN DE NAVEGACIÓN: si el panel tiene navTargetSlot, al hacer
+                    // click carga esa página (con flash de confirmación).
+                    // Si además tiene redAlertOnNav, activa el parpadeo rojo (ACCESS DENIED).
+                    if (typeof clickedPanelData.navTargetSlot === 'number') {
+                        const target = clickedPanelData.navTargetSlot;
+                        const withRedAlert = !!clickedPanelData.redAlertOnNav;
+                        startFlash(clickedPanelData);
+                        console.log(`🔀 Botón de navegación → página ${target}${withRedAlert ? ' (ALERTA ROJA)' : ''}`);
+                        setTimeout(() => {
+                            if (hasSlotData(target)) {
+                                loadFromSlot(target);
+                                if (withRedAlert) setTimeout(startRedAlert, 400);
+                            }
+                        }, 300);
+                        return;
+                    }
+
+                    // 🚫 BOTÓN "ACCESS DENIED": al click → texto ACCESS DENIED, alerta ROJA
+                    // global (para que se vea rojo real pese al tinte azul) y revela los
+                    // paneles ocultos del grupo (BIOCORP_ID + PASSWORD).
+                    if (clickedPanelData.showDeniedOnClick) {
+                        if (typeof makeLoginButton === 'function') {
+                            makeLoginButton(clickedPanelData, 'denied');
+                        }
+                        startFlash(clickedPanelData);
+                        // Alerta roja de toda la interfaz (TEMPORAL, sin persistir para no
+                        // teñir de rojo los demás slots — vuelve a azul al cambiar de página)
+                        try {
+                            colorPicker.value = GRADE_COLORS.rojo;
+                            updateBioFXEffect();
+                        } catch (e) {}
+                        // Revelar los paneles ocultos vinculados (login de re-autenticación)
+                        if (clickedPanelData.revealGroup) {
+                            panels.forEach(p => {
+                                if (p.hiddenGroup === clickedPanelData.revealGroup && p.group) {
+                                    p.group.visible = true;
+                                }
+                            });
+                        }
+                        console.log('🚫 ACCESS DENIED — alerta roja + login revelado');
+                        return;
+                    }
+
                     // NUEVA FUNCIONALIDAD: Avanzar scroll de términos al hacer click en botón AGREE
                     if (clickedPanelData.isAgreeButton && clickedPanelData.termsPanel) {
                         const termsPanel = clickedPanelData.termsPanel;
                         const textState = panelTextState.get(termsPanel);
-                        if (textState && textState.useWhiteScrollIndicators) {
-                            // Este es el botón AGREE, avanzar scroll del panel de términos
-                            const currentGridParams = getCurrentGridParams();
-                            if (currentGridParams) {
-                                // Calcular dimensiones del panel de términos
-                                const panelHeight = (termsPanel.maxCellIndex.y - termsPanel.minCellIndex.y + 1);
-                                const panelWidth = (termsPanel.maxCellIndex.x - termsPanel.minCellIndex.x + 1);
-                                const width = panelWidth * currentGridParams.cellSize;
-                                const height = panelHeight * currentGridParams.cellSize;
-                                const paddingSize = currentGridParams.cellSize;
-                                const textAreaHeight = height - (paddingSize * 2);
-                                
-                                // Calcular número máximo de líneas visibles
-                                const isUniline = panelHeight <= 3;
-                                const isTooSmall = textAreaHeight < (currentGridParams.cellSize * TEXT_CONFIG.fontSize * 0.8);
-                                
-                                let effectiveLineHeight;
-                                if (isTooSmall || isUniline) {
-                                    effectiveLineHeight = panelHeight <= 1 ? TEXT_CONFIG.lineHeight * 0.2 :
-                                                         panelHeight <= 2 ? TEXT_CONFIG.lineHeight * 0.3 :
-                                                         panelHeight <= 3 ? TEXT_CONFIG.lineHeight * 0.4 :
-                                                         TEXT_CONFIG.lineHeight;
-                                } else {
-                                    effectiveLineHeight = TEXT_CONFIG.lineHeight;
-                                }
-                                
-                                const maxVisibleLines = isUniline ? 1 : Math.max(1, Math.floor(textAreaHeight / (currentGridParams.cellSize * effectiveLineHeight)));
-                                
-                                // Avanzar scrollOffset en una pantalla
-                                const newScrollOffset = Math.min(
-                                    textState.scrollOffset + maxVisibleLines,
-                                    Math.max(0, textState.lines.length - maxVisibleLines)
-                                );
-                                
-                                // 🔥 CRITICAL: Asegurar que el panel de términos NO flashee al actualizar texto
-                                const wasFlashing = termsPanel.shouldFlash;
-                                const wasInFlashingSet = panelsFlashing.has(termsPanel);
-                                
-                                if (newScrollOffset !== textState.scrollOffset) {
-                                    textState.scrollOffset = newScrollOffset;
-                                    createPanelText(termsPanel, currentGridParams.cellSize);
-                                    console.log(`📜 Scroll de términos avanzado (AGREE): ${textState.scrollOffset}/${textState.lines.length - maxVisibleLines}`);
-                                } else {
-                                    // Si ya está al final, volver al inicio
-                                    textState.scrollOffset = 0;
-                                    createPanelText(termsPanel, currentGridParams.cellSize);
-                                    console.log(`📜 Scroll de términos reiniciado al inicio (AGREE)`);
-                                }
-                                
-                                // 🔥 CRITICAL: Flash visual en el botón I AGREE y el panel de términos
-                                // Solo estos dos paneles deben flashear, no todos los paneles
-                                startFlash(clickedPanelData);
-                                
-                                // También hacer flash en el panel de términos
-                                termsPanel.flashProgress = 0;
-                                termsPanel.shouldFlash = true;
-                                panelsFlashing.add(termsPanel);
-                                
-                                return; // Salir para evitar selección normal
+                        const currentGridParams = getCurrentGridParams();
+                        if (textState && currentGridParams) {
+                            // 🔥 15 clicks para completar. Cada click avanza el texto un paso
+                            // proporcional para recorrer todo en 15 pulsaciones, y a la 15ª
+                            // pasa a la siguiente página (slot 7).
+                            const AGREE_STEPS = 15;
+                            clickedPanelData.agreeCount = (clickedPanelData.agreeCount || 0) + 1;
+
+                            // Avanzar el scroll un paso (parte del recorrido / 15)
+                            const totalLines = textState.lines.length;
+                            const stepLines = Math.max(1, Math.ceil(totalLines / AGREE_STEPS));
+                            textState.scrollOffset = Math.min(
+                                textState.scrollOffset + stepLines,
+                                Math.max(0, totalLines - 1)
+                            );
+                            createPanelText(termsPanel, currentGridParams.cellSize);
+                            console.log(`📜 I AGREE ${clickedPanelData.agreeCount}/${AGREE_STEPS} — scroll ${textState.scrollOffset}/${totalLines}`);
+
+                            // Flash de confirmación en el botón y el panel de términos
+                            startFlash(clickedPanelData);
+                            termsPanel.flashProgress = 0;
+                            termsPanel.shouldFlash = true;
+                            panelsFlashing.add(termsPanel);
+
+                            // Al llegar a 15 → siguiente página
+                            if (clickedPanelData.agreeCount >= AGREE_STEPS) {
+                                clickedPanelData.agreeCount = 0;
+                                console.log('✅ 15 I AGREE alcanzados → cargando página 7');
+                                setTimeout(() => { if (hasSlotData(7)) loadFromSlot(7); }, 350);
                             }
+                            return; // Salir para evitar selección normal
                         }
                     }
                     
@@ -5323,6 +5915,8 @@ function getSerializableConfig() {
                         isPassword: !!textState?.isPassword,
                         textAlign: textState?.textAlign || 'center', // Guardar alineación de texto
                         verticalAlign: textState?.verticalAlign || 'middle', // Guardar alineación vertical
+                        customFontSize: typeof textState?.customFontSize === 'number' ? textState.customFontSize : undefined, // 🔤 Guardar tamaño de fuente
+                        fontName: textState?.fontName || undefined, // 🔤 Guardar fuente por panel
                         useWhiteScrollIndicators: !!textState?.useWhiteScrollIndicators, // 🔥 NUEVO: Guardar indicadores de scroll blancos (para términos)
                 isGATCActive: gatcIntervals.has(panel),
                         isSpeciesPanel: !!panel.speciesPanel, // NUEVO: Guardar si es panel de especie
@@ -5332,6 +5926,7 @@ function getSerializableConfig() {
                             modelName: typeof panel.modelData.name === 'string' ? panel.modelData.name : '', // 🔥 NUEVO: Guardar nombre del modelo
                             isRotating: !!panel.modelData.isRotating,
                             rotationSpeed: typeof panel.modelData.rotationSpeed === 'number' ? panel.modelData.rotationSpeed : 0.005,
+                            userScale: typeof panel.modelData.userScale === 'number' ? panel.modelData.userScale : undefined, // 🔍 Zoom manual del modelo
                             isModelButton: !!panel.modelData.isModelButton, // Guardar tipo botón
                             isFromModelsGrid: !!panel.modelData.isFromModelsGrid, // Guardar origen rejilla
                             isModelDisplay: !!panel.modelData.isModelDisplay, // Guardar tipo display
@@ -5355,6 +5950,25 @@ function getSerializableConfig() {
                     textureInfo: textureInfo, // 🔥 NUEVO: Guardar información de texturas
                     isAgreeButton: !!panel.isAgreeButton, // Guardar si es botón I AGREE
                     termsPanelOrderNumber: panel.isAgreeButton && panel.termsPanel ? panel.termsPanel.orderNumber : null, // Guardar referencia al panel de términos
+                    navTargetSlot: typeof panel.navTargetSlot === 'number' ? panel.navTargetSlot : null, // 🔀 Botón de navegación: página destino
+                    showDeniedOnClick: !!panel.showDeniedOnClick, // 🚫 Botón que muestra ACCESS DENIED al click
+                    hiddenGroup: panel.hiddenGroup || null, // 🚫 Panel oculto hasta que se revele su grupo
+                    revealGroup: panel.revealGroup || null, // 🚫 Botón que revela un grupo oculto al click
+                    redAlertOnNav: !!panel.redAlertOnNav, // 🔴 Al navegar activa el parpadeo rojo
+                    // ➕➖ Stepper: botones +/- y su panel de valor
+                    stepperDelta: typeof panel.stepperDelta === 'number' ? panel.stepperDelta : null,
+                    stepperTargetOrder: typeof panel.stepperTargetOrder === 'number' ? panel.stepperTargetOrder : null,
+                    isStepperValue: !!panel.isStepperValue,
+                    stepperValue: typeof panel.stepperValue === 'number' ? panel.stepperValue : null,
+                    stepperMin: typeof panel.stepperMin === 'number' ? panel.stepperMin : null,
+                    stepperMax: typeof panel.stepperMax === 'number' ? panel.stepperMax : null,
+                    stepperUnit: panel.stepperUnit || null,
+                    termStream: panel.termStreamData ? JSON.parse(JSON.stringify(panel.termStreamData)) : null, // 💻 Terminal con texto corriendo
+                    paramValue: typeof panel.paramValue === 'number' ? panel.paramValue : null, // 🎚️ Parámetro ajustable
+                    paramStep: typeof panel.paramStep === 'number' ? panel.paramStep : null,
+                    paramMin: typeof panel.paramMin === 'number' ? panel.paramMin : null,
+                    paramMax: typeof panel.paramMax === 'number' ? panel.paramMax : null,
+                    paramSuffix: panel.paramSuffix || null,
                     modalData: getModalBehaviorData(panel) // 🔥 NUEVO: Guardar información del modal
                 }
             };
@@ -5691,6 +6305,13 @@ function loadConfiguration() {
                                 verticalAlign: panelInfo.behavior.verticalAlign || 'middle', // Restaurar alineación vertical
                                 useWhiteScrollIndicators: !!panelInfo.behavior.useWhiteScrollIndicators // 🔥 NUEVO: Restaurar indicadores de scroll blancos (para términos)
                             };
+                            // 🔤 Tamaño y fuente propios del panel
+                            if (typeof panelInfo.behavior.customFontSize === 'number') {
+                                textState.customFontSize = panelInfo.behavior.customFontSize;
+                            }
+                            if (panelInfo.behavior.fontName) {
+                                textState.fontName = panelInfo.behavior.fontName;
+                            }
                             panelTextState.set(panelData, textState);
                             
                             createPanelText(panelData, currentGridParams.cellSize);
@@ -5700,6 +6321,47 @@ function loadConfiguration() {
                                 setPanelText(panelData, panelInfo.behavior.textContent, currentGridParams.cellSize);
                             }
                             
+                            // 🔀 Restaurar botón de navegación
+                            if (panelInfo.behavior.termStream) {
+                                makeTerminalStream(panelData, panelInfo.behavior.termStream);
+                            }
+                            if (typeof panelInfo.behavior.navTargetSlot === 'number') {
+                                panelData.navTargetSlot = panelInfo.behavior.navTargetSlot;
+                            }
+                            // 🚫 Restaurar botón ACCESS DENIED
+                            if (panelInfo.behavior.showDeniedOnClick) {
+                                panelData.showDeniedOnClick = true;
+                            }
+                            if (panelInfo.behavior.revealGroup) {
+                                panelData.revealGroup = panelInfo.behavior.revealGroup;
+                            }
+                            if (panelInfo.behavior.redAlertOnNav) {
+                                panelData.redAlertOnNav = true;
+                            }
+                            // ➕➖ Restaurar stepper
+                            if (typeof panelInfo.behavior.stepperDelta === 'number') {
+                                panelData.stepperDelta = panelInfo.behavior.stepperDelta;
+                                panelData.stepperTargetOrder = panelInfo.behavior.stepperTargetOrder;
+                            }
+                            if (panelInfo.behavior.isStepperValue) {
+                                panelData.isStepperValue = true;
+                                panelData.stepperValue = typeof panelInfo.behavior.stepperValue === 'number' ? panelInfo.behavior.stepperValue : 100;
+                                if (typeof panelInfo.behavior.stepperMin === 'number') panelData.stepperMin = panelInfo.behavior.stepperMin;
+                                if (typeof panelInfo.behavior.stepperMax === 'number') panelData.stepperMax = panelInfo.behavior.stepperMax;
+                                if (panelInfo.behavior.stepperUnit) panelData.stepperUnit = panelInfo.behavior.stepperUnit;
+                            }
+                            if (typeof panelInfo.behavior.paramValue === 'number') {
+                                panelData.paramValue = panelInfo.behavior.paramValue;
+                                if (typeof panelInfo.behavior.paramStep === 'number') panelData.paramStep = panelInfo.behavior.paramStep;
+                                if (typeof panelInfo.behavior.paramMin === 'number') panelData.paramMin = panelInfo.behavior.paramMin;
+                                if (typeof panelInfo.behavior.paramMax === 'number') panelData.paramMax = panelInfo.behavior.paramMax;
+                                if (panelInfo.behavior.paramSuffix) panelData.paramSuffix = panelInfo.behavior.paramSuffix;
+                            }
+                            if (panelInfo.behavior.hiddenGroup) {
+                                panelData.hiddenGroup = panelInfo.behavior.hiddenGroup;
+                                // Empieza oculto hasta que su grupo sea revelado
+                                if (panelData.group) panelData.group.visible = false;
+                            }
                             // Restaurar botón I AGREE si existe
                             if (panelInfo.behavior.isAgreeButton && panelInfo.behavior.termsPanelOrderNumber) {
                                 panelData.isAgreeButton = true;
@@ -5709,7 +6371,7 @@ function loadConfiguration() {
                                     if (termsPanel) {
                                         panelData.termsPanel = termsPanel;
                                         console.log(`Botón I AGREE restaurado en panel #${panelData.orderNumber} vinculado a términos en panel #${termsPanel.orderNumber}`);
-                                        
+
                                         // 🔥 CRITICAL: Asegurar que el panel de términos tenga useWhiteScrollIndicators activado
                                         const termsTextState = panelTextState.get(termsPanel);
                                         if (termsTextState) {
@@ -5729,8 +6391,9 @@ function loadConfiguration() {
                         }
 
                         if (panelInfo.behavior.modelData && panelInfo.behavior.modelData.modelUrl) {
-                            const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName } = panelInfo.behavior.modelData;
+                            const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName, userScale } = panelInfo.behavior.modelData;
                             loadModelToPanel(panelData, modelUrl, currentGridParams.cellSize).then(() => {
+                                if (typeof userScale === 'number' && userScale !== 1) { panelData.modelData.userScale = 1; scalePanelModel(panelData, userScale); }
                                 // 🔥 CRITICAL: Asegurar que modelData existe
                                 if (!panelData.modelData) {
                                     panelData.modelData = {};
@@ -7021,13 +7684,49 @@ function animateFlashingPanels() {
 }
 
 // Función para centrar el grid en la cámara con una animación suave
+// Centrar la cámara y alejarla (zoom out) para una vista panorámica
+// `factor` controla cuánto alejar respecto a la distancia inicial (default 1.6 = ~60% más lejos)
+function zoomOutCentered(output, factor = 1.6) {
+    const startPosition = camera.position.clone();
+    const startTarget = controls.target.clone();
+    const targetTarget = new THREE.Vector3(0, 0, 0);
+    const baseDistance = initialCameraState.distance || camera.position.length() || 10;
+    const targetPosition = new THREE.Vector3(0, 0, baseDistance * factor);
+
+    const duration = 800;
+    const startTime = performance.now();
+
+    function animate(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const smoothProgress = 1 - Math.pow(1 - progress, 3); // ease out cubic
+        camera.position.lerpVectors(startPosition, targetPosition, smoothProgress);
+        controls.target.lerpVectors(startTarget, targetTarget, smoothProgress);
+        controls.update();
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else if (currentGrid) {
+            // Flash de confirmación al terminar
+            gridAnimationInProgress = true;
+            gridAnimationStep = 2;
+            gridAnimationProgress = 0;
+            gridFlashCount = 0;
+        }
+    }
+    requestAnimationFrame(animate);
+
+    if (output && typeof showSuccess === 'function') {
+        showSuccess('Vista centrada y alejada', output);
+    }
+}
+
 function centerGridInCamera() {
     // Verificar si hay rotación significativa antes de centrar
     const currentRotation = new THREE.Euler().setFromQuaternion(camera.quaternion);
-    const isRotated = Math.abs(currentRotation.x) > 0.01 || 
-                     Math.abs(currentRotation.y) > 0.01 || 
+    const isRotated = Math.abs(currentRotation.x) > 0.01 ||
+                     Math.abs(currentRotation.y) > 0.01 ||
                      Math.abs(currentRotation.z) > 0.01;
-    
+
     // Si no hay rotación significativa, no hacer nada
     if (!isRotated) {
         return;
@@ -7288,6 +7987,13 @@ function clearAllPanels(skipSave = false, clearBioKeyb = false) {
     if (clearBioKeyb) {
         bioKeybVisible = false;
     }
+
+    // 🔥 FIX: si el panel ancla del logo bioLOGO fue eliminado, ocultar el overlay
+    // para que no quede un logo huérfano flotando en la escena.
+    const logoAnchor = getLogoPanel();
+    if (logoAnchor && !panels.includes(logoAnchor)) {
+        toggleLogo(false);
+    }
 }
 
 // Inicializar la interfaz de usuario después de cargar
@@ -7297,6 +8003,8 @@ window.addEventListener('load', () => {
     toggleControlPanels(false);
     initSlotsPanel(); // Inicializar el panel de slots después de que el DOM esté listo
     updateSlotsPanelUI(); // Asegurar que la UI de slots esté actualizada después de cargar slots de localStorage
+    initBioMenu(); // Inicializar menú rápido y autocomplete
+    initBioFont('tecno'); // Inicializar fuentes bitmap
 });
 
 // Por si el documento ya está cargado
@@ -7306,6 +8014,8 @@ if (document.readyState === 'complete') {
     toggleControlPanels(false);
     initSlotsPanel();
     updateSlotsPanelUI();
+    initBioMenu();
+    initBioFont('tecno');
 }
 
 // Inicialización de la consola terminal
@@ -7575,6 +8285,14 @@ async function applyConfigurationFromData(configData) {
                                 verticalAlign: panelInfo.behavior.verticalAlign || 'middle', // Restaurar alineación vertical
                                 useWhiteScrollIndicators: !!panelInfo.behavior.useWhiteScrollIndicators // 🔥 NUEVO: Restaurar indicadores de scroll blancos (para términos)
                             };
+                        // 🔤 Tamaño y fuente propios del panel (si no se restauran aquí el
+                        // texto vuelve al tamaño y tipografía globales al cargar el slot)
+                        if (typeof panelInfo.behavior.customFontSize === 'number') {
+                            textState.customFontSize = panelInfo.behavior.customFontSize;
+                        }
+                        if (panelInfo.behavior.fontName) {
+                            textState.fontName = panelInfo.behavior.fontName;
+                        }
                         panelTextState.set(panel, textState);
                         
                         createPanelText(panel, currentGridParams.cellSize); // Crea la estructura visual del texto
@@ -7586,6 +8304,46 @@ async function applyConfigurationFromData(configData) {
                         }
                         console.log(`Texto restaurado para panel P${orderNumber}. Contenido: ${textState.isPassword ? '(contraseña)' : textState.text}`);
                         
+                        // 🔀 Restaurar botón de navegación
+                        if (panelInfo.behavior.termStream) {
+                            makeTerminalStream(panel, panelInfo.behavior.termStream);
+                        }
+                        if (typeof panelInfo.behavior.navTargetSlot === 'number') {
+                            panel.navTargetSlot = panelInfo.behavior.navTargetSlot;
+                        }
+                        // 🚫 Restaurar botón ACCESS DENIED
+                        if (panelInfo.behavior.showDeniedOnClick) {
+                            panel.showDeniedOnClick = true;
+                        }
+                        if (panelInfo.behavior.revealGroup) {
+                            panel.revealGroup = panelInfo.behavior.revealGroup;
+                        }
+                        if (panelInfo.behavior.redAlertOnNav) {
+                            panel.redAlertOnNav = true;
+                        }
+                        // ➕➖ Restaurar stepper
+                        if (typeof panelInfo.behavior.stepperDelta === 'number') {
+                            panel.stepperDelta = panelInfo.behavior.stepperDelta;
+                            panel.stepperTargetOrder = panelInfo.behavior.stepperTargetOrder;
+                        }
+                        if (panelInfo.behavior.isStepperValue) {
+                            panel.isStepperValue = true;
+                            panel.stepperValue = typeof panelInfo.behavior.stepperValue === 'number' ? panelInfo.behavior.stepperValue : 100;
+                            if (typeof panelInfo.behavior.stepperMin === 'number') panel.stepperMin = panelInfo.behavior.stepperMin;
+                            if (typeof panelInfo.behavior.stepperMax === 'number') panel.stepperMax = panelInfo.behavior.stepperMax;
+                            if (panelInfo.behavior.stepperUnit) panel.stepperUnit = panelInfo.behavior.stepperUnit;
+                        }
+                        if (typeof panelInfo.behavior.paramValue === 'number') {
+                            panel.paramValue = panelInfo.behavior.paramValue;
+                            if (typeof panelInfo.behavior.paramStep === 'number') panel.paramStep = panelInfo.behavior.paramStep;
+                            if (typeof panelInfo.behavior.paramMin === 'number') panel.paramMin = panelInfo.behavior.paramMin;
+                            if (typeof panelInfo.behavior.paramMax === 'number') panel.paramMax = panelInfo.behavior.paramMax;
+                            if (panelInfo.behavior.paramSuffix) panel.paramSuffix = panelInfo.behavior.paramSuffix;
+                        }
+                        if (panelInfo.behavior.hiddenGroup) {
+                            panel.hiddenGroup = panelInfo.behavior.hiddenGroup;
+                            if (panel.group) panel.group.visible = false;
+                        }
                         // Restaurar botón I AGREE si existe
                         if (panelInfo.behavior.isAgreeButton && panelInfo.behavior.termsPanelOrderNumber) {
                             panel.isAgreeButton = true;
@@ -7613,9 +8371,10 @@ async function applyConfigurationFromData(configData) {
                     }
 
                     if (panelInfo.behavior.modelData && panelInfo.behavior.modelData.modelUrl) {
-                        const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName } = panelInfo.behavior.modelData;
+                        const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName, userScale } = panelInfo.behavior.modelData;
                         console.log(`Restaurando modelo ${modelUrl} para panel P${orderNumber}`);
                         await loadModelToPanel(panel, modelUrl, currentGridParams.cellSize).then(() => {
+                            if (typeof userScale === 'number' && userScale !== 1) { panel.modelData.userScale = 1; scalePanelModel(panel, userScale); }
                             // 🔥 CRITICAL: Asegurar que modelData existe
                             if (!panel.modelData) {
                                 panel.modelData = {};
@@ -7932,16 +8691,34 @@ function processTerminalCommand(command) {
             setColorEffect(0x007dff, parseFloat(intensitySlider.value), parseInt(blendTypePicker.value)); // R0 G125 B255
             showSuccess('Efecto Zeng activado', output);
             break;
-        case 'boris':
+        case 'matrix':
             setColorEffect(0x00ff00, parseFloat(intensitySlider.value), parseInt(blendTypePicker.value)); // Verde Matrix R0 G255 B0
             showSuccess('Efecto Matrix activado', output);
             break;
         case 'ann':
-            setColorEffect(0x00e1ff, parseFloat(intensitySlider.value), parseInt(blendTypePicker.value)); // R0 G225 B255
-            showSuccess('Efecto Ann activado', output);
+            setColorEffect(0xff0000, parseFloat(intensitySlider.value), parseInt(blendTypePicker.value)); // ROJO R255 G0 B0
+            showSuccess('Efecto Ann (rojo) activado', output);
             break;
         case 'select':
             selectPanels(args, output);
+            break;
+        // 💾 Respaldo y portabilidad entre dispositivos
+        case 'export':
+        case 'backup':
+            exportStateToDisk(args[0] || undefined, output);
+            break;
+        case 'download':
+            downloadStateFile(output);
+            break;
+        case 'import':
+        case 'restore':
+            if (args[0] === 'file') importStateFromFile(output);
+            else importStateFromDisk(args[0] || undefined, output);
+            break;
+        // 💻 VERSIÓN 2.0 — pantalla de arranque terminal/hacker
+        case 'boot2':
+        case 'v2':
+            buildV2BootScreen(output);
             break;
         case 'show':
             showPanelNumbers(true, output);
@@ -8099,6 +8876,504 @@ function processTerminalCommand(command) {
         case 'modal':
             handleModalCommand(args, output, createPanelFromBoundingBox, getCurrentGridParams, panels, showError, showSuccess, panelsFlashing, updatePanelColor);
             break;
+        case 'font':
+            if (args.length === 0) {
+                const fonts = getAvailableFonts();
+                const fontDiv = document.createElement('div');
+                fontDiv.innerHTML = `<b>Fuentes disponibles:</b><br>${fonts.join(', ')}<br><br>Uso: font &lt;nombre&gt;`;
+                fontDiv.style.color = '#0f0';
+                output.appendChild(fontDiv);
+            } else {
+                changeBioFont(args[0]).then(() => {
+                    showSuccess(`Fuente cambiada a: ${args[0]}`, output);
+                }).catch(() => {
+                    showError(`Fuente no encontrada: ${args[0]}`, output);
+                });
+            }
+            break;
+        case 'reset':
+            clearAllPanels(false, true);
+            showSuccess('Layout reseteado completamente', output);
+            break;
+        case 'save': {
+            // `save` (sin args) → guarda en localStorage como antes
+            // `save <n>` → guarda layout completo en slot n (0-29)
+            if (args.length > 0) {
+                const slotIndex = parseInt(args[0]);
+                if (isNaN(slotIndex) || slotIndex < 0 || slotIndex >= MAX_SLOTS) {
+                    showError(`Slot inválido. Usa un número entre 0 y ${MAX_SLOTS - 1}.`, output);
+                    break;
+                }
+                saveToSlot(slotIndex);
+                showSuccess(`Layout completo guardado en slot ${slotIndex}`, output);
+            } else {
+                saveConfiguration();
+                showSuccess('Layout guardado en localStorage', output);
+            }
+            break;
+        }
+        case 'load': {
+            // `load` (sin args) → carga de localStorage como antes
+            // `load <n>` → carga layout completo desde slot n
+            if (args.length > 0) {
+                const slotIndex = parseInt(args[0]);
+                if (isNaN(slotIndex) || slotIndex < 0 || slotIndex >= MAX_SLOTS) {
+                    showError(`Slot inválido. Usa un número entre 0 y ${MAX_SLOTS - 1}.`, output);
+                    break;
+                }
+                if (!hasSlotData(slotIndex)) {
+                    showError(`Slot ${slotIndex} está vacío`, output);
+                    break;
+                }
+                loadFromSlot(slotIndex);
+                showSuccess(`Cargando layout desde slot ${slotIndex}...`, output);
+            } else {
+                loadConfiguration();
+                showSuccess('Layout cargado desde localStorage', output);
+            }
+            break;
+        }
+        case 'new':
+        case 'nuevo':
+        case 'new page':
+        case 'newpage': {
+            startNewDesign();
+            showSuccess('Lienzo limpio. Los slots guardados NO se afectan. Diseña y luego: save <0–29>', output);
+            break;
+        }
+        case 'next':
+        case 'siguiente': {
+            navigateToNextSlotLocal();
+            updateSlotsCurrentLabel();
+            showSuccess(`Cargado siguiente slot (${getCurrentSlotIndex()})`, output);
+            break;
+        }
+        case 'prev':
+        case 'previous':
+        case 'anterior': {
+            navigateToPreviousSlotLocal();
+            updateSlotsCurrentLabel();
+            showSuccess(`Cargado slot anterior (${getCurrentSlotIndex()})`, output);
+            break;
+        }
+        case 'pages':
+        case 'paginas':
+        case 'páginas':
+        case 'slots':
+        case 'menu':
+        case 'menú': {
+            // `pages` (sin args) → abre el panel de slots (menú visual)
+            // `pages list` → imprime estado de los 30 slots en la terminal
+            if (args[0] === 'list' || args[0] === 'lista' || args[0] === 'ls') {
+                const div = document.createElement('div');
+                div.style.color = '#0f0';
+                let html = '<div><b>SLOTS / PÁGINAS GUARDADAS:</b></div><br>';
+                let filledCount = 0;
+                for (let i = 0; i < MAX_SLOTS; i++) {
+                    const info = getSlotInfo(i);
+                    if (info.hasData) {
+                        filledCount++;
+                        const dateStr = info.date ? info.date.toLocaleString('es-ES') : '?';
+                        const typeStr = info.type === 'selectedPanels' ? 'conjunto' : info.type === 'popup' ? 'popup' : 'completo';
+                        html += `<div>📁 Slot ${i.toString().padStart(2,' ')}: ${info.panelCount} panel(es), ${typeStr}, ${dateStr}</div>`;
+                    } else {
+                        html += `<div style="opacity:0.4">📂 Slot ${i.toString().padStart(2,' ')}: vacío</div>`;
+                    }
+                }
+                html += `<br><b>Total: ${filledCount} slot(s) con datos</b>`;
+                html += `<br>Comandos: <code>save &lt;n&gt;</code>, <code>load &lt;n&gt;</code>, <code>pages</code> (abre menú visual)`;
+                div.innerHTML = html;
+                output.appendChild(div);
+            } else {
+                // Abrir el panel de slots (menú visual)
+                toggleControlPanels(true);
+                showSuccess('Menú de slots abierto. Usa los botones Guardar / Cargar / Limpiar de cada slot. Atajo: tecla V', output);
+            }
+            break;
+        }
+        case 'zoomout':
+        case 'home':
+        case 'centrar': {
+            // factor opcional: ej. `zoomout 2` para alejar al doble de la distancia inicial
+            const factor = args.length > 0 ? parseFloat(args[0]) : 1.6;
+            zoomOutCentered(output, isNaN(factor) ? 1.6 : factor);
+            break;
+        }
+        case 'align':
+        case 'justify':
+        case 'justificar': {
+            // Uso: align <h> [v]   p.ej. `align center middle`, `align left`, `align top`, `align right bottom`
+            // Aplica a todos los paneles seleccionados
+            const sel = panels.filter(p => p.selected);
+            if (sel.length === 0) {
+                showError('Selecciona al menos un panel para alinear', output);
+                break;
+            }
+            if (args.length === 0) {
+                showError('Uso: align <left|center|right|top|middle|bottom> [<top|middle|bottom>]', output);
+                break;
+            }
+            const map = {
+                left: ['left', null], izquierda: ['left', null],
+                right: ['right', null], derecha: ['right', null],
+                center: ['center', 'middle'], centro: ['center', 'middle'], centrar: ['center', 'middle'],
+                top: [null, 'top'], arriba: [null, 'top'],
+                bottom: [null, 'bottom'], abajo: [null, 'bottom'],
+                middle: [null, 'middle'], medio: [null, 'middle']
+            };
+            let h = null, v = null;
+            for (const arg of args) {
+                const m = map[arg.toLowerCase()];
+                if (!m) {
+                    showError(`Dirección desconocida: ${arg}. Usa: left/right/center/top/bottom/middle`, output);
+                    return;
+                }
+                if (m[0]) h = m[0];
+                if (m[1]) v = m[1];
+            }
+            sel.forEach(p => setPanelAlignment(p, h, v));
+            showSuccess(`Alineación aplicada a ${sel.length} panel(es): h=${h||'-'} v=${v||'-'}`, output);
+            break;
+        }
+        case 'bright':
+        case 'brillo': {
+            // 🔆 MODO SIMPLE (recomendado):
+            //   brillo 7      → nivel 0-10 (5 = normal). Ajusta TODO junto.
+            //   brillo + / -  → sube/baja un nivel
+            //   brillo        → muestra el nivel actual
+            //   Teclas rápidas: [ baja brillo, ] sube brillo
+            // (Avanzado, opcional: brillo texto|grid|paneles|glow <valor>)
+            const a0 = (args[0] || '').toLowerCase();
+            if (!a0) {
+                showInfo(`Brillo: ${masterBrightness}/10 (5 = normal). Usa: brillo <0-10>, brillo +, brillo -. Teclas: [ y ]`, output);
+                break;
+            }
+            if (a0 === '+' || a0 === 'up' || a0 === 'mas' || a0 === 'más') {
+                showSuccess(`Brillo: ${setMasterBrightness(masterBrightness + 1)}/10`, output);
+                break;
+            }
+            if (a0 === '-' || a0 === 'down' || a0 === 'menos') {
+                showSuccess(`Brillo: ${setMasterBrightness(masterBrightness - 1)}/10`, output);
+                break;
+            }
+            const levelNum = parseFloat(a0);
+            if (!isNaN(levelNum)) {
+                showSuccess(`Brillo: ${setMasterBrightness(levelNum)}/10`, output);
+                break;
+            }
+            // ---- Modo avanzado por componente ----
+            const val = parseFloat(args[1]);
+            if (isNaN(val)) { showError('Uso simple: brillo <0-10> | brillo + | brillo -', output); break; }
+            if (['text','texto'].includes(a0)) {
+                showSuccess(`Brillo de texto: ${setTextBrightness(val).toFixed(2)}`, output);
+            } else if (['grid','cuadricula','cuadrícula'].includes(a0)) {
+                showSuccess(`Brillo del grid: ${setGridBrightness(val).toFixed(2)}`, output);
+            } else if (['panels','paneles','panel'].includes(a0)) {
+                showSuccess(`Brillo de paneles: ${setPanelsBrightness(val).toFixed(2)}`, output);
+            } else if (['glow','resplandor'].includes(a0)) {
+                const glow = Math.max(0, Math.min(3, val));
+                setBloomEffect(glow, parseFloat(glowRadiusSlider?.value ?? 0.63), parseFloat(glowThresholdSlider?.value ?? 0.1));
+                showSuccess(`Glow: ${glow.toFixed(2)}`, output);
+            } else {
+                showError('Uso simple: brillo <0-10> | brillo + | brillo -', output);
+            }
+            break;
+        }
+        case 'font3d':
+        case 'tipografia':
+        case 'tipografía':
+        case 'fuente3d': {
+            // Cambia la fuente del texto 3D de los paneles (persiste tras refresh).
+            //   font3d arcade | font3d terminal | font3d mono | font3d (lista)
+            const name = (args[0] || '').toLowerCase();
+            if (!name) {
+                showInfo(`Fuente actual: ${getPanelFont()}. Opciones: ${getPanelFonts().join(', ')}. Uso: font3d <nombre>`, output);
+                break;
+            }
+            if (setPanelFont(name)) {
+                // Re-renderizar el texto existente con la fuente nueva
+                panels.forEach(p => {
+                    if (p.hasText && p.group) {
+                        const gp = getCurrentGridParams();
+                        if (gp) createPanelText(p, gp.cellSize);
+                    }
+                });
+                showSuccess(`Fuente 3D cambiada a "${name}" (se conserva al recargar)`, output);
+            } else {
+                showError(`Fuente desconocida: ${name}. Opciones: ${getPanelFonts().join(', ')}`, output);
+            }
+            break;
+        }
+        case 'perfil':
+        case 'profile':
+        case 'version': {
+            // 🗂️ Cambiar de versión de interfaz. Cada perfil tiene sus propios 30 slots
+            // y su propio color base. Uso: perfil v1 | perfil v2 | perfil (muestra actual)
+            const PROFILE_COLORS = { v1: 'azul', v2: 'verde' };
+            const name = (args[0] || '').toLowerCase();
+            if (!name) {
+                showInfo(`Perfil actual: ${getProfile()}. Disponibles: v1 (azul), v2 (verde). Uso: perfil v2`, output);
+                break;
+            }
+            if (!PROFILE_COLORS[name]) {
+                showError('Perfil desconocido. Usa: perfil v1 | perfil v2', output);
+                break;
+            }
+            setProfileKey(name);
+            showSuccess(`Perfil "${name}" activado (${PROFILE_COLORS[name]}). Recargando…`, output);
+            // Recargar para reinicializar slots y color del perfil
+            setTimeout(() => location.reload(), 600);
+            break;
+        }
+        case 'calibrar':
+        case 'calibracion':
+        case 'calibración':
+        case 'panelcontrol': {
+            toggleCalibrationPanel(true);
+            showSuccess('Panel de calibración abierto (brillo / saturación / color / opacidad). Tecla rápida: C', output);
+            break;
+        }
+        case 'saturacion':
+        case 'saturación':
+        case 'saturation':
+        case 'tinte': {
+            // 🎨 Saturación del tinte azul (0 = sin tinte, 10 = azul total). Igual de simple que `brillo`.
+            //   saturacion 7   |   saturacion +   |   saturacion -   |   saturacion (muestra nivel)
+            //   Teclas rápidas: { menos azul, } más azul
+            const a0 = (args[0] || '').toLowerCase();
+            if (!a0) {
+                showInfo(`Saturación: ${colorSaturation}/10. Usa: saturacion <0-10>, saturacion +, saturacion -. Teclas: { y }. Color actual: ${colorPicker.value} (cambia con: color azul|cyan|rojo|verde|morado|#hex)`, output);
+                break;
+            }
+            if (a0 === '+' || a0 === 'mas' || a0 === 'más') { showSuccess(`Saturación: ${setColorSaturation(colorSaturation + 1)}/10`, output); break; }
+            if (a0 === '-' || a0 === 'menos') { showSuccess(`Saturación: ${setColorSaturation(colorSaturation - 1)}/10`, output); break; }
+            const lvl = parseFloat(a0);
+            if (!isNaN(lvl)) { showSuccess(`Saturación: ${setColorSaturation(lvl)}/10`, output); break; }
+            showError('Uso: saturacion <0-10> | saturacion + | saturacion -', output);
+            break;
+        }
+        case 'color': {
+            // 🎨 Color del grade: color azul | cyan | rojo | verde | morado | magenta | ambar | blanco | #RRGGBB
+            const arg = (args[0] || '').toLowerCase();
+            if (!arg) {
+                showInfo(`Color actual: ${colorPicker.value}. Opciones: ${Object.keys(GRADE_COLORS).join(', ')} o #RRGGBB`, output);
+                break;
+            }
+            const hex = setGradeColor(args[0]);
+            if (hex) showSuccess(`Color del grade: ${hex} (saturación ${colorSaturation}/10)`, output);
+            else showError(`Color desconocido: ${args[0]}. Opciones: ${Object.keys(GRADE_COLORS).join(', ')} o #RRGGBB`, output);
+            break;
+        }
+        case 'opacity':
+        case 'opacidad': {
+            // Opacidad global de toda la interfaz (canvas). Uso: opacity 0.85 | opacity 1
+            const v = parseFloat(args[0]);
+            if (isNaN(v)) { showError('Uso: opacity <0.1 - 1>', output); break; }
+            const clamped = Math.max(0.1, Math.min(1, v));
+            if (renderer && renderer.domElement) renderer.domElement.style.opacity = String(clamped);
+            showSuccess(`Opacidad global: ${clamped.toFixed(2)}`, output);
+            break;
+        }
+        case 'tidy':
+        case 'symmetry':
+        case 'simetria':
+        case 'simetría':
+        case 'armonizar':
+        case 'auto': {
+            // Auto-acomoda: snap de bordes (alinea columnas/filas comunes) + centra el layout
+            const result = autoTidyLayout();
+            const movedMsg = (result.snapped > 0 ? `${result.snapped} panel(es) alineados` : '0 alineados');
+            const centerMsg = (result.centered ? 'layout centrado' : 'ya estaba centrado');
+            showSuccess(`Auto-acomodo: ${movedMsg}, ${centerMsg}`, output);
+            break;
+        }
+        case 'mirror':
+        case 'espejar': {
+            // mirror [h|v] [replace|duplicate]   (defaults: h, replace)
+            const axis = (args[0] || 'h').toLowerCase();
+            const mode = (args[1] || 'replace').toLowerCase();
+            if (!['h','v','horizontal','vertical'].includes(axis)) {
+                showError('Uso: mirror [h|v] [replace|duplicate]', output);
+                break;
+            }
+            const realAxis = axis.startsWith('h') ? 'h' : 'v';
+            const realMode = mode === 'duplicate' || mode === 'dup' || mode === 'd' ? 'duplicate' : 'replace';
+            const n = mirrorLayout(realAxis, realMode);
+            showSuccess(`Espejo ${realAxis === 'h' ? 'horizontal' : 'vertical'} aplicado (${realMode}): ${n} panel(es) ${realMode === 'replace' ? 'reflejados' : 'creados'}`, output);
+            break;
+        }
+        case 'bypass':
+        case 'bypasslogin':
+        case 'enter':
+        case 'entrar': {
+            const n = bypassLogin();
+            if (n === 0) showError('No hay pantalla de login activa para saltar', output);
+            else showSuccess(`Login saltado — ${n} elemento(s) de login removido(s). Acceso concedido.`, output);
+            break;
+        }
+        case 'loginbtn':
+        case 'botonlogin':
+        case 'loginbutton': {
+            // Convierte el panel seleccionado en botón LOG IN / ACCESS DENIED / ACCESS GRANTED
+            // Uso: loginbtn  |  loginbtn denied  |  loginbtn granted
+            const sel = panels.filter(p => p.selected && !p.isKeyboardKey);
+            if (sel.length !== 1) {
+                showError('Selecciona exactamente un panel (el cuadrante vacío bajo PASSWORD) para el botón', output);
+                break;
+            }
+            const arg = (args[0] || 'login').toLowerCase();
+            const state = ['denied','denegado'].includes(arg) ? 'denied'
+                        : ['granted','concedido','ok'].includes(arg) ? 'granted'
+                        : 'login';
+            const ok = makeLoginButton(sel[0], state);
+            if (ok) showSuccess(`Botón de login creado: ${state === 'denied' ? 'ACCESS DENIED' : state === 'granted' ? 'ACCESS GRANTED' : 'LOG IN'}`, output);
+            else showError('No se pudo crear el botón', output);
+            break;
+        }
+        case 'copy':
+        case 'copiar': {
+            const n = copyPanels();
+            if (n === 0) showError('No hay paneles seleccionados para copiar', output);
+            else showSuccess(`Copiados ${n} panel(es) al portapapeles`, output);
+            break;
+        }
+        case 'paste':
+        case 'pegar': {
+            pastePanels().then(n => {
+                if (n === 0) showError('Portapapeles vacío o sin espacio para pegar', output);
+                else showSuccess(`Pegados ${n} panel(es)`, output);
+            });
+            break;
+        }
+        case 'movekeyb':
+        case 'moverteclado':
+        case 'keyboard': {
+            // Uso: `movekeyb <left|right|up|down> [n]`
+            const dir = (args[0] || '').toLowerCase();
+            const n = Math.max(1, parseInt(args[1] || '1') || 1);
+            const dirMap = {
+                left:[-n,0], izquierda:[-n,0], izq:[-n,0],
+                right:[n,0], derecha:[n,0], der:[n,0],
+                up:[0,n], arriba:[0,n], arr:[0,n],
+                down:[0,-n], abajo:[0,-n], abj:[0,-n]
+            };
+            const delta = dirMap[dir];
+            if (!delta) { showError('Uso: movekeyb <left|right|up|down> [n]', output); break; }
+            const ok = moveKeyboard(delta[0], delta[1]);
+            if (ok) showSuccess(`Teclado movido ${dir} (${n} celda${n>1?'s':''})`, output);
+            else showError('No se pudo mover el teclado: límites del grid o colisión con un panel', output);
+            break;
+        }
+        case 'move':
+        case 'mover': {
+            // Uso: `move <left|right|up|down> [n]`
+            const sel = panels.filter(p => p.selected);
+            if (sel.length === 0) { showError('Selecciona al menos un panel para mover', output); break; }
+            const dir = (args[0] || '').toLowerCase();
+            const n = Math.max(1, parseInt(args[1] || '1') || 1);
+            const dirMap = {
+                left:[-n,0], izquierda:[-n,0], izq:[-n,0],
+                right:[n,0], derecha:[n,0], der:[n,0],
+                up:[0,n], arriba:[0,n], arr:[0,n],
+                down:[0,-n], abajo:[0,-n], abj:[0,-n]
+            };
+            const delta = dirMap[dir];
+            if (!delta) { showError('Uso: move <left|right|up|down> [n]', output); break; }
+            const gp = getCurrentGridParams();
+            if (!gp) { showError('No hay grid disponible', output); break; }
+            let moved = 0;
+            sel.forEach(p => { if (movePanel(p, delta[0], delta[1], gp)) moved++; });
+            if (typeof animateResizingPanels === 'function') animateResizingPanels();
+            showSuccess(`${moved}/${sel.length} panel(es) movidos ${dir} (${n} celda${n>1?'s':''})`, output);
+            break;
+        }
+        case 'resize':
+        case 'tamano':
+        case 'tamaño': {
+            // Uso: `resize <dW> [dH]` ó `resize w <dW>` ó `resize h <dH>`
+            //   resize 2     → ancho +2
+            //   resize 2 1   → ancho +2, alto +1
+            //   resize -1    → ancho -1
+            //   resize w 3   → ancho +3
+            //   resize h -2  → alto -2
+            const sel = panels.filter(p => p.selected);
+            if (sel.length === 0) { showError('Selecciona al menos un panel para redimensionar', output); break; }
+            let dW = 0, dH = 0;
+            if (args.length === 0) { showError('Uso: resize <dW> [dH] | resize w <n> | resize h <n>', output); break; }
+            if (args[0].toLowerCase() === 'w') dW = parseInt(args[1]) || 0;
+            else if (args[0].toLowerCase() === 'h') dH = parseInt(args[1]) || 0;
+            else { dW = parseInt(args[0]) || 0; if (args[1] !== undefined) dH = parseInt(args[1]) || 0; }
+            let resized = 0;
+            sel.forEach(p => { if (resizePanel(p, dW, dH)) resized++; });
+            showSuccess(`${resized}/${sel.length} panel(es) redimensionados (Δw=${dW} Δh=${dH})`, output);
+            break;
+        }
+        case 'scale':
+        case 'escalar': {
+            // Uso: `scale 1.25` (×1.25), `scale 0.5` (mitad), `scale +`, `scale -`, `scale reset`
+            const sel = panels.filter(p => p.selected);
+            if (sel.length === 0) {
+                showError('Selecciona al menos un panel con modelo', output);
+                break;
+            }
+            const arg = (args[0] || '').toLowerCase();
+            let factor = 1;
+            if (arg === '+' || arg === 'up' || arg === 'mas' || arg === 'más') factor = 1.25;
+            else if (arg === '-' || arg === 'down' || arg === 'menos') factor = 0.8;
+            else if (arg === 'reset' || arg === '1') {
+                sel.forEach(p => {
+                    const mg = p.group && p.group.children.find(c => c.userData && c.userData.isModel);
+                    if (mg) {
+                        const iso = mg.children.find(c => c.name === 'IsoGroup') || mg;
+                        iso.scale.setScalar(1);
+                    }
+                });
+                showSuccess(`Escala reseteada en ${sel.length} panel(es)`, output);
+                break;
+            } else {
+                factor = parseFloat(arg);
+                if (!isFinite(factor) || factor <= 0) {
+                    showError('Uso: scale <factor> | scale + | scale - | scale reset', output);
+                    break;
+                }
+            }
+            let scaledCount = 0;
+            sel.forEach(p => { if (scalePanelModel(p, factor)) scaledCount++; });
+            showSuccess(`Modelo escalado ×${factor} en ${scaledCount} panel(es)`, output);
+            break;
+        }
+        case 'skiplogin':
+        case 'nologin':
+        case 'skipboot':
+        case 'brincar': {
+            // Persiste el flag para saltar el splash en futuros refresh
+            // Uso: `skiplogin` (activa), `skiplogin off` (desactiva)
+            const off = args[0] && /^(off|0|false|no|disable)$/i.test(args[0]);
+            try {
+                if (off) {
+                    localStorage.removeItem('bioprint_skip_login');
+                    showSuccess('Splash habilitado de nuevo (verás el boot al recargar).', output);
+                } else {
+                    localStorage.setItem('bioprint_skip_login', '1');
+                    showSuccess('Splash deshabilitado. Al recargar, saltará al app directo. Para volver: skiplogin off', output);
+                }
+            } catch (e) {
+                showError('No se pudo persistir flag: ' + e.message, output);
+            }
+            break;
+        }
+        case 'borrar':
+        case 'limpiar': {
+            // Borrar contenido de paneles seleccionados (preserva estructura)
+            const sel = panels.filter(p => p.selected);
+            if (sel.length === 0) {
+                showError('Selecciona al menos un panel', output);
+                break;
+            }
+            sel.forEach(p => clearPanelContent(p));
+            showSuccess(`Contenido limpiado en ${sel.length} panel(es)`, output);
+            break;
+        }
         default:
             showError(`Comando desconocido: ${cmd}. Escribe 'help' para ver comandos disponibles.`, output);
     }
@@ -8116,12 +9391,15 @@ function processTerminalCommand(command) {
     }
 }
 
+// Exponer processTerminalCommand globalmente para bioMenu
+window.processTerminalCommand = processTerminalCommand;
+
 // Funciones auxiliares para los comandos
 function showHelp(output) {
     const commands = [
         'help - Muestra todos los comandos disponibles',
         'zeng - Activa el efecto Zeng (azul)',
-        'boris - Activa el efecto Matrix (verde)', 
+        'matrix - Activa el efecto Matrix (verde)', 
         'ann - Activa el efecto Ann (cyan)',
         'select all - Selecciona todos los paneles',
         'select 1-5 - Selecciona rango de paneles',
@@ -8164,7 +9442,37 @@ function showHelp(output) {
         'demo - Crea laboratorio biomédico completo de demostración',
         'glitch - Efecto glitch de refracción roja con bloques fragmentados',
         'saveconjunto <n> - Guarda paneles seleccionados en slot n (0-9)',
-        'loadconjunto <n> - Carga paneles guardados desde slot n sin limpiar escena'
+        'loadconjunto <n> - Carga paneles guardados desde slot n sin limpiar escena',
+        'zoomout [factor] - Centra y aleja la cámara (alias: home, centrar). Ej: zoomout 2',
+        'align <h> [v] - Alinea contenido (texto/modelo/textura) en paneles seleccionados. Ej: align left, align center middle, align right top',
+        'limpiar - Borra solo el contenido de paneles seleccionados (preserva el panel)',
+        'Click derecho sobre un panel - Abre menú contextual con justificar / borrar / reemplazar modelo',
+        'move <left|right|up|down> [n] - Mueve los paneles seleccionados N celdas (default 1). Tip: las flechas del teclado también funcionan',
+        'movekeyb <left|right|up|down> [n] - Mueve el teclado bioKeyb completo (alias: moverteclado, keyboard)',
+        'Alt + Flechas - Mueve el teclado bioKeyb completo (1 celda). Alt+Shift+Flechas = 5 celdas',
+        'bypass - Salta la pantalla de login social (alias: enter, entrar). Tecla rápida: B',
+        'loginbtn [denied|granted] - Convierte el panel seleccionado en botón LOG IN / ACCESS DENIED / ACCESS GRANTED',
+        'Tecla B - Bypass login (simula acceso concedido, con flash de confirmación)',
+        'Ctrl/Cmd + C - Copiar paneles seleccionados | Ctrl/Cmd + V - Pegar (alias terminal: copy / paste)',
+        'save [n] - Guarda layout completo. Sin args: localStorage. Con número 0-29: slot persistente',
+        'load [n] - Carga layout. Sin args: localStorage. Con número 0-29: slot persistente',
+        'pages - Abre el menú visual de slots (alias: paginas, slots, menu). pages list = imprime los 30 slots',
+        'new - Limpia la escena para empezar un diseño nuevo (alias: nuevo). Los slots guardados NO se borran',
+        'next / prev - Cargar siguiente / anterior slot con datos. PageDown / PageUp también funcionan',
+        'Teclas 0-9 - Saltar directo a esa página/slot con cámara normalizada. 0 = inicio de la secuencia (login)',
+        'Ctrl+0-9 - Cargar slot en HUD | Alt+0-9 - Slots 10-19',
+        'brillo <0-10> - Brillo general (5 = normal). brillo + / brillo - sube/baja. Teclas rápidas: [ y ]',
+        'Tecla C - Panel de calibración visual: brillo, saturación, color y opacidad con sliders (alias: calibrar)',
+        'saturacion <0-10> - Cantidad de tinte azul (0 = sin tinte, 10 = total). Teclas rápidas: { y }',
+        'color <azul|cyan|rojo|verde|morado|#hex> - Color del tinte de toda la interfaz',
+        'opacity <0.1-1> - Opacidad global de la interfaz (alias: opacidad)',
+        'tidy - Auto-acomoda paneles: snap a columnas/filas comunes + centra el layout (alias: symmetry, simetria, armonizar, auto)',
+        'mirror [h|v] [replace|duplicate] - Espeja horizontal o vertical. Replace reemplaza, duplicate crea copia espejada al lado',
+        'Shift + Click - Multi-selección: añade/quita un panel a la selección actual',
+        'resize <dW> [dH] - Redimensiona los paneles seleccionados. Ej: resize 2 1, resize -1, resize w 3, resize h -2',
+        'scale <factor|+|-|reset> - Escala el modelo del panel seleccionado. Ej: scale 1.25, scale -, scale reset',
+        'skiplogin - Salta el splash de boot al recargar (alias: nologin, skipboot, brincar). `skiplogin off` para revertir',
+        'Splash boot - Pulsa cualquier tecla / click para saltarlo. Añade ?skip a la URL para saltarlo siempre'
     ];
     
     const helpDiv = document.createElement('div');
@@ -8404,6 +9712,48 @@ function initializeApp() {
 }
 
 // Reemplazar la función mapLogo existente
+// Aplica la textura del logo BioCorp a un panel: UV "Contain" (centrado, sin distorsión)
+// + bring-to-front. Reutilizable desde mapLogo y desde las interfaces (print, etc.).
+function applyLogoTextureToPanel(panel, onSuccess, onError) {
+    loadTexture(
+        './public/img/bioprint_logo.png',
+        (texture) => {
+            if (!panel.fillMesh) { if (onError) onError(new Error('sin fillMesh')); return; }
+            texture.wrapS = THREE.ClampToEdgeWrapping;
+            texture.wrapT = THREE.ClampToEdgeWrapping;
+            panel.textureMaterials = createPanelMaterials(texture);
+            panel.fillMesh.material = panel.textureMaterials.normal;
+            const geometry = panel.fillMesh.geometry;
+            const uvAttribute = geometry.attributes.uv;
+            const imageAspect = texture.image.width / texture.image.height;
+            const panelWidth = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
+            const panelHeight = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+            const ratio = (panelWidth / panelHeight) / imageAspect;
+            for (let i = 0; i < uvAttribute.count; i++) {
+                const u = uvAttribute.getX(i);
+                const v = uvAttribute.getY(i);
+                let newU = u, newV = v;
+                if (ratio < 1) newV = 0.5 + (v - 0.5) / ratio;
+                else newU = 0.5 + (u - 0.5) * ratio;
+                uvAttribute.setXY(i, newU, newV);
+            }
+            uvAttribute.needsUpdate = true;
+            panel.hasTexture = true;
+            panel.textureType = 'logo';
+            panel.texturePath = './public/img/bioprint_logo.png';
+            // Bring to front
+            panel.fillMesh.renderOrder = 800;
+            [panel.fillMesh.material, ...(panel.textureMaterials ? Object.values(panel.textureMaterials) : [])].forEach(m => {
+                if (m) { m.depthTest = false; m.depthWrite = false; m.transparent = true; m.needsUpdate = true; }
+            });
+            panel.isLogoFront = true;
+            if (typeof render === 'function') render();
+            if (onSuccess) onSuccess();
+        },
+        (error) => { if (onError) onError(error); }
+    );
+}
+
 function mapLogo(args, output) {
     const selectedPanels = panels.filter(p => p.selected);
     if (selectedPanels.length !== 1) {
@@ -8472,13 +9822,35 @@ function mapLogo(args, output) {
                 panel.hasTexture = true; // Marcar que el panel tiene textura
                 panel.textureType = 'logo'; // 🔥 Guardar tipo de textura para snapshots
                 panel.texturePath = './public/img/bioprint_logo.png'; // 🔥 Guardar ruta para snapshots
-                
+
+                // 🔥 BRING TO FRONT: el logo siempre se dibuja por encima de cualquier otro panel
+                const fm = panel.fillMesh;
+                fm.renderOrder = 99999;
+                if (fm.material) {
+                    fm.material.depthTest = false;
+                    fm.material.depthWrite = false;
+                    fm.material.transparent = true;
+                    fm.material.needsUpdate = true;
+                }
+                // También priorizar los materiales de estado (hover/selected) si existen
+                if (panel.textureMaterials) {
+                    Object.values(panel.textureMaterials).forEach(mat => {
+                        if (mat) { mat.depthTest = false; mat.depthWrite = false; mat.transparent = true; mat.needsUpdate = true; }
+                    });
+                }
+                // Empujar el grupo ligeramente hacia la cámara para reforzar el "al frente"
+                if (panel.group) {
+                    panel.group.position.z = (panel.group.position.z || 0) + 0.5;
+                    panel.group.renderOrder = 99999;
+                }
+                panel.isLogoFront = true; // marca para snapshots/restauración
+
                 // Forzar actualización
                 if (typeof render === 'function') {
                     render();
                 }
-                
-                showSuccess('Logo aplicado exitosamente sin distorsión', output);
+
+                showSuccess('Logo BioCorp aplicado: centrado, ajustado y al frente', output);
             } else {
                 showError('El panel no tiene una malla para aplicar la textura', output);
             }
@@ -8534,12 +9906,12 @@ function mapSocial(args, output) {
     
     try {
         // Dividir el panel en dos secciones:
-        // 1. Sección superior para el texto (aproximadamente 1/3 de la altura)
-        // 2. Sección inferior para los iconos (2/3 de la altura)
-        
-        const textSectionHeight = Math.max(3, Math.floor(containerHeight * 0.3));
+        // 1. Sección superior para el texto (≈50% de la altura para tipografía grande)
+        // 2. Sección inferior para los iconos (≈50% de la altura)
+
+        const textSectionHeight = Math.max(6, Math.floor(containerHeight * 0.6)); // 60% para letras más grandes
         const iconsSectionHeight = containerHeight - textSectionHeight - 1; // -1 para separación
-        
+
         // Crear panel para el texto "LOGIN WITH SOCIAL MEDIA" (parte superior)
         // En el sistema de coordenadas: minY es inferior, maxY es superior
         const textPanel = createPanelFromBoundingBox({
@@ -8548,12 +9920,37 @@ function mapSocial(args, output) {
             minY: containerPanel.maxCellIndex.y - textSectionHeight + 1,
             maxY: containerPanel.maxCellIndex.y
         }, currentGridParams);
-        
+
         if (textPanel && textPanel.group) {
             // Configurar el panel de texto
             textPanel.hasText = true;
+            textPanel.isLoginElement = true; // marca para el comando/tecla de bypass
             createPanelText(textPanel, currentGridParams.cellSize);
             setPanelText(textPanel, 'LOGIN WITH SOCIAL MEDIA', currentGridParams.cellSize);
+            // Forzar una tipografía GRANDE estilo pixel retro game para el título de login
+            const applyBigLoginFont = () => {
+                const textState = panelTextState.get(textPanel);
+                if (!textState) return;
+                // Tipografía grande pero que las 3 líneas de "LOGIN WITH SOCIAL MEDIA" no se encimen.
+                // El texto se divide en ~3 líneas, así que el tamaño se limita por la altura disponible.
+                const containerH = textSectionHeight; // celdas de alto de la sección de texto
+                // Espacio por línea ≈ containerH / 3 líneas; el font ocupa ~85% de eso (más grande).
+                const fitFont = Math.max(3.5, (containerH / 3.0) * 0.85);
+                // Base más alta para letras grandes, con cap que evita el solapamiento.
+                const baseFont = 6.0;
+                textState.customFontSize = Math.min(baseFont, Math.max(3.8, fitFont));
+                textState.verticalAlign = 'middle';
+                textState.textAlign = 'center';
+                createPanelText(textPanel, currentGridParams.cellSize);
+            };
+            applyBigLoginFont();
+            // Asegurar que la fuente pixel "Press Start 2P" esté cargada y re-render con ella
+            if (document.fonts && document.fonts.load) {
+                document.fonts.load('bold 32px "Press Start 2P"').then(() => {
+                    if (typeof reloadPixelFont === 'function') reloadPixelFont();
+                    applyBigLoginFont();
+                }).catch(() => {});
+            }
         }
         
         // Definir iconos de redes sociales con sus rutas de imagen
@@ -8610,6 +10007,9 @@ function mapSocial(args, output) {
             }, currentGridParams);
             
             if (iconPanel && iconPanel.group && iconPanel.fillMesh) {
+                // Marcar como elemento de login DE INMEDIATO (no esperar a que cargue
+                // la textura) para que `bypass`/tecla B siempre los elimine todos.
+                iconPanel.isLoginElement = true;
                 createdIconPanels.push(iconPanel);
                 
                 // Función para intentar cargar la textura del icono
@@ -8671,6 +10071,7 @@ function mapSocial(args, output) {
                             uvAttribute.needsUpdate = true;
                             iconPanel.hasTexture = true;
                             iconPanel.textureType = 'social';
+                            iconPanel.isLoginElement = true; // marca para el comando/tecla de bypass
                             iconPanel.texturePath = fullPath;
                             
                             loadedIcons++;
@@ -9969,7 +11370,17 @@ async function handleModelCommand(args, output) {
     
     const panel = selectedPanels[0];
     const modelInput = args[0].toLowerCase();
-    
+
+    // 🔥 ESPECIAL: 'biocorp' / 'bioprint' / 'logo' redirigen a mapLogo (textura plana del logo)
+    if (modelInput === 'biocorp' || modelInput === 'bioprint' || modelInput === 'biocorp_logo') {
+        // Limpiar contenido previo si lo hay (modelo 3D, texto, etc.) para que la textura se aplique limpia
+        if (typeof clearPanelContent === 'function') clearPanelContent(panel);
+        // Re-marcar el panel como seleccionado (clearPanelContent no toca selected, pero por las dudas)
+        panel.selected = true;
+        mapLogo(args, output);
+        return;
+    }
+
     // Detectar si el usuario especificó una extensión
     let modelUrl;
     let modelName;
@@ -10968,7 +12379,7 @@ async function executePrintCommand(containerPanel, args = [], output) {
     
     // Asignar textos iniciales (con modo especial HOMO PRINTEMPS)
     const printingTitle = isHomoPrintemps ? "SPLICING IN PROGRESS" : "SPLICING IN PROGRESS";
-    const confirmTitle = isHomoPrintemps ? "Print woman? ♀" : "SAVE SETTINGS";
+    const confirmTitle = isHomoPrintemps ? "Print woman? ♀" : "Are you sure?"; // fiel al diseño original filmado
     
     setPanelText(confirmTitlePanel, confirmTitle, currentGridParams.cellSize);
     setPanelText(continuePanel, "YES", currentGridParams.cellSize);
@@ -10989,7 +12400,35 @@ async function executePrintCommand(containerPanel, args = [], output) {
     allPanelsExceptPrintBtn.forEach(panel => {
         if (panel.group) panel.group.visible = false;
     });
-    
+
+    // 🔥 LOGO BIOPRINT centrado (simetría del diseño filmado): usa el overlay
+    // aditivo original de bioLOGO.js anclado a un panel invisible centrado en el grid.
+    {
+        const logoW = 8, logoH = 3; // el overlay tiene tamaño propio (12 unidades); el ancla solo da posición
+        const logoCX = Math.floor(gridCellsX / 2);
+        const logoIdx = clampIndices(
+            logoCX - Math.floor(logoW / 2),
+            logoCX + Math.ceil(logoW / 2) - 1,
+            gridCellsY - 8,
+            gridCellsY - 8 + logoH - 1
+        );
+        if (logoIdx) {
+            const logoAnchorPanel = createPanelFromBoundingBox(logoIdx, currentGridParams);
+            if (logoAnchorPanel) {
+                if (!logoMeshExists()) createLogo(scene);
+                toggleLogo(true, logoAnchorPanel); // oculta el contenido del ancla y muestra el logo brillante centrado
+                // Ancla 100% invisible e inerte (ni fill, ni bordes, ni hover)
+                if (logoAnchorPanel.fillMesh) {
+                    logoAnchorPanel.fillMesh.visible = false;
+                    logoAnchorPanel.fillMesh.userData.ignoreRaycast = true;
+                }
+                if (logoAnchorPanel.borderLines) {
+                    logoAnchorPanel.borderLines.forEach(l => { if (l) { l.visible = false; if (l.userData) l.userData.ignoreRaycast = true; } });
+                }
+            }
+        }
+    }
+
     // === FASE 1: BOTÓN IMPRIMIR ===
     // Función para detectar click en el botón de imprimir
     let printBtnHover = false;
@@ -11268,9 +12707,14 @@ async function executePrintCommand(containerPanel, args = [], output) {
                     0.3 // Pulso suave
                 );
                 
-                // Dibujar el texto "PRINTING" o "PRINTING COMPLETE" con fuente pixelada
+                // Etiqueta dinámica fiel al diseño filmado:
+                //   0-5%  → "PRINTING"  (barra oscura, foto 1)
+                //   >5%   → "RENDERING" (barra llenándose, foto 3)
+                //   fin   → "PRINTING COMPLETE"
                 const ctx = renderingBarPanel.progressCtx;
-                const text = renderingBarPanel.renderingComplete ? "PRINTING COMPLETE" : "PRINTING";
+                const text = renderingBarPanel.renderingComplete
+                    ? "PRINTING COMPLETE"
+                    : (progress > 5 ? "RENDERING" : "PRINTING");
                 
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                 // Usar "Press Start 2P" con espacios como en otros lugares del código
@@ -13682,6 +15126,7 @@ function getSelectedPanelsConfig() {
                             modelName: typeof panel.modelData.name === 'string' ? panel.modelData.name : '',
                             isRotating: !!panel.modelData.isRotating,
                             rotationSpeed: typeof panel.modelData.rotationSpeed === 'number' ? panel.modelData.rotationSpeed : 0.005,
+                            userScale: typeof panel.modelData.userScale === 'number' ? panel.modelData.userScale : undefined, // 🔍 Zoom manual del modelo
                             isModelButton: !!panel.modelData.isModelButton,
                             isFromModelsGrid: !!panel.modelData.isFromModelsGrid,
                             isModelDisplay: !!panel.modelData.isModelDisplay,
@@ -13811,6 +15256,13 @@ async function restorePanelBehaviorFromData(panel, behaviorData, currentGridPara
             verticalAlign: behaviorData.verticalAlign || 'middle',
             useWhiteScrollIndicators: !!behaviorData.useWhiteScrollIndicators
         };
+        // 🔤 Restaurar tamaño y fuente personalizados si se guardaron
+        if (typeof behaviorData.customFontSize === 'number') {
+            textState.customFontSize = behaviorData.customFontSize;
+        }
+        if (behaviorData.fontName) {
+            textState.fontName = behaviorData.fontName;
+        }
         panelTextState.set(panel, textState);
         createPanelText(panel, currentGridParams.cellSize);
         if (textState.isPassword) {
@@ -13832,7 +15284,7 @@ async function restorePanelBehaviorFromData(panel, behaviorData, currentGridPara
     
     // Restaurar modelo
     if (behaviorData.modelData) {
-        const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName } = behaviorData.modelData;
+        const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName, userScale } = behaviorData.modelData;
         
         // 🔥 NUEVO: Restaurar identidad de viewer incluso sin modelo cargado
         if (isViewer) {
@@ -13846,6 +15298,7 @@ async function restorePanelBehaviorFromData(panel, behaviorData, currentGridPara
         // Si hay URL de modelo, cargarlo
         if (modelUrl) {
             await loadModelToPanel(panel, modelUrl, currentGridParams.cellSize).then(() => {
+                if (typeof userScale === 'number' && userScale !== 1) { panel.modelData.userScale = 1; scalePanelModel(panel, userScale); }
                 // 🔥 CRITICAL: Asegurar que modelData existe
                 if (!panel.modelData) {
                     panel.modelData = {};
@@ -14126,9 +15579,37 @@ function clearSlot(slotIndex) {
 
 // Función para actualizar la interfaz del panel de slots
 // Ahora usando bioSlots.js
+// Limpia la escena para empezar a diseñar una página nueva.
+// NO afecta los slots guardados — sólo borra los paneles actuales en pantalla.
+// El teclado bioKeyb se preserva.
+function startNewDesign() {
+    clearAllPanels(true, false); // skipSave=true, clearBioKeyb=false
+    setCurrentSlotIndex(-1);     // marcar que no estamos viendo ningún slot
+    if (typeof currentSlotIndex !== 'undefined') currentSlotIndex = -1;
+    if (typeof updateSlotsCurrentLabel === 'function') updateSlotsCurrentLabel();
+    console.log('🆕 Diseño nuevo iniciado. Los slots guardados se conservan.');
+}
+
+// Actualiza el label "Slot actual: N" en la barra de navegación
+function updateSlotsCurrentLabel() {
+    const label = document.getElementById('slots-current-label');
+    if (!label) return;
+    const idx = getCurrentSlotIndex();
+    if (idx === null || idx === undefined || idx < 0) {
+        label.textContent = 'Slot actual: — (nuevo)';
+    } else {
+        const info = getSlotInfo(idx);
+        label.textContent = info && info.hasData
+            ? `Slot actual: ${idx} (${info.panelCount} paneles)`
+            : `Slot actual: ${idx} (vacío)`;
+    }
+}
+
 function updateSlotsPanelUI() {
     const slotsContainer = document.getElementById('slots-container');
     if (!slotsContainer) return;
+    // Mantener el label sincronizado cada vez que se refresca la UI
+    if (typeof updateSlotsCurrentLabel === 'function') updateSlotsCurrentLabel();
     
     // Asegurar que slots esté actualizado
     slots = getSlots();
@@ -14174,6 +15655,44 @@ function initSlotsPanel() {
         return;
     }
     slotsContainer.innerHTML = ''; // Limpiar contenido previo
+
+    // 🔥 BARRA DE NAVEGACIÓN: Anterior / Siguiente / Nuevo / Slot actual
+    // Insertar al principio del slots-panel (antes de slots-container)
+    const slotsPanel = document.getElementById('slots-panel');
+    let navBar = document.getElementById('slots-nav-bar');
+    if (!navBar && slotsPanel) {
+        navBar = document.createElement('div');
+        navBar.id = 'slots-nav-bar';
+        navBar.style.cssText = 'display:flex;gap:6px;align-items:center;justify-content:space-between;margin:8px 0 12px;padding:8px;background:rgba(0,0,0,0.4);border:1px solid #0f0;border-radius:4px;font-family:VT323,monospace;';
+        navBar.innerHTML = `
+            <button id="slots-prev-btn"  title="Cargar slot anterior con datos (PageUp)"  style="background:#222;color:#0f0;border:1px solid #0f0;border-radius:3px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:14px;">← Anterior</button>
+            <span id="slots-current-label" style="color:#0f0;font-size:14px;letter-spacing:1px;">Slot actual: —</span>
+            <button id="slots-next-btn"  title="Cargar siguiente slot con datos (PageDown)" style="background:#222;color:#0f0;border:1px solid #0f0;border-radius:3px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:14px;">Siguiente →</button>
+            <button id="slots-new-btn"   title="Comenzar diseño nuevo: limpia la escena (los slots guardados NO se borran)" style="background:#222;color:#ff0;border:1px solid #ff0;border-radius:3px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:14px;">🆕 Nuevo</button>
+            <button id="slots-close-btn" title="Cerrar menú (V)" style="background:#222;color:#f55;border:1px solid #f55;border-radius:3px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:14px;">✕</button>
+        `;
+        // Insertar después del <h3> SLOTS DE MEMORIA, antes del slots-container
+        const h3 = slotsPanel.querySelector('h3');
+        if (h3 && h3.nextSibling) slotsPanel.insertBefore(navBar, h3.nextSibling);
+        else slotsPanel.insertBefore(navBar, slotsContainer);
+
+        // Listeners
+        navBar.querySelector('#slots-prev-btn').addEventListener('click', () => {
+            navigateToPreviousSlotLocal();
+            updateSlotsCurrentLabel();
+        });
+        navBar.querySelector('#slots-next-btn').addEventListener('click', () => {
+            navigateToNextSlotLocal();
+            updateSlotsCurrentLabel();
+        });
+        navBar.querySelector('#slots-new-btn').addEventListener('click', () => {
+            startNewDesign();
+            updateSlotsCurrentLabel();
+        });
+        navBar.querySelector('#slots-close-btn').addEventListener('click', () => {
+            toggleControlPanels(false);
+        });
+    }
 
     for (let i = 0; i < MAX_SLOTS; i++) {
         const slotEntry = document.createElement('div');
@@ -14336,6 +15855,9 @@ function mapApps(args, output) {
 }
 
 // Función para mostrar términos y condiciones en un panel seleccionado
+// 📄 Tamaño de fuente del documento de términos (denso, tipo legal)
+const TERMS_FONT_SIZE = 0.85;
+
 function handleTermsCommand(output) {
     const selectedPanels = panels.filter(p => p.selected);
     
@@ -14379,6 +15901,17 @@ function handleTermsCommand(output) {
         const textState = panelTextState.get(panel);
         textState.useWhiteScrollIndicators = true;
     }
+
+    // 📄 Los términos son un documento legal denso: letra pequeña y alineada a la
+    // izquierda para que quepa mucho texto por pantalla.
+    {
+        const ts = panelTextState.get(panel);
+        if (ts) {
+            ts.customFontSize = TERMS_FONT_SIZE;
+            ts.textAlign = 'left';
+            ts.verticalAlign = 'top';
+        }
+    }
     
     // Texto de términos y condiciones (en inglés, US-based)
     const termsText = `TERMS AND CONDITIONS OF USE – BIOPRINT SYSTEM
@@ -14414,6 +15947,21 @@ The User authorizes BIOCORP to aggregate data regarding their consumption habits
 
 3. USE OF DATA AND PROPRIETARY ALGORITHMS
 The User acknowledges that while the raw personal data belongs to The User, the predictive models, biological blueprints, and synthesized profiles generated by the BIOPRINT system are the sole intellectual property of BIOCORP. BIOCORP reserves the right to use anonymized aggregate data for machine learning training, product development, and commercial partnerships with third-party pharmaceutical or insurance entities.
+
+3.1. Construction of the Personalized Algorithm
+The User expressly consents to the construction of a proprietary predictive profile (the "Personal Algorithm") derived from the totality of data described in Section 2. The Personal Algorithm correlates the User's biometric readings, genetic markers, purchase history, social graph, sentiment analysis, sleep cycles, and geolocation patterns in order to model appetite, nutritional deficiency, emotional volatility, and susceptibility to suggestion. The User acknowledges that the Personal Algorithm may infer sensitive attributes that The User has not disclosed voluntarily, including but not limited to: medical conditions, pregnancy status, addiction indicators, political affiliation, sexual orientation, and projected life expectancy.
+
+3.2. Model Training and Derivative Works
+The User grants BIOCORP a perpetual, irrevocable, sublicensable license to use all collected data as training material for BIOCORP's synthesis models, neural architectures, and successor systems. Data may be used to train models that are subsequently deployed for other users, licensed to third parties, or incorporated into products unrelated to the BIOPRINT unit. The User acknowledges that once data has been incorporated into a trained model, extraction or deletion of that contribution is technically infeasible, and BIOCORP shall bear no obligation to attempt such removal following any deletion request.
+
+3.3. Automated Suggestion and Directed Consumption
+The BIOPRINT interface will present the User with synthesis recommendations generated by the Personal Algorithm. The User understands that suggested models are selected to maximize engagement, consumption frequency, and commercial yield, and are not necessarily optimized for nutritional adequacy, caloric appropriateness, or the User's stated preferences. Suggestions may be modified by promotional agreements with BIOCORP partners without disclosure to the User. The User waives any claim arising from dietary outcomes, dependency, or behavioral modification resulting from algorithmic suggestion.
+
+3.4. Continuous Profiling and Passive Collection
+The User consents to continuous passive data collection while the BIOPRINT unit is powered, including ambient audio sampling for voice-stress analysis, thermal and proximity sensing, and periodic capture of device-adjacent network activity. Collection persists regardless of whether the User is actively operating the Service. Deactivation of passive collection is not available on consumer-tier units.
+
+3.5. Data Retention and Transfer
+Data retained under these Terms is stored for a minimum period of ninety-nine (99) years and may be transferred across jurisdictions, sold as part of a corporate transaction, or surrendered to governmental authorities upon request without prior notification to The User.
 
 4. DISCLAIMER OF WARRANTIES
 THE BIOPRINT SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS. TO THE FULLEST EXTENT PERMITTED BY LAW, BIOCORP DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. BIOCORP DOES NOT WARRANT THAT THE BIOPRINT RESULTS WILL BE ERROR-FREE OR THAT THE BIOLOGICAL OUTPUT WILL MEET THE USER'S EXPECTATIONS WITHOUT VARIANCE.
@@ -14469,15 +16017,16 @@ async function handleModelsCommand(output) {
     const containerPanel = selectedPanels[0];
     showInfo('Creando rejilla 3x3 de modelos en el panel seleccionado...', output);
     
-    // Lista de modelos disponibles (se pueden agregar más fácilmente)
-    const modelNames = ['corazon', 'hueso', 'axolotl', 'discus', 'dog', 'acot', 'tort', 'ham', 'pollo'];
+    // 🍖 VERSIÓN ZENG: 6 modelos de comida.
+    // Layout deseado en pantalla:
+    //   Fila ARRIBA:  DISK FISH · T-BONE (carne) · BONE (hueso)
+    //   Fila ABAJO:   BURGER MEAT · LANGOSTA · POLLO
+    // El bucle llena row 0 = fila inferior (minY crece hacia arriba),
+    // por eso la fila de abajo va primero en el array.
+    const modelNames = ['burg', 'acot', 'pollo', 'discus', 'ham', 'hueso'];
     
-    // Asegurar que tenemos exactamente 9 modelos para la rejilla 3x3
-    // Si hay menos de 9, repetir algunos modelos
-    const gridModels = [];
-    for (let i = 0; i < 9; i++) {
-        gridModels.push(modelNames[i % modelNames.length]);
-    }
+    // Rejilla 3x2 = 6 celdas, una por modelo (sin repetir)
+    const gridModels = modelNames.slice(0, 6);
     
     try {
         const currentGridParams = getCurrentGridParams();
@@ -14496,16 +16045,16 @@ async function handleModelsCommand(output) {
             return;
         }
         
-        // Calcular el tamaño de cada celda de la rejilla
-        const cellWidth = Math.floor(containerWidth / 3);
-        const cellHeight = Math.floor(containerHeight / 3);
-        
+        // Rejilla 3 columnas × 2 filas (6 modelos de Zeng)
+        const GRID_COLS = 3, GRID_ROWS = 2;
+        const cellWidth = Math.floor(containerWidth / GRID_COLS);
+        const cellHeight = Math.floor(containerHeight / GRID_ROWS);
+
         const createdPanels = [];
         let modelIndex = 0;
-        
-        // Crear la rejilla 3x3
-        for (let row = 0; row < 3; row++) {
-            for (let col = 0; col < 3; col++) {
+
+        for (let row = 0; row < GRID_ROWS; row++) {
+            for (let col = 0; col < GRID_COLS; col++) {
                 // Calcular las coordenadas del panel
                 const minX = containerPanel.minCellIndex.x + (col * cellWidth);
                 const maxX = minX + cellWidth - 1;
@@ -16117,3 +17666,1397 @@ Actualizado: ${new Date().toLocaleDateString('es-ES')}`;
     `;
     output.appendChild(summaryDiv);
 }
+
+// ============================================================
+// CONTEXT MENU + PANEL ALIGNMENT (right-click on any panel)
+// ============================================================
+
+let bioContextMenuEl = null;
+let bioContextMenuTargetPanel = null;
+
+function getPanelContentType(panel) {
+    if (!panel) return 'empty';
+    const hasModelChild = panel.group && panel.group.children &&
+        panel.group.children.find(c => c.userData && c.userData.isModel);
+    if (panel.modelData || hasModelChild) return 'model';
+    if (panel.hasText) return 'text';
+    if (panel.hasTexture) return 'texture';
+    return 'empty';
+}
+
+// =====================================================
+// BOTÓN DE LOGIN — convierte un panel en botón "LOG IN" / "ACCESS DENIED"
+// =====================================================
+// state: 'login' (cyan, "LOG IN") | 'denied' (rojo, "ACCESS DENIED") | 'granted' (verde, "ACCESS GRANTED")
+function makeLoginButton(panel, state = 'login') {
+    if (!panel) return false;
+    const gp = getCurrentGridParams();
+    if (!gp) return false;
+
+    const presets = {
+        login:   { text: 'LOG IN',         color: 0x00e1ff, glow: 0x003844 },
+        denied:  { text: 'ACCESS DENIED',  color: 0xff2b2b, glow: 0x3a0000 },
+        granted: { text: 'ACCESS GRANTED', color: 0x00ff66, glow: 0x003a18 },
+    };
+    const cfg = presets[state] || presets.login;
+
+    // Fondo tipo botón (relleno tenue del color)
+    if (panel.fillMesh) {
+        const btnMat = new THREE.MeshBasicMaterial({
+            color: cfg.glow, transparent: true, opacity: 0.55, side: THREE.DoubleSide
+        });
+        panel.fillMesh.material = btnMat;
+        panel.fillMesh.renderOrder = 50;
+    }
+    // Borde resaltado
+    if (panel.borderLines) {
+        panel.borderLines.forEach(l => { if (l.material) { l.material = l.material.clone(); l.material.color.setHex(cfg.color); } });
+    }
+
+    // Texto centrado y grande
+    panel.hasText = true;
+    panel.isLoginButton = true;
+    panel.loginButtonState = state;
+    createPanelText(panel, gp.cellSize);
+    setPanelText(panel, cfg.text, gp.cellSize);
+    const st = panelTextState.get(panel);
+    if (st) {
+        const panelH = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+        st.customFontSize = Math.max(2.5, Math.min(5.5, panelH * 0.55));
+        st.textAlign = 'center';
+        st.verticalAlign = 'middle';
+        createPanelText(panel, gp.cellSize);
+    }
+    if (typeof render === 'function') render();
+    return true;
+}
+
+// =====================================================
+// BYPASS LOGIN — saltar la pantalla de login social
+// =====================================================
+// Elimina todos los elementos de login (texto "LOGIN WITH SOCIAL MEDIA" + iconos
+// sociales) con un flash de confirmación, simulando un login exitoso.
+// Si se guardó un slot post-login se puede cargar después con `load <n>`.
+function bypassLogin() {
+    const loginPanels = panels.filter(p =>
+        p.isLoginElement ||
+        p.textureType === 'social' ||
+        (p.hasText && (() => {
+            const s = panelTextState.get(p);
+            return s && (s.lines || []).join(' ').toUpperCase().includes('LOGIN WITH SOCIAL');
+        })())
+    );
+    // Si hay un botón de login, cambiarlo a "ACCESS GRANTED" (verde)
+    const loginButtons = panels.filter(p => p.isLoginButton);
+    loginButtons.forEach(b => makeLoginButton(b, 'granted'));
+
+    if (loginPanels.length === 0) return loginButtons.length; // al menos cambió el botón
+
+    // Flash de confirmación (como auth OK) antes de remover
+    gridAnimationInProgress = true;
+    gridAnimationStep = 2;
+    gridAnimationProgress = 0;
+    gridFlashCount = 0;
+
+    loginPanels.forEach(p => {
+        if (p.group) {
+            scene.remove(p.group);
+            while (p.group.children.length > 0) {
+                const c = p.group.children[0];
+                p.group.remove(c);
+                if (c.geometry) c.geometry.dispose();
+                if (c.material) {
+                    const mats = Array.isArray(c.material) ? c.material : [c.material];
+                    mats.forEach(m => m && m.dispose && m.dispose());
+                }
+            }
+        }
+        if (panelTextState.has(p)) panelTextState.delete(p);
+    });
+    panels = panels.filter(p => !loginPanels.includes(p));
+    if (typeof reindexPanels === 'function') reindexPanels();
+    if (typeof render === 'function') render();
+    return loginPanels.length;
+}
+
+// =====================================================
+// AUTO-ACOMODAR / SIMETRÍA / TIDY
+// =====================================================
+
+// Centra el layout completo de paneles (sin teclado) en el grid, conservando
+// las distancias relativas. Devuelve true si algo se movió.
+function tidyCenterLayout() {
+    const gp = getCurrentGridParams();
+    if (!gp) return false;
+    const movable = panels.filter(p => !p.isKeyboardKey);
+    if (movable.length === 0) return false;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    movable.forEach(p => {
+        if (p.minCellIndex.x < minX) minX = p.minCellIndex.x;
+        if (p.maxCellIndex.x > maxX) maxX = p.maxCellIndex.x;
+        if (p.minCellIndex.y < minY) minY = p.minCellIndex.y;
+        if (p.maxCellIndex.y > maxY) maxY = p.maxCellIndex.y;
+    });
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const targetCx = (gp.cellsX - 1) / 2;
+    const targetCy = (gp.cellsY - 1) / 2;
+    const dx = Math.round(targetCx - cx);
+    const dy = Math.round(targetCy - cy);
+    if (dx === 0 && dy === 0) return false;
+    // Validar que ningún panel se salga del grid ni choque con teclado
+    const keyboardKeys = panels.filter(p => p.isKeyboardKey);
+    for (const p of movable) {
+        const nMinX = p.minCellIndex.x + dx;
+        const nMaxX = p.maxCellIndex.x + dx;
+        const nMinY = p.minCellIndex.y + dy;
+        const nMaxY = p.maxCellIndex.y + dy;
+        if (nMinX < 0 || nMaxX >= gp.cellsX || nMinY < 0 || nMaxY >= gp.cellsY) return false;
+        for (const k of keyboardKeys) {
+            const cX = !(nMaxX < k.minCellIndex.x - 1 || nMinX > k.maxCellIndex.x + 1);
+            const cY = !(nMaxY < k.minCellIndex.y - 1 || nMinY > k.maxCellIndex.y + 1);
+            if (cX && cY) return false;
+        }
+    }
+    // Aplicar el shift
+    movable.forEach(p => {
+        p.minCellIndex.x += dx; p.maxCellIndex.x += dx;
+        p.minCellIndex.y += dy; p.maxCellIndex.y += dy;
+        updatePanelGeometryAndPosition(p, gp);
+    });
+    if (typeof animateResizingPanels === 'function') animateResizingPanels();
+    return true;
+}
+
+// Snap de bordes: agrupa coordenadas X y Y de paneles que estén dentro de `tolerance` celdas
+// y las alinea a su promedio (redondeado). Esto crea columnas y filas comunes y hace que el layout
+// se vea más limpio sin cambiar drásticamente la idea de diseño.
+function tidySnapEdges(tolerance = 1) {
+    const gp = getCurrentGridParams();
+    if (!gp) return 0;
+    const movable = panels.filter(p => !p.isKeyboardKey);
+    if (movable.length < 2) return 0;
+    // Agrupar bordes minX y maxX
+    const cluster = (values) => {
+        const sorted = [...new Set(values)].sort((a,b)=>a-b);
+        const groups = [];
+        for (const v of sorted) {
+            const g = groups.find(g => Math.abs(g.center - v) <= tolerance);
+            if (g) { g.values.push(v); g.center = Math.round(g.values.reduce((s,x)=>s+x,0)/g.values.length); }
+            else groups.push({ values: [v], center: v });
+        }
+        const map = new Map();
+        groups.forEach(g => g.values.forEach(v => map.set(v, g.center)));
+        return map;
+    };
+    const mapMinX = cluster(movable.map(p => p.minCellIndex.x));
+    const mapMaxX = cluster(movable.map(p => p.maxCellIndex.x));
+    const mapMinY = cluster(movable.map(p => p.minCellIndex.y));
+    const mapMaxY = cluster(movable.map(p => p.maxCellIndex.y));
+    let changed = 0;
+    movable.forEach(p => {
+        const nMinX = mapMinX.get(p.minCellIndex.x);
+        const nMaxX = mapMaxX.get(p.maxCellIndex.x);
+        const nMinY = mapMinY.get(p.minCellIndex.y);
+        const nMaxY = mapMaxY.get(p.maxCellIndex.y);
+        // Validar que el panel siga teniendo tamaño positivo
+        if (nMaxX < nMinX || nMaxY < nMinY) return;
+        // Validar no salirse del grid
+        if (nMinX < 0 || nMaxX >= gp.cellsX || nMinY < 0 || nMaxY >= gp.cellsY) return;
+        if (nMinX !== p.minCellIndex.x || nMaxX !== p.maxCellIndex.x ||
+            nMinY !== p.minCellIndex.y || nMaxY !== p.maxCellIndex.y) {
+            p.minCellIndex.x = nMinX; p.maxCellIndex.x = nMaxX;
+            p.minCellIndex.y = nMinY; p.maxCellIndex.y = nMaxY;
+            updatePanelGeometryAndPosition(p, gp);
+            changed++;
+        }
+    });
+    if (changed > 0 && typeof animateResizingPanels === 'function') animateResizingPanels();
+    return changed;
+}
+
+// Auto-acomodar: snap de bordes + centrar en el grid. Es el comando principal `symmetry` / `tidy`
+function autoTidyLayout() {
+    const snapped = tidySnapEdges(1);
+    const centered = tidyCenterLayout();
+    return { snapped, centered };
+}
+
+// Espeja todos los paneles horizontalmente alrededor del centro del grid.
+// `mode`: 'replace' (reemplaza el layout actual) | 'duplicate' (duplica los paneles espejados al lado opuesto)
+function mirrorLayout(axis = 'h', mode = 'replace') {
+    const gp = getCurrentGridParams();
+    if (!gp) return 0;
+    const movable = panels.filter(p => !p.isKeyboardKey);
+    if (movable.length === 0) return 0;
+    const cx = (gp.cellsX - 1);
+    const cy = (gp.cellsY - 1);
+    if (mode === 'replace') {
+        // Espejar in-place
+        movable.forEach(p => {
+            if (axis === 'h') {
+                const nMinX = cx - p.maxCellIndex.x;
+                const nMaxX = cx - p.minCellIndex.x;
+                p.minCellIndex.x = nMinX; p.maxCellIndex.x = nMaxX;
+            } else if (axis === 'v') {
+                const nMinY = cy - p.maxCellIndex.y;
+                const nMaxY = cy - p.minCellIndex.y;
+                p.minCellIndex.y = nMinY; p.maxCellIndex.y = nMaxY;
+            }
+            updatePanelGeometryAndPosition(p, gp);
+        });
+        if (typeof animateResizingPanels === 'function') animateResizingPanels();
+        return movable.length;
+    } else {
+        // Duplicar — crear copias espejadas al otro lado
+        const snaps = movable.map(p => snapshotPanel(p));
+        // Modificar anchorX/Y para que reflejen las nuevas posiciones espejadas
+        for (const s of snaps) {
+            if (axis === 'h') {
+                const newMaxX = cx - s.anchorX;
+                const newMinX = newMaxX - s.w;
+                s.anchorX = newMinX;
+            } else if (axis === 'v') {
+                const newMaxY = cy - s.anchorY;
+                const newMinY = newMaxY - s.h;
+                s.anchorY = newMinY;
+            }
+        }
+        // Crear los nuevos paneles directamente
+        let created = 0;
+        for (const s of snaps) {
+            const bbox = { minX: s.anchorX, maxX: s.anchorX + s.w, minY: s.anchorY, maxY: s.anchorY + s.h };
+            if (bbox.minX < 0 || bbox.maxX >= gp.cellsX || bbox.minY < 0 || bbox.maxY >= gp.cellsY) continue;
+            // Saltar si ya existe un panel ahí (margen 1)
+            const collides = panels.some(p =>
+                !(bbox.maxX < p.minCellIndex.x - 1 || bbox.minX > p.maxCellIndex.x + 1) &&
+                !(bbox.maxY < p.minCellIndex.y - 1 || bbox.minY > p.maxCellIndex.y + 1)
+            );
+            if (collides) continue;
+            const np = createPanelFromBoundingBox(bbox, gp);
+            if (np) created++;
+        }
+        return created;
+    }
+}
+
+// =====================================================
+// PORTAPAPELES DE PANELES (Ctrl+C / Ctrl+V)
+// =====================================================
+let panelClipboard = []; // array de snapshots de paneles copiados
+
+// Captura un panel en una representación serializable
+function snapshotPanel(panel) {
+    const snap = {
+        w: panel.maxCellIndex.x - panel.minCellIndex.x,
+        h: panel.maxCellIndex.y - panel.minCellIndex.y,
+        // Origen relativo (lo usaremos para mantener distancias entre paneles copiados)
+        anchorX: panel.minCellIndex.x,
+        anchorY: panel.minCellIndex.y,
+    };
+    // Texto
+    if (panel.hasText) {
+        const state = panelTextState.get(panel);
+        if (state) {
+            snap.text = (state.lines || []).join('\n');
+            snap.textAlign = state.textAlign;
+            snap.verticalAlign = state.verticalAlign;
+            snap.customFontSize = state.customFontSize;
+        }
+    }
+    // Modelo 3D
+    if (panel.modelData && panel.modelData.url) {
+        snap.modelUrl = panel.modelData.url;
+        snap.modelName = panel.modelData.name;
+        snap.isRotating = !!panel.modelData.isRotating;
+        snap.rotationSpeed = panel.modelData.rotationSpeed;
+    }
+    // Textura
+    if (panel.hasTexture && panel.texturePath) {
+        snap.texturePath = panel.texturePath;
+        snap.textureType = panel.textureType;
+    }
+    return snap;
+}
+
+// Encuentra un offset (dx, dy) de paste que no colisione con paneles existentes
+function findPasteOffset(snapshots) {
+    if (snapshots.length === 0) return { dx: 0, dy: 0 };
+    const gp = getCurrentGridParams();
+    if (!gp) return { dx: 1, dy: -1 };
+    // Probar offsets crecientes en una espiral simple
+    const tries = [
+        { dx: 1,  dy: -1 }, // diagonal abajo-derecha
+        { dx: 2,  dy: -2 },
+        { dx: 3,  dy: -3 },
+        { dx: -1, dy: -1 }, { dx: 1,  dy: 1  },
+        { dx: 4,  dy: 0  }, { dx: 0,  dy: 4  },
+        { dx: -4, dy: 0  }, { dx: 0,  dy: -4 },
+        { dx: 5,  dy: -5 }, { dx: -5, dy: 5  },
+    ];
+    for (const t of tries) {
+        const fits = snapshots.every(s => {
+            const minX = s.anchorX + t.dx;
+            const maxX = s.anchorX + t.dx + s.w;
+            const minY = s.anchorY + t.dy;
+            const maxY = s.anchorY + t.dy + s.h;
+            if (minX < 0 || maxX >= gp.cellsX || minY < 0 || maxY >= gp.cellsY) return false;
+            // Sin colisión con paneles existentes (margen 1)
+            return panels.every(p => {
+                const cX = !(maxX < p.minCellIndex.x - 1 || minX > p.maxCellIndex.x + 1);
+                const cY = !(maxY < p.minCellIndex.y - 1 || minY > p.maxCellIndex.y + 1);
+                return !(cX && cY);
+            });
+        });
+        if (fits) return t;
+    }
+    // Fallback: usar el primer offset incluso si hay colisión menor
+    return tries[0];
+}
+
+// Copia los paneles seleccionados al portapapeles interno
+function copyPanels() {
+    const sel = panels.filter(p => p.selected && !p.isKeyboardKey);
+    if (sel.length === 0) return 0;
+    panelClipboard = sel.map(snapshotPanel);
+    return panelClipboard.length;
+}
+
+// Pega los paneles del portapapeles aplicando un offset y reproduciendo su contenido
+async function pastePanels() {
+    if (panelClipboard.length === 0) return 0;
+    const gp = getCurrentGridParams();
+    if (!gp) return 0;
+    const off = findPasteOffset(panelClipboard);
+    // Deseleccionar los paneles actuales para que los nuevos queden seleccionados solos
+    panels.forEach(p => { p.selected = false; });
+    const newPanels = [];
+    for (const s of panelClipboard) {
+        const bbox = {
+            minX: s.anchorX + off.dx,
+            maxX: s.anchorX + off.dx + s.w,
+            minY: s.anchorY + off.dy,
+            maxY: s.anchorY + off.dy + s.h,
+        };
+        // Verificar límites; si está fuera, saltar
+        if (bbox.minX < 0 || bbox.maxX >= gp.cellsX || bbox.minY < 0 || bbox.maxY >= gp.cellsY) continue;
+        const newPanel = createPanelFromBoundingBox(bbox, gp);
+        if (!newPanel) continue;
+        newPanel.selected = true;
+        newPanels.push(newPanel);
+
+        // Restaurar contenido
+        if (s.text !== undefined) {
+            newPanel.hasText = true;
+            createPanelText(newPanel, gp.cellSize);
+            setPanelText(newPanel, s.text, gp.cellSize);
+            const state = panelTextState.get(newPanel);
+            if (state) {
+                if (s.textAlign) state.textAlign = s.textAlign;
+                if (s.verticalAlign) state.verticalAlign = s.verticalAlign;
+                if (s.customFontSize) state.customFontSize = s.customFontSize;
+                createPanelText(newPanel, gp.cellSize);
+            }
+        }
+        if (s.modelUrl) {
+            try {
+                await loadModelToPanel(newPanel, s.modelUrl, gp.cellSize);
+                newPanel.modelData = {
+                    url: s.modelUrl, name: s.modelName,
+                    isRotating: !!s.isRotating,
+                    rotationSpeed: s.rotationSpeed || 0.005
+                };
+            } catch (e) {
+                console.warn('paste: no se pudo restaurar modelo', s.modelUrl, e);
+            }
+        }
+        if (s.texturePath) {
+            try {
+                loadTexture(s.texturePath, (texture) => {
+                    if (newPanel.fillMesh) {
+                        newPanel.textureMaterials = createPanelMaterials(texture);
+                        newPanel.fillMesh.material = newPanel.textureMaterials.normal;
+                        newPanel.hasTexture = true;
+                        newPanel.texturePath = s.texturePath;
+                        newPanel.textureType = s.textureType;
+                    }
+                });
+            } catch (e) {
+                console.warn('paste: no se pudo restaurar textura', s.texturePath, e);
+            }
+        }
+    }
+    refreshSelectedPanelsColors();
+    if (typeof animateResizingPanels === 'function') animateResizingPanels();
+    return newPanels.length;
+}
+
+// Mueve el teclado completo (todas las teclas con isKeyboardKey:true) como un bloque.
+// Valida que ninguna tecla se salga del grid ni colisione con paneles no-teclado.
+function moveKeyboard(dx, dy) {
+    const gridParams = getCurrentGridParams();
+    if (!gridParams) return false;
+    const { cellsX, cellsY } = gridParams;
+    const keys = panels.filter(p => p.isKeyboardKey);
+    if (keys.length === 0) return false;
+    const others = panels.filter(p => !p.isKeyboardKey);
+    // Validar todos los nuevos bounding boxes
+    for (const k of keys) {
+        const nMinX = k.minCellIndex.x + dx;
+        const nMaxX = k.maxCellIndex.x + dx;
+        const nMinY = k.minCellIndex.y + dy;
+        const nMaxY = k.maxCellIndex.y + dy;
+        if (nMinX < 0 || nMaxX >= cellsX || nMinY < 0 || nMaxY >= cellsY) return false;
+        for (const o of others) {
+            const conflictX = !(nMaxX < o.minCellIndex.x - 1 || nMinX > o.maxCellIndex.x + 1);
+            const conflictY = !(nMaxY < o.minCellIndex.y - 1 || nMinY > o.maxCellIndex.y + 1);
+            if (conflictX && conflictY) return false;
+        }
+    }
+    // Aplicar el movimiento a todas las teclas
+    keys.forEach(k => {
+        k.minCellIndex.x += dx;
+        k.maxCellIndex.x += dx;
+        k.minCellIndex.y += dy;
+        k.maxCellIndex.y += dy;
+        updatePanelGeometryAndPosition(k, gridParams);
+    });
+    if (typeof animateResizingPanels === 'function') animateResizingPanels();
+    return true;
+}
+
+// Verifica que un nuevo bounding box (minX..maxX, minY..maxY) sea válido para un panel:
+// dentro de límites del grid, sin colisión con otros paneles, y con tamaño mínimo 1×1.
+function checkPanelResizeConflict(panelToResize, newMinX, newMaxX, newMinY, newMaxY, gridParams) {
+    const { cellsX, cellsY } = gridParams;
+    if (newMaxX < newMinX || newMaxY < newMinY) return true; // tamaño inválido
+    if (newMinX < 0 || newMaxX >= cellsX || newMinY < 0 || newMaxY >= cellsY) return true; // fuera del grid
+    const others = panels.filter(p => p !== panelToResize);
+    for (const o of others) {
+        const conflictX = !(newMaxX < o.minCellIndex.x - 1 || newMinX > o.maxCellIndex.x + 1);
+        const conflictY = !(newMaxY < o.minCellIndex.y - 1 || newMinY > o.maxCellIndex.y + 1);
+        if (conflictX && conflictY) return true;
+    }
+    return false;
+}
+
+// Redimensiona un panel sumando dW al ancho y dH al alto. El crecimiento por defecto
+// se aplica en el borde derecho (x+) y borde superior (y+); valores negativos encogen.
+// Retorna true si pudo aplicarse, false si hubo conflicto.
+function resizePanel(panel, dW, dH) {
+    if (!panel) return false;
+    const gridParams = getCurrentGridParams();
+    if (!gridParams) return false;
+    dW = parseInt(dW) || 0;
+    dH = parseInt(dH) || 0;
+    if (dW === 0 && dH === 0) return false;
+    const newMinX = panel.minCellIndex.x;
+    const newMaxX = panel.maxCellIndex.x + dW;
+    const newMinY = panel.minCellIndex.y;
+    const newMaxY = panel.maxCellIndex.y + dH;
+    if (checkPanelResizeConflict(panel, newMinX, newMaxX, newMinY, newMaxY, gridParams)) {
+        console.warn('Redimensionado cancelado: conflicto de límites o colisión.');
+        return false;
+    }
+    panel.maxCellIndex.x = newMaxX;
+    panel.maxCellIndex.y = newMaxY;
+    updatePanelGeometryAndPosition(panel, gridParams);
+    if (typeof animateResizingPanels === 'function') animateResizingPanels();
+    return true;
+}
+
+// Escala el modelo de un panel multiplicando su escala actual por `factor`.
+// Trabaja sobre el `IsoGroup` interno (que es donde se aplica la rotación isométrica)
+// para conservar la rotación. Si no existe IsoGroup, escala el grupo del modelo.
+function scalePanelModel(panel, factor) {
+    if (!panel || !panel.group || typeof factor !== 'number' || !isFinite(factor) || factor <= 0) return false;
+    const modelGroup = panel.group.children.find(c => c.userData && c.userData.isModel);
+    if (!modelGroup) return false;
+    const isoGroup = modelGroup.children.find(c => c.name === 'IsoGroup') || modelGroup;
+    isoGroup.scale.multiplyScalar(factor);
+    // Limitar para evitar que se vuelva invisible o explote
+    const s = isoGroup.scale.x;
+    if (s < 0.05) isoGroup.scale.setScalar(0.05);
+    if (s > 50)   isoGroup.scale.setScalar(50);
+    // Recordar el zoom manual para reaplicarlo al recargar el slot: el auto-fit
+    // recalcula la escala base cada vez que el modelo se vuelve a cargar.
+    if (!panel.modelData) panel.modelData = {};
+    panel.modelData.userScale = (panel.modelData.userScale || 1) * factor;
+    return true;
+}
+
+// Aplica alineación al contenido del panel (texto, modelo o textura)
+// h: 'left' | 'center' | 'right' | null (no cambiar)
+// v: 'top'  | 'middle' | 'bottom' | null (no cambiar)
+function setPanelAlignment(panel, h, v) {
+    if (!panel) return;
+    const type = getPanelContentType(panel);
+    const gridSize = panel.gridSize || (currentGrid && currentGrid.userData && currentGrid.userData.cellSize) || 0.5;
+
+    // Texto: usar el sistema existente de panelText (textAlign + verticalAlign)
+    if (type === 'text') {
+        const state = panelTextState.get(panel);
+        if (state) {
+            if (h) state.textAlign = h;
+            if (v) state.verticalAlign = v;
+            createPanelText(panel, gridSize);
+        }
+        // Si además hay modelo en el mismo panel, también desplazar
+    }
+
+    // Modelo o textura: desplazar el grupo / mesh dentro del panel
+    const panelW = (panel.maxCellIndex.x - panel.minCellIndex.x + 1) * gridSize;
+    const panelH = (panel.maxCellIndex.y - panel.minCellIndex.y + 1) * gridSize;
+    // Offset = ~25% del lado del panel hacia el borde correspondiente
+    const offX = panelW * 0.25;
+    const offY = panelH * 0.25;
+    let dx = null, dy = null;
+    if (h === 'left') dx = -offX;
+    else if (h === 'right') dx = offX;
+    else if (h === 'center') dx = 0;
+    if (v === 'top') dy = offY;
+    else if (v === 'bottom') dy = -offY;
+    else if (v === 'middle') dy = 0;
+
+    if (type === 'model') {
+        const modelGroup = panel.group.children.find(c => c.userData && c.userData.isModel);
+        if (modelGroup) {
+            if (dx !== null) modelGroup.position.x = dx;
+            if (dy !== null) modelGroup.position.y = dy;
+        }
+    } else if (type === 'texture') {
+        // Para texturas mapeadas vía UV: desplazar el offset de la textura.
+        // Esto mueve la imagen dentro del recuadro fijo del panel.
+        if (panel.fillMesh && panel.fillMesh.material && panel.fillMesh.material.map) {
+            const tex = panel.fillMesh.material.map;
+            // El offset es en coordenadas UV (0..1). Usamos 0.15 como desplazamiento moderado.
+            const uvOff = 0.15;
+            if (dx !== null) tex.offset.x = dx === 0 ? 0 : (dx < 0 ? uvOff : -uvOff);
+            if (dy !== null) tex.offset.y = dy === 0 ? 0 : (dy > 0 ? -uvOff : uvOff);
+            tex.needsUpdate = true;
+            panel.fillMesh.material.needsUpdate = true;
+        }
+    }
+}
+
+// Limpia solo el contenido del panel (texto/modelo/textura) preservando el panel mismo
+function clearPanelContent(panel) {
+    if (!panel || !panel.group) return;
+    // Quitar mallas de texto y cursor
+    for (const child of [...panel.group.children]) {
+        if (child.userData && (child.userData.isDynamicTextElement || child.userData.isCursor)) {
+            panel.group.remove(child);
+            if (child.geometry && !child.userData.isCached) child.geometry.dispose();
+            if (child.material && !child.userData.isCached) {
+                if (child.material.map && !child.userData.isCached) child.material.map.dispose && child.material.map.dispose();
+                child.material.dispose && child.material.dispose();
+            }
+        }
+    }
+    panel.hasText = false;
+    if (panelTextState.has(panel)) panelTextState.delete(panel);
+    // Quitar modelo
+    const modelGroup = panel.group.children.find(c => c.userData && c.userData.isModel);
+    if (modelGroup) {
+        panel.group.remove(modelGroup);
+        modelGroup.traverse(c => {
+            if (c.geometry) c.geometry.dispose();
+            if (c.material) {
+                const mats = Array.isArray(c.material) ? c.material : [c.material];
+                mats.forEach(m => m && m.dispose && m.dispose());
+            }
+        });
+    }
+    panel.modelData = null;
+    // Quitar textura del fillMesh
+    if (panel.hasTexture && panel.fillMesh && panel.fillMesh.material) {
+        if (panel.fillMesh.material.map) {
+            panel.fillMesh.material.map.dispose && panel.fillMesh.material.map.dispose();
+            panel.fillMesh.material.map = null;
+        }
+        panel.fillMesh.material.needsUpdate = true;
+    }
+    panel.hasTexture = false;
+    panel.textureType = null;
+    panel.textureMaterials = null;
+}
+
+// Elimina un solo panel (versión simple, sin reordenar números)
+function deleteSinglePanel(panel) {
+    if (!panel) return;
+    if (panel.group) {
+        scene.remove(panel.group);
+        while (panel.group.children.length > 0) {
+            const child = panel.group.children[0];
+            panel.group.remove(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                const mats = Array.isArray(child.material) ? child.material : [child.material];
+                mats.forEach(m => m && m.dispose && m.dispose());
+            }
+        }
+    }
+    panels = panels.filter(p => p !== panel);
+    // Ocultar overlay de logo si su ancla era este panel
+    if (getLogoPanel() === panel) toggleLogo(false);
+}
+
+// Inyecta los estilos del menú contextual una sola vez
+function ensureBioContextMenuStyles() {
+    if (document.getElementById('bio-ctx-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'bio-ctx-styles';
+    style.textContent = `
+        #bio-context-menu {
+            position: fixed;
+            background: rgba(10, 10, 15, 0.96);
+            border: 1px solid #0f0;
+            border-radius: 4px;
+            color: #fff;
+            font-family: 'VT323', monospace;
+            font-size: 16px;
+            z-index: 10001;
+            display: none;
+            min-width: 200px;
+            padding: 4px 0;
+            box-shadow: 0 4px 20px rgba(0,255,0,0.18);
+            backdrop-filter: blur(8px);
+        }
+        #bio-context-menu .bio-ctx-section {
+            color: #0f0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 6px 12px 4px;
+            opacity: 0.7;
+            border-top: 1px solid rgba(0,255,0,0.15);
+        }
+        #bio-context-menu .bio-ctx-section:first-child { border-top: none; }
+        #bio-context-menu .bio-ctx-item {
+            padding: 6px 14px;
+            cursor: pointer;
+            transition: background 0.12s;
+            white-space: nowrap;
+        }
+        #bio-context-menu .bio-ctx-item:hover {
+            background: rgba(0,255,0,0.15);
+            color: #0f0;
+        }
+        #bio-context-menu .bio-ctx-item.danger { color: #f55; }
+        #bio-context-menu .bio-ctx-item.danger:hover { background: rgba(255,80,80,0.15); color: #f88; }
+        #bio-context-menu .bio-ctx-item.has-sub::after { content: ' ▸'; opacity: 0.6; }
+        #bio-context-submenu {
+            position: fixed;
+            background: rgba(10, 10, 15, 0.96);
+            border: 1px solid #0f0;
+            border-radius: 4px;
+            color: #fff;
+            font-family: 'VT323', monospace;
+            font-size: 16px;
+            z-index: 10002;
+            display: none;
+            min-width: 160px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 4px 0;
+            box-shadow: 0 4px 20px rgba(0,255,0,0.18);
+        }
+        #bio-context-submenu .bio-ctx-item {
+            padding: 5px 14px;
+            cursor: pointer;
+        }
+        #bio-context-submenu .bio-ctx-item:hover { background: rgba(0,255,0,0.15); color: #0f0; }
+    `;
+    document.head.appendChild(style);
+}
+
+function createBioContextMenu() {
+    if (bioContextMenuEl) return;
+    ensureBioContextMenuStyles();
+    bioContextMenuEl = document.createElement('div');
+    bioContextMenuEl.id = 'bio-context-menu';
+    document.body.appendChild(bioContextMenuEl);
+    // submenu container reutilizable
+    const sub = document.createElement('div');
+    sub.id = 'bio-context-submenu';
+    document.body.appendChild(sub);
+
+    document.addEventListener('mousedown', (e) => {
+        if (!bioContextMenuEl) return;
+        if (bioContextMenuEl.style.display === 'block' &&
+            !bioContextMenuEl.contains(e.target) && !sub.contains(e.target)) {
+            hideBioContextMenu();
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') hideBioContextMenu();
+    });
+}
+
+function hideBioContextMenu() {
+    if (bioContextMenuEl) bioContextMenuEl.style.display = 'none';
+    const sub = document.getElementById('bio-context-submenu');
+    if (sub) sub.style.display = 'none';
+    bioContextMenuTargetPanel = null;
+}
+
+function showBioContextSubmenu(parentItem, items) {
+    const sub = document.getElementById('bio-context-submenu');
+    if (!sub) return;
+    sub.innerHTML = '';
+    items.forEach((it, i) => {
+        const el = document.createElement('div');
+        el.className = 'bio-ctx-item';
+        el.textContent = it.label;
+        el.addEventListener('click', () => { it.action(); });
+        sub.appendChild(el);
+    });
+    const r = parentItem.getBoundingClientRect();
+    sub.style.display = 'block';
+    sub.style.left = (r.right + 2) + 'px';
+    sub.style.top = r.top + 'px';
+    // Reajustar si se sale de pantalla
+    requestAnimationFrame(() => {
+        const sr = sub.getBoundingClientRect();
+        if (sr.right > window.innerWidth) sub.style.left = (r.left - sr.width - 2) + 'px';
+        if (sr.bottom > window.innerHeight) sub.style.top = Math.max(8, window.innerHeight - sr.height - 8) + 'px';
+    });
+}
+
+function showBioContextMenu(x, y, panel) {
+    createBioContextMenu();
+    bioContextMenuTargetPanel = panel;
+    const type = getPanelContentType(panel);
+
+    bioContextMenuEl.innerHTML = '';
+    const make = (cls, text, onClick, opts={}) => {
+        const el = document.createElement('div');
+        el.className = cls;
+        el.textContent = text;
+        if (onClick) el.addEventListener('click', onClick);
+        if (opts.hasSub) el.classList.add('has-sub');
+        bioContextMenuEl.appendChild(el);
+        return el;
+    };
+
+    // Sección Justificar
+    make('bio-ctx-section', 'Justificar');
+    make('bio-ctx-item', '↔  Centrar', () => { setPanelAlignment(panel, 'center', 'middle'); hideBioContextMenu(); });
+    make('bio-ctx-item', '←  Izquierda', () => { setPanelAlignment(panel, 'left', null); hideBioContextMenu(); });
+    make('bio-ctx-item', '→  Derecha', () => { setPanelAlignment(panel, 'right', null); hideBioContextMenu(); });
+    make('bio-ctx-item', '↑  Arriba', () => { setPanelAlignment(panel, null, 'top'); hideBioContextMenu(); });
+    make('bio-ctx-item', '↓  Abajo', () => { setPanelAlignment(panel, null, 'bottom'); hideBioContextMenu(); });
+
+    // Sección Contenido
+    make('bio-ctx-section', 'Contenido');
+    if (type === 'model') {
+        const replaceItem = make('bio-ctx-item', '⟲  Reemplazar modelo', null, { hasSub: true });
+        replaceItem.addEventListener('mouseenter', () => {
+            const items = MODEL_LIST.map(m => ({
+                label: m.name,
+                action: () => {
+                    // Marcar el panel como seleccionado y enviar el comando para reusar la pipeline existente
+                    panels.forEach(p => p.selected = (p === panel));
+                    if (typeof updatePanelColor === 'function') updatePanelColor(panel);
+                    hideBioContextMenu();
+                    if (typeof window.processTerminalCommand === 'function') {
+                        window.processTerminalCommand(`model ${m.name}`);
+                    }
+                }
+            }));
+            showBioContextSubmenu(replaceItem, items);
+        });
+        // Escalar modelo: submenu con presets y reset
+        const scaleItem = make('bio-ctx-item', '⤡  Escalar modelo', null, { hasSub: true });
+        scaleItem.addEventListener('mouseenter', () => {
+            const items = [
+                { label: '➕  Más grande (+25%)',   action: () => { scalePanelModel(panel, 1.25); hideBioContextMenu(); } },
+                { label: '➕➕ Mucho más grande (×2)', action: () => { scalePanelModel(panel, 2.00); hideBioContextMenu(); } },
+                { label: '➖  Más chico (−20%)',    action: () => { scalePanelModel(panel, 0.80); hideBioContextMenu(); } },
+                { label: '➖➖ Mucho más chico (÷2)', action: () => { scalePanelModel(panel, 0.50); hideBioContextMenu(); } },
+                { label: '⟲  Reset escala',         action: () => {
+                    const mg = panel.group.children.find(c => c.userData && c.userData.isModel);
+                    if (mg) {
+                        const iso = mg.children.find(c => c.name === 'IsoGroup') || mg;
+                        iso.scale.setScalar(1);
+                    }
+                    hideBioContextMenu();
+                }},
+            ];
+            showBioContextSubmenu(scaleItem, items);
+        });
+    }
+    if (type === 'text') {
+        make('bio-ctx-item', '✎  Editar texto', () => {
+            hideBioContextMenu();
+            if (typeof startTextEditing === 'function') {
+                const gridSize = panel.gridSize || (currentGrid && currentGrid.userData && currentGrid.userData.cellSize) || 0.5;
+                startTextEditing(panel, gridSize);
+            }
+        });
+    }
+    if (type !== 'empty') {
+        make('bio-ctx-item', '⌫  Borrar contenido', () => { clearPanelContent(panel); hideBioContextMenu(); });
+    }
+
+    // Sección Panel — mover, redimensionar, eliminar
+    make('bio-ctx-section', 'Panel');
+
+    // Si es tecla del teclado, ofrecer mover el teclado completo como bloque
+    if (panel.isKeyboardKey) {
+        const kbItem = make('bio-ctx-item', '⌨  Mover teclado completo', null, { hasSub: true });
+        kbItem.addEventListener('mouseenter', () => {
+            const items = [
+                { label: '←  Izquierda',  action: () => { moveKeyboard(-1, 0); hideBioContextMenu(); } },
+                { label: '→  Derecha',    action: () => { moveKeyboard(1, 0); hideBioContextMenu(); } },
+                { label: '↑  Arriba',     action: () => { moveKeyboard(0, 1); hideBioContextMenu(); } },
+                { label: '↓  Abajo',      action: () => { moveKeyboard(0, -1); hideBioContextMenu(); } },
+                { label: '←← Izquierda x5', action: () => { moveKeyboard(-5, 0); hideBioContextMenu(); } },
+                { label: '→→ Derecha x5',   action: () => { moveKeyboard(5, 0); hideBioContextMenu(); } },
+                { label: '↑↑ Arriba x5',    action: () => { moveKeyboard(0, 5); hideBioContextMenu(); } },
+                { label: '↓↓ Abajo x5',     action: () => { moveKeyboard(0, -5); hideBioContextMenu(); } },
+            ];
+            showBioContextSubmenu(kbItem, items);
+        });
+    }
+
+    // Mover (submenu con 4 direcciones, 1 celda por click)
+    const moveItem = make('bio-ctx-item', '✥  Mover', null, { hasSub: true });
+    moveItem.addEventListener('mouseenter', () => {
+        const gp = () => getCurrentGridParams();
+        const items = [
+            { label: '←  Izquierda',  action: () => { const g = gp(); if (g) movePanel(panel, -1, 0, g); if (typeof animateResizingPanels==='function') animateResizingPanels(); } },
+            { label: '→  Derecha',    action: () => { const g = gp(); if (g) movePanel(panel, 1, 0, g); if (typeof animateResizingPanels==='function') animateResizingPanels(); } },
+            { label: '↑  Arriba',     action: () => { const g = gp(); if (g) movePanel(panel, 0, 1, g); if (typeof animateResizingPanels==='function') animateResizingPanels(); } },
+            { label: '↓  Abajo',      action: () => { const g = gp(); if (g) movePanel(panel, 0, -1, g); if (typeof animateResizingPanels==='function') animateResizingPanels(); } },
+            { label: '⤧  Tip: flechas del teclado mueven los seleccionados', action: () => {} },
+        ];
+        showBioContextSubmenu(moveItem, items);
+    });
+
+    // Redimensionar (submenu con +/- ancho y alto)
+    const resizeItem = make('bio-ctx-item', '⇲  Redimensionar', null, { hasSub: true });
+    resizeItem.addEventListener('mouseenter', () => {
+        const items = [
+            { label: '↔  Ancho +1',  action: () => { resizePanel(panel, 1, 0); } },
+            { label: '↔  Ancho −1',  action: () => { resizePanel(panel, -1, 0); } },
+            { label: '↕  Alto +1',   action: () => { resizePanel(panel, 0, 1); } },
+            { label: '↕  Alto −1',   action: () => { resizePanel(panel, 0, -1); } },
+            { label: '⤢  Más grande (+2 / +2)', action: () => { resizePanel(panel, 2, 2); } },
+            { label: '⤡  Más chico  (−2 / −2)', action: () => { resizePanel(panel, -2, -2); } },
+        ];
+        showBioContextSubmenu(resizeItem, items);
+    });
+
+    make('bio-ctx-item danger', '✕  Eliminar panel', () => { deleteSinglePanel(panel); hideBioContextMenu(); });
+
+    // Posicionamiento
+    bioContextMenuEl.style.display = 'block';
+    bioContextMenuEl.style.left = x + 'px';
+    bioContextMenuEl.style.top = y + 'px';
+    requestAnimationFrame(() => {
+        const r = bioContextMenuEl.getBoundingClientRect();
+        let nx = x, ny = y;
+        if (r.right > window.innerWidth) nx = window.innerWidth - r.width - 8;
+        if (r.bottom > window.innerHeight) ny = window.innerHeight - r.height - 8;
+        bioContextMenuEl.style.left = Math.max(4, nx) + 'px';
+        bioContextMenuEl.style.top = Math.max(4, ny) + 'px';
+    });
+}
+
+// Listener de click derecho sobre el canvas: detecta panel y abre menú
+if (renderer && renderer.domElement) {
+    renderer.domElement.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        // Convertir a coords NDC
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const targets = [];
+        panels.forEach(p => { if (p.fillMesh) targets.push(p.fillMesh); });
+        const intersects = raycaster.intersectObjects(targets, false);
+        if (intersects.length > 0) {
+            const hit = intersects[0].object;
+            const panel = panels.find(p => p.fillMesh === hit);
+            if (panel) {
+                showBioContextMenu(event.clientX, event.clientY, panel);
+                return;
+            }
+        }
+        hideBioContextMenu();
+    });
+}
+
+// Exponer funciones en window para uso desde terminal/bioMenu
+window.setPanelAlignment = setPanelAlignment;
+window.clearPanelContent = clearPanelContent;
+window.deleteSinglePanel = deleteSinglePanel;
+window.showBioContextMenu = showBioContextMenu;
+window.scalePanelModel = scalePanelModel;
+window.resizePanel = resizePanel;
+window.moveKeyboard = moveKeyboard;
+window.copyPanels = copyPanels;
+window.pastePanels = pastePanels;
+window.bypassLogin = bypassLogin;
+window.makeLoginButton = makeLoginButton;
+// Fija texto en un panel directamente (sin modo edición) — útil para componer pantallas
+window.setTextOnPanel = function(panel, text, fontSize, align, opts) {
+    const gp = getCurrentGridParams();
+    if (!panel || !gp) return false;
+    opts = opts || {};
+    panel.hasText = true;
+    createPanelText(panel, gp.cellSize);
+    setPanelText(panel, text, gp.cellSize);
+    const st = panelTextState.get(panel);
+    if (st) {
+        if (fontSize) st.customFontSize = fontSize;
+        st.textAlign = align || 'center';            // 'left' | 'center' | 'right'
+        st.verticalAlign = opts.vAlign || 'middle';  // 'top' | 'middle'
+        if (opts.font) st.fontName = opts.font;      // 'arcade' | 'terminal' | 'mono'
+        createPanelText(panel, gp.cellSize);
+    }
+    return true;
+};
+window.autoTidyLayout = autoTidyLayout;
+window.mirrorLayout = mirrorLayout;
+window.tidyCenterLayout = tidyCenterLayout;
+window.tidySnapEdges = tidySnapEdges;
+// Helpers expuestos para creación programática / debug
+window.createPanelFromBoundingBox = createPanelFromBoundingBox;
+window.getCurrentGridParams = getCurrentGridParams;
+window.setPanelFont = setPanelFont;
+window.getPanelFonts = getPanelFonts;
+window.getPanelFont = getPanelFont;
+// Ajusta el tamaño de fuente de un panel de texto existente sin borrar su contenido/scroll
+window.setPanelTextSize = function(panel, size) {
+    const gp = getCurrentGridParams();
+    if (!panel || !gp) return false;
+    const st = panelTextState.get(panel);
+    if (!st) return false;
+    st.customFontSize = size;
+    createPanelText(panel, gp.cellSize);
+    return true;
+};
+window.setGridDivisions = function(n) {
+    n = Math.max(2, Math.min(50, Math.round(n)));
+    currentDivisions = n;
+    updateGrid(n);
+    // Regenerar el grid decorativo de los márgenes con el nuevo cellSize
+    decorGridKey = '';
+    try { rebuildDecorGrid(); } catch (e) {}
+    return n;
+};
+window.getPanels = () => panels;
+window.setTextBrightness = setTextBrightness;
+window.setGridBrightness = setGridBrightness;
+window.setPanelsBrightness = setPanelsBrightness;
+window.setMasterBrightness = setMasterBrightness;
+window.setColorSaturation = setColorSaturation;
+window.setGradeColor = setGradeColor;
+window.toggleCalibrationPanel = toggleCalibrationPanel;
+// Ejecutores de pantallas complejas — exponemos para poder mostrar previews sin pasar por slots
+window.executePrintCommand = executePrintCommand;
+window.executePrintPercentCommand = executePrintPercentCommand;
+window.executePrintSimpleCommand = executePrintSimpleCommand;
+
+// ════════════════════════════════════════════════════════════════════════════
+// 💻 VERSIÓN 2.0 — INTERFAZ TERMINAL / HACKER
+// ════════════════════════════════════════════════════════════════════════════
+// Estética: tipografía arcade para titulares, terminal (VT323) para las corridas
+// de texto. Los paneles marcados como "terminal stream" van escupiendo líneas
+// de log una por una, con cursor parpadeante, como una consola real.
+// ════════════════════════════════════════════════════════════════════════════
+
+// `var` + guarda defensiva: animate() arranca durante la evaluación del módulo,
+// antes de llegar a esta línea, así que la variable debe estar hoisteada y el
+// updater tiene que tolerar encontrarla aún sin inicializar.
+var terminalStreams = new Set();
+
+/**
+ * Convierte un panel en una terminal que va imprimiendo líneas.
+ * cfg = { lines:[], speed:ms por línea, rows:líneas visibles, loop:bool,
+ *         cursor:bool, fontSize, prompt:string }
+ */
+function makeTerminalStream(panel, cfg) {
+    if (!panel) return null;
+    const conf = {
+        lines: cfg.lines || [],
+        speed: typeof cfg.speed === 'number' ? cfg.speed : 220,
+        rows: typeof cfg.rows === 'number' ? cfg.rows : 12,
+        loop: cfg.loop !== false,
+        cursor: cfg.cursor !== false,
+        fontSize: typeof cfg.fontSize === 'number' ? cfg.fontSize : 1.0,
+        prompt: cfg.prompt || ''
+    };
+    panel.termStreamData = conf;          // lo que se serializa al slot
+    panel.termState = {                   // estado vivo (no se guarda)
+        index: 0,
+        lastStep: performance.now(),
+        blinkOn: true,
+        lastBlink: performance.now(),
+        shown: []
+    };
+    terminalStreams.add(panel);
+
+    // Pintar el primer frame de inmediato
+    renderTerminalStream(panel);
+    return panel;
+}
+
+function renderTerminalStream(panel) {
+    const st = panel.termState;
+    const cf = panel.termStreamData;
+    if (!st || !cf) return;
+
+    let body = st.shown.slice(-cf.rows);
+    if (cf.cursor) {
+        // El cursor vive en la última línea impresa
+        const cur = st.blinkOn ? '█' : ' ';
+        if (body.length === 0) body = [cf.prompt + cur];
+        else body[body.length - 1] = body[body.length - 1] + cur;
+    }
+    window.setTextOnPanel(panel, body.join('\n'), cf.fontSize, 'left', {
+        font: 'terminal',
+        vAlign: 'top'
+    });
+}
+
+function updateTerminalStreams() {
+    if (!terminalStreams || terminalStreams.size === 0) return;
+    const now = performance.now();
+
+    terminalStreams.forEach(panel => {
+        // El panel pudo ser borrado por el usuario
+        if (!panel.group || !panels.includes(panel)) {
+            terminalStreams.delete(panel);
+            return;
+        }
+        const st = panel.termState, cf = panel.termStreamData;
+        if (!st || !cf) return;
+
+        let dirty = false;
+
+        // ── Avanzar una línea ──
+        if (now - st.lastStep >= cf.speed) {
+            st.lastStep = now;
+            if (st.index < cf.lines.length) {
+                st.shown.push(cf.lines[st.index]);
+                st.index++;
+                dirty = true;
+            } else if (cf.loop) {
+                // Reinicia el log: la consola nunca se queda quieta en cámara
+                st.index = 0;
+                st.shown = [];
+                dirty = true;
+            }
+        }
+
+        // ── Parpadeo del cursor ──
+        if (cf.cursor && now - st.lastBlink >= 480) {
+            st.lastBlink = now;
+            st.blinkOn = !st.blinkOn;
+            dirty = true;
+        }
+
+        if (dirty) renderTerminalStream(panel);
+    });
+}
+
+// ── Contenido del log de arranque ────────────────────────────────────────────
+const V2_BOOT_LINES = [
+    '> init bioprint.core',
+    '  BIOS v2.0.7 .......... OK',
+    '  mem check 65536K ..... OK',
+    '  bus /dev/bioA0 ....... OK',
+    '',
+    '> mount /vat/substrate',
+    '  substrate temp 37.0C .. OK',
+    '  ph balance 7.38 ....... OK',
+    '  viscosity 1.04 ........ OK',
+    '',
+    '> load kernel.megazord',
+    '  skeleton rig .......... OK',
+    '  actuator map .......... OK',
+    '  servo sync 0x1F ....... OK',
+    '',
+    '> net link biocorp.node',
+    '  handshake ............. OK',
+    '  cert 9F:2A:D0:14 ...... OK',
+    '  uplink 240 Mb/s ....... OK',
+    '',
+    '> scan cartridges',
+    '  bay 01 protein ........ 94%',
+    '  bay 02 collagen ....... 88%',
+    '  bay 03 lipid .......... 71%',
+    '  bay 04 binder ......... 96%',
+    '',
+    '> diagnostics --full',
+    '  nozzle array .......... OK',
+    '  laser cure ............ OK',
+    '  thermal loop .......... OK',
+    '  waste purge ........... OK',
+    '',
+    '  0 errors  0 warnings',
+    '> _ system nominal'
+];
+
+// Ninguna línea puede pasar de 23 caracteres o el panel la parte en dos y se
+// desborda por abajo.
+const V2_HEADER_LINES = [
+    'BIOCORP // BIOPRINT 2.0',
+    'build 2.0.7-rc  k4.19',
+    'node BP-0447  MX-07',
+    'user root@bioprint',
+    'uptime 00:00:12'
+];
+
+/**
+ * Arma la pantalla 1 de la versión 2.0:
+ *   logo BIOPRINT + cabecera terminal · visor grande con megazord animado
+ *   · ALL SYSTEMS READY · log de arranque corriendo
+ */
+/**
+ * El grid sigue reescalándose durante la animación de entrada: si se crean
+ * paneles en ese momento quedan con coordenadas de un cellSize viejo y salen
+ * disparados fuera de cámara. Esperamos a que cellSize se repita varias veces.
+ */
+async function waitForStableGrid(timeoutMs = 20000) {
+    // Al arrancar, el grid existe como 2x1 celdas gigantes y sólo después pasa a
+    // la resolución de diseño (43x24). La invariante que lo delata:
+    // cellSize === width / cellsX sólo se cumple con el grid definitivo.
+    const isReady = gp => gp && gp.cellsX >= 10 && gp.cellsY >= 10 &&
+        Math.abs(gp.cellSize - gp.width / gp.cellsX) < 0.05;
+
+    const t0 = performance.now();
+    while (performance.now() - t0 < timeoutMs) {
+        const gp = getCurrentGridParams();
+        if (isReady(gp) && !gridAnimationInProgress) return gp;
+        await new Promise(r => setTimeout(r, 100));
+    }
+    console.warn('waitForStableGrid: timeout, se usa el grid actual');
+    return getCurrentGridParams();
+}
+
+async function buildV2BootScreen(output) {
+    const gp = await waitForStableGrid();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+
+    // El teclado estorba en la pantalla de arranque: fuera.
+    if (bioKeybVisible) clearBioKeybOnly();
+    clearAllPanels(true, true);
+    terminalStreams.clear();
+
+    const mk = (minX, maxX, minY, maxY) =>
+        createPanelFromBoundingBox({ minX, maxX, minY, maxY }, gp);
+
+    // ── Cabecera: logo (izq) + datos de sistema (der) ──
+    const logoPanel   = mk(2, 20, 19, 23);
+    const headerPanel = mk(22, 40, 19, 23);
+
+    // ── Zona principal: visor megazord (izq) + log de arranque (der) ──
+    const viewerPanel = mk(2, 24, 6, 17);
+    const logPanel    = mk(26, 40, 6, 17);
+
+    // ── Estado ──
+    const readyPanel  = mk(2, 40, 2, 4);
+
+    // Logo BIOPRINT
+    applyLogoTextureToPanel(logoPanel);
+
+    // Cabecera en tipografía terminal, alineada a la izquierda
+    window.setTextOnPanel(headerPanel, V2_HEADER_LINES.join('\n'), 0.7, 'left',
+        { font: 'terminal', vAlign: 'top' });
+
+    // Megazord animado dentro del recuadro grande
+    (async () => {
+        const ok = await loadModelToPanel(viewerPanel, './models/megazord.fbx', gp.cellSize);
+        if (ok) {
+            viewerPanel.modelData = {
+                name: 'megazord',
+                url: './models/megazord.fbx',
+                isRotating: true,
+                rotationSpeed: 0.004,
+                isViewer: true
+            };
+            // loadModelToPanel oculta el marco cuando el modelo es FBX; aquí el
+            // recuadro es parte del diseño, así que lo devolvemos a la vista.
+            if (viewerPanel.fillMesh) {
+                viewerPanel.fillMesh.visible = true;
+                viewerPanel.fillMesh.userData = { ...(viewerPanel.fillMesh.userData || {}), ignoreRaycast: false };
+            }
+            if (viewerPanel.borderLines) {
+                viewerPanel.borderLines.forEach(l => {
+                    l.visible = true;
+                    l.userData = { ...(l.userData || {}), ignoreRaycast: false };
+                });
+            }
+            scalePanelModel(viewerPanel, 1.45);
+        } else {
+            console.warn('No se pudo cargar megazord.fbx');
+        }
+    })();
+
+    // Título en arcade — el contraste con la terminal es lo que da el look
+    window.setTextOnPanel(readyPanel, 'ALL SYSTEMS READY', 2.2, 'center',
+        { font: 'arcade' });
+
+    // Log corriendo
+    makeTerminalStream(logPanel, {
+        lines: V2_BOOT_LINES,
+        speed: 200,
+        rows: 11,
+        fontSize: 1.0,
+        loop: true,
+        cursor: true
+    });
+
+    if (output) showSuccess('Pantalla BIOPRINT 2.0 construida', output);
+    return true;
+}
+
+window.buildV2BootScreen = buildV2BootScreen;
+window.saveToSlot = saveToSlot;
+window.loadFromSlot = loadFromSlot;
+window.makeTerminalStream = makeTerminalStream;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// 💾 RESPALDO Y PORTABILIDAD ENTRE DISPOSITIVOS
+// ════════════════════════════════════════════════════════════════════════════
+// Todo el diseño (los 30 slots de cada perfil, tipografía y ajuste de imagen)
+// vive en el localStorage, que es propio de cada navegador y de cada equipo.
+// Para poder abrir la app en otra máquina —o recuperarla si se limpian los
+// datos del navegador— el estado se vuelca a public/configs/ vía el plugin del
+// servidor, y desde ahí cualquier dispositivo lo lee al arrancar.
+// ════════════════════════════════════════════════════════════════════════════
+
+const BACKUP_KEYS_PREFIX = ['bioPrint_', 'bioFX_', 'gridConfig'];
+const SEED_FILE = 'bioprint_all';           // public/configs/bioprint_all.json
+const SEED_DONE_KEY = 'bioPrint_seeded_from';
+
+function collectLocalState() {
+    const out = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (BACKUP_KEYS_PREFIX.some(p => k.startsWith(p))) out[k] = localStorage.getItem(k);
+    }
+    return out;
+}
+
+/** Vuelca el estado actual a public/configs/<name>.json (necesita el dev server). */
+async function exportStateToDisk(name = SEED_FILE, output) {
+    const data = collectLocalState();
+    try {
+        const res = await fetch('/__bioprint/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, data })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'error del servidor');
+        const msg = `Respaldo guardado en ${json.file} (${(json.bytes / 1024).toFixed(1)} KB, ${Object.keys(data).length} claves)`;
+        console.log('💾 ' + msg);
+        if (output) showSuccess(msg, output);
+        return json;
+    } catch (e) {
+        const msg = `No se pudo guardar el respaldo: ${e.message}`;
+        console.error(msg);
+        if (output) showError(msg, output);
+        return null;
+    }
+}
+
+/** Baja el estado como archivo, para llevárselo en USB o mandarlo por correo. */
+function downloadStateFile(output) {
+    const data = JSON.stringify(collectLocalState(), null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bioprint_backup.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    if (output) showSuccess('Descargando bioprint_backup.json', output);
+}
+
+/** Restaura el estado desde public/configs/<name>.json y recarga. */
+async function importStateFromDisk(name = SEED_FILE, output) {
+    try {
+        const res = await fetch(`./configs/${name}.json`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`no existe configs/${name}.json`);
+        const data = await res.json();
+        const keys = Object.keys(data);
+        if (!keys.length) throw new Error('el respaldo está vacío');
+        keys.forEach(k => localStorage.setItem(k, data[k]));
+        localStorage.setItem(SEED_DONE_KEY, name);
+        if (output) showSuccess(`Restauradas ${keys.length} claves desde ${name}.json. Recargando…`, output);
+        setTimeout(() => location.reload(), 800);
+        return true;
+    } catch (e) {
+        const msg = `No se pudo restaurar: ${e.message}`;
+        console.error(msg);
+        if (output) showError(msg, output);
+        return false;
+    }
+}
+
+/** Restaura desde un archivo que el usuario elija (sin servidor de por medio). */
+function importStateFromFile(output) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const data = JSON.parse(reader.result);
+                Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+                if (output) showSuccess(`Restauradas ${Object.keys(data).length} claves. Recargando…`, output);
+                setTimeout(() => location.reload(), 800);
+            } catch (e) {
+                if (output) showError(`Archivo inválido: ${e.message}`, output);
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+/**
+ * Primera vez en un dispositivo: si no hay ningún diseño guardado localmente
+ * pero el repo trae un respaldo, se siembra solo. Así basta con abrir la URL
+ * en la tablet o en otra laptop para tener las mismas pantallas.
+ */
+async function seedFromRepoIfEmpty() {
+    const yaSembrado = localStorage.getItem(SEED_DONE_KEY);
+    const hayDiseños = Object.keys(collectLocalState())
+        .some(k => k.startsWith('bioPrint_slots_data'));
+    if (yaSembrado || hayDiseños) return false;
+
+    try {
+        const res = await fetch(`./configs/${SEED_FILE}.json`, { cache: 'no-store' });
+        if (!res.ok) return false;
+        const data = await res.json();
+        const keys = Object.keys(data);
+        if (!keys.length) return false;
+        keys.forEach(k => localStorage.setItem(k, data[k]));
+        localStorage.setItem(SEED_DONE_KEY, SEED_FILE);
+        console.log(`🌱 Dispositivo nuevo: sembradas ${keys.length} claves desde el repo. Recargando…`);
+        setTimeout(() => location.reload(), 400);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Se lanza al cargar la página, antes de que el usuario toque nada.
+seedFromRepoIfEmpty();
+
+window.exportStateToDisk = exportStateToDisk;
+window.importStateFromDisk = importStateFromDisk;
+window.downloadStateFile = downloadStateFile;

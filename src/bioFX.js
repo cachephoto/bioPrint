@@ -238,6 +238,18 @@ export function initBioFX(renderer, scene, camera) {
     composer.addPass(glitchPass);
 }
 
+// 🔥 RESPONSIVE: redimensionar el composer de post-proceso cuando cambia la ventana.
+// Sin esto, los efectos (bloom/glow/color) quedan estirados o desalineados al redimensionar.
+export function resizeBioFX(width, height, pixelRatio) {
+    if (composer) {
+        composer.setSize(width, height);
+        if (composer.setPixelRatio && pixelRatio) composer.setPixelRatio(pixelRatio);
+    }
+    if (bloomPass && bloomPass.resolution) {
+        bloomPass.resolution.set(width, height);
+    }
+}
+
 export function setColorEffect(color, intensity, blendType = 0) {
     if (colorPass) {
         colorPass.uniforms.color.value.setHex(color);

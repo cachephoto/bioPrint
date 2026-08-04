@@ -11,9 +11,10 @@ const LOAD_CONFIG = {
     colors: {
         background: 'rgba(40, 40, 40, 0.3)',
         border: 'rgba(0, 150, 255, 0.8)',
-        progressStart: 'rgba(0, 255, 135, 0.8)',
-        progressEnd: 'rgba(0, 150, 255, 0.8)',
-        glow: 'rgba(0, 255, 255, 0.4)',
+        // Un solo tono (celeste hielo, como el diseño filmado) — sin degradado verde→azul
+        progressStart: 'rgba(165, 220, 255, 0.8)',
+        progressEnd: 'rgba(165, 220, 255, 0.8)',
+        glow: 'rgba(200, 235, 255, 0.5)',
         text: 'rgba(255, 255, 255, 0.9)'
     }
 };
@@ -42,7 +43,7 @@ export function createProgressPanel(panel, currentGridParams) {
     
     // Crear textura y material
     const texture = new THREE.CanvasTexture(canvas);
-    texture.encoding = THREE.sRGBEncoding;
+    if (THREE.SRGBColorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace; // r155+ API
     texture.repeat.set(1, 1);
     texture.offset.set(0, 0);
     texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -76,7 +77,7 @@ export function createProgressPanel(panel, currentGridParams) {
             LOAD_CONFIG.padding, 0, 
             progressWidth + LOAD_CONFIG.padding, 0
         );
-        const baseOpacity = 0.6 + pulse * 0.2;
+        const baseOpacity = 0.85 + pulse * 0.15; // ligeramente más brillante
         gradient.addColorStop(0, LOAD_CONFIG.colors.progressStart.replace('0.8', baseOpacity));
         gradient.addColorStop(1, LOAD_CONFIG.colors.progressEnd.replace('0.8', baseOpacity));
         
@@ -153,7 +154,7 @@ export function createCyclicProgressPanel(panel, currentGridParams) {
     
     // Crear textura y material
     const texture = new THREE.CanvasTexture(canvas);
-    texture.encoding = THREE.sRGBEncoding;
+    if (THREE.SRGBColorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace; // r155+ API
     texture.repeat.set(1, 1);
     texture.offset.set(0, 0);
     texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -201,7 +202,7 @@ export function updateProgressBar(ctx, width, height, progress, pulse = 0) {
         0, 0, 
         progressWidth, 0
     );
-    const baseOpacity = 0.6 + pulse * 0.2;
+    const baseOpacity = 0.85 + pulse * 0.15; // ligeramente más brillante
     gradient.addColorStop(0, LOAD_CONFIG.colors.progressStart.replace('0.8', baseOpacity));
     gradient.addColorStop(1, LOAD_CONFIG.colors.progressEnd.replace('0.8', baseOpacity));
     

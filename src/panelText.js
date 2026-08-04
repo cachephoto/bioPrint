@@ -36,7 +36,7 @@ export const TEXT_CONFIG = {
     cursorColor: 0xffffff,
     cursorBlinkRate: 530,
     padding: 0.8,
-    fontSize: 1.8,      // Restaurado a un tamaño más legible
+    fontSize: 2.5,      // Aumentado para textos más grandes y legibles (LOG IN, PASSWORD, etc.)
     lineHeight: 1.15,    // Compromiso entre compacto y legible
     cursorWidth: 0.5,
     cursorHeight: 0.2,
@@ -53,6 +53,62 @@ const CURSOR_CONFIG = {
     blinkRate: 530,
     zOffset: 0.03
 };
+
+// 🔤 Fuente configurable del texto de paneles 3D. Cambiar con setPanelFont().
+// Familias cargadas por el HTML: "Press Start 2P" (arcade) y "VT323" (terminal).
+const PANEL_FONTS = {
+    arcade:   { family: '"Press Start 2P", "Courier New", monospace', weight: 'bold', scale: 0.25 },
+    terminal: { family: '"VT323", "Courier New", monospace',          weight: 'normal', scale: 0.42 },
+    mono:     { family: '"Courier New", monospace',                    weight: 'bold', scale: 0.34 },
+};
+// Nombre de la fuente activa; se restaura de localStorage al cargar el módulo
+// para que la elección del usuario sobreviva al refresh.
+let __panelFontName = (() => {
+    try { return localStorage.getItem('bioPrint_panelFont') || 'arcade'; } catch (e) { return 'arcade'; }
+})();
+if (!PANEL_FONTS[__panelFontName]) __panelFontName = 'arcade';
+let __panelFontFamily = PANEL_FONTS[__panelFontName].family;
+let __panelFontWeight = PANEL_FONTS[__panelFontName].weight;
+let __panelFontScale  = PANEL_FONTS[__panelFontName].scale;
+function applyPanelFont(name) {
+    const f = PANEL_FONTS[String(name).toLowerCase()];
+    if (!f) return false;
+    __panelFontName = String(name).toLowerCase();
+    __panelFontFamily = f.family;
+    __panelFontWeight = f.weight;
+    __panelFontScale = f.scale;
+    return true;
+}
+
+export function setPanelFont(name) {
+    const key = String(name).toLowerCase();
+    const f = PANEL_FONTS[key];
+    if (!f) return false;
+    __panelFontName = key;
+    __panelFontFamily = f.family;
+    __panelFontWeight = f.weight;
+    __panelFontScale = f.scale;
+    characterCache.clear(); // forzar re-render de todos los glifos
+    try { localStorage.setItem('bioPrint_panelFont', key); } catch (e) {} // persistir
+    return true;
+}
+export function getPanelFonts() { return Object.keys(PANEL_FONTS); }
+export function getPanelFont() { return __panelFontName; }
+
+// 🔆 Brillo global del texto (0..1). Los glifos cacheados comparten material con
+// sus clones, así que actualizar el cache actualiza todo el texto en pantalla.
+let __textBrightness = 1.0;
+export function setTextBrightness(factor) {
+    __textBrightness = Math.max(0.05, Math.min(1, factor));
+    characterCache.forEach((mesh) => {
+        if (mesh.material) {
+            mesh.material.opacity = __textBrightness;
+            mesh.material.needsUpdate = true;
+        }
+    });
+    return __textBrightness;
+}
+export function getTextBrightness() { return __textBrightness; }
 
 // Inicializar el módulo - cargamos la fuente pixelada
 export function initPanelText() {
@@ -469,6 +525,20 @@ function handleTextTouchEnd(event) {
 export function createPanelText(panel, gridSize) {
     if (!panel.group) return;
 
+    // 🔤 Fuente por panel: si el estado define fontName, se usa solo para este panel
+    const __prevFont = __panelFontName;
+    const __wantFont = panelTextState.get(panel)?.fontName;
+    if (__wantFont && __wantFont !== __panelFontName) applyPanelFont(__wantFont);
+    try {
+        _createPanelTextInner(panel, gridSize);
+    } finally {
+        if (__wantFont && __prevFont !== __panelFontName) applyPanelFont(__prevFont);
+    }
+}
+
+function _createPanelTextInner(panel, gridSize) {
+    if (!panel.group) return;
+
     // Optimización: Limpiar solo elementos que no deben persistir, pero reutilizar textContainer si existe
     let existingTextContainer = null;
     for (const child of [...panel.group.children]) {
@@ -625,7 +695,9 @@ export function createPanelText(panel, gridSize) {
             // Usar el customFontSize del estado del panel (para porcentajes grandes, etc.)
             customFontSize = state.customFontSize;
             effectiveCharSpacing = TEXT_CONFIG.charSpacing;
-            effectiveLineHeight = TEXT_CONFIG.lineHeight;
+            // 🔥 El interlineado debe escalar con el tamaño de fuente; si no, textos
+            // pequeños quedan con huecos enormes entre líneas.
+            effectiveLineHeight = TEXT_CONFIG.lineHeight * (customFontSize / TEXT_CONFIG.fontSize);
         } else if (isUniline) {
             // Para Unilinea, SIEMPRE usar tamaño estándar, ignorando isTooSmall para estos params
             customFontSize = TEXT_CONFIG.fontSize;
@@ -874,9 +946,13 @@ export function createPanelText(panel, gridSize) {
         }
     } else {
         // CASO NORMAL - PANEL SUFICIENTEMENTE GRANDE
-        
+
+        // 🔥 Interlineado escalado al tamaño de fuente efectivo (si el panel usa
+        // customFontSize pequeño, las líneas se juntan y cabe mucho más texto).
+        const normalLineH = gridSize * TEXT_CONFIG.lineHeight * (effectiveFontSize / TEXT_CONFIG.fontSize);
+
         // Calcular número máximo de líneas visibles
-        const maxVisibleLines = Math.max(1, Math.floor(textAreaHeight / (gridSize * TEXT_CONFIG.lineHeight)));
+        const maxVisibleLines = Math.max(1, Math.floor(textAreaHeight / normalLineH));
         
         // Calcular máximo de caracteres por línea basado en el ancho del panel
         // Incluir el espaciado adicional (pixelSpacing) en el cálculo para mantener el wrapping correcto
@@ -913,7 +989,7 @@ export function createPanelText(panel, gridSize) {
 
         // Calcular la altura total del texto visible (usar el número real de líneas a mostrar)
         const visibleLineCount = endLineIndex - startLineIndex; // Usar endLineIndex calculado
-        const textHeight = Math.min(visibleLineCount * (gridSize * TEXT_CONFIG.lineHeight), textAreaHeight);
+        const textHeight = Math.min(visibleLineCount * normalLineH, textAreaHeight);
         
         // Centrado vertical perfecto - mantiene distancia igual a bordes superior e inferior
         const verticalOffset = (textAreaHeight - textHeight) / 2;
@@ -959,20 +1035,20 @@ export function createPanelText(panel, gridSize) {
                 
                 // Aplicar alineación vertical
                 if (state.verticalAlign === 'middle') {
-                    // Centrado vertical - calcular el centro del bloque de texto y posicionar desde ahí
+                    // 🔥 Centrado vertical REAL: margen superior = (área - bloque) / 2,
+                    // con altura de línea escalada al tamaño de fuente efectivo
                     const visibleLineCount = endLineIndex - startLineIndex;
-                    const textBlockHeight = visibleLineCount * (gridSize * TEXT_CONFIG.lineHeight);
-                    const centeredBlockTopY = -(textAreaHeight / 2) + (textAreaHeight - textBlockHeight) / 2;
-                    const offsetToCurrentLineCenter = displayLineIndex * (gridSize * TEXT_CONFIG.lineHeight);
-                    charMesh.position.y = centeredBlockTopY - offsetToCurrentLineCenter;
+                    const textBlockHeight = visibleLineCount * normalLineH;
+                    const topMargin = Math.max(0, (textAreaHeight - textBlockHeight) / 2);
+                    charMesh.position.y = -(topMargin + (displayLineIndex + 0.5) * normalLineH);
                 } else if (state.verticalAlign === 'top') {
                     // NUEVA: Alineación superior para párrafos
                     // Empezar desde el borde superior del área de texto con un pequeño padding
                     const topPadding = gridSize * 0.2; // Pequeño padding desde el borde superior
-                    charMesh.position.y = -(topPadding + displayLineIndex * (gridSize * TEXT_CONFIG.lineHeight));
+                    charMesh.position.y = -(topPadding + displayLineIndex * normalLineH);
                 } else {
                     // Alineación normal desde arriba (legacy)
-                    charMesh.position.y = -displayLineIndex * (gridSize * TEXT_CONFIG.lineHeight) - verticalOffset;
+                    charMesh.position.y = -displayLineIndex * normalLineH - verticalOffset;
                 }
                 
                 charMesh.userData.isDynamicTextElement = true;
@@ -1082,7 +1158,7 @@ export function createCharacterMesh(char, gridSize, forCache = false, customFont
     let fontSize = customFontSize || TEXT_CONFIG.fontSize;
     
     // Revisar si ya tenemos este carácter en cache
-    const cacheKey = char + '-' + (forCache ? '1' : gridSize) + '-' + fontSize;
+    const cacheKey = char + '-' + (forCache ? '1' : gridSize) + '-' + fontSize + '-' + __panelFontName;
     if (characterCache.has(cacheKey)) {
         const cachedMesh = characterCache.get(cacheKey);
         if (forCache) return cachedMesh;
@@ -1094,20 +1170,23 @@ export function createCharacterMesh(char, gridSize, forCache = false, customFont
     }
     
     // Crear canvas para renderizar el carácter
+    // 🔥 Resolución adaptativa: para tipografías grandes (login, títulos) usar un canvas
+    // mayor para que el pixel-art se mantenga nítido al escalar.
     const canvas = document.createElement('canvas');
-    const size = 128; // Reducido de 256 a 128 para mejor rendimiento (suficiente para pixel art)
+    const size = fontSize >= 4.0 ? 256 : 128;
     canvas.width = size;
     canvas.height = size;
-    
-    const ctx = canvas.getContext('2d', { willReadFrequently: false }); // Optimización: no necesitamos leer frecuentemente
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: false });
     ctx.fillStyle = '#ffffff';
-    
+
     // Dibujar un carácter pixelado
     if (char === ' ') {
         // No dibujar nada para espacios
     } else {
-        // Estilo de fuente pixelada - tamaño reducido proporcionalmente
-        ctx.font = 'bold 32px "Press Start 2P", "Courier New", monospace';
+        // Fuente configurable (setPanelFont). Por defecto: pixel arcade.
+        const px = Math.round(size * __panelFontScale);
+        ctx.font = `${__panelFontWeight} ${px}px ${__panelFontFamily}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(char, size/2, size/2);
@@ -1127,7 +1206,8 @@ export function createCharacterMesh(char, gridSize, forCache = false, customFont
         // Evitar el parpadeo con estas propiedades
         alphaTest: 0.01,
         depthTest: false,
-        premultipliedAlpha: true
+        premultipliedAlpha: true,
+        opacity: __textBrightness // 🔆 brillo global del texto (calibrable)
     });
     
     const geometry = new THREE.PlaneGeometry(
@@ -1136,13 +1216,15 @@ export function createCharacterMesh(char, gridSize, forCache = false, customFont
     );
     
     const mesh = new THREE.Mesh(geometry, material);
-    
+    // 🔥 Texto SIEMPRE por encima de la cuadrícula y los rellenos de panel
+    mesh.renderOrder = 900;
+
     // Si es para cache, lo guardamos
     if (forCache) {
         characterCache.set(cacheKey, mesh);
         mesh.userData.isCached = true;
     }
-    
+
     return mesh;
 }
 
@@ -1559,7 +1641,8 @@ function createCursorMesh(gridSize, textAreaWidth, textAreaHeight) {
     const cursor = new THREE.Mesh(geometry, material);
     cursor.userData.isCursor = true;
     cursor.frustumCulled = false;
-    
+    cursor.renderOrder = 900; // por encima de la cuadrícula, igual que el texto
+
     return cursor;
 }
 

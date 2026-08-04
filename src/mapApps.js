@@ -73,7 +73,8 @@ function mapApps(args, output) {
                 
                 texture.minFilter = THREE.LinearFilter;
                 texture.magFilter = THREE.LinearFilter;
-                
+                if (THREE.SRGBColorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace;
+
                 // Configuración del grid
                 const columns = 4; // 4 columnas
                 const rows = 5;    // 5 filas
