@@ -62,11 +62,15 @@ Abajo:   BURGUER    ·  T-BONE     ·  AMBYSTOMA</div>
   visor MEGAZORD     |  log de arranque corriendo
    (animado)         |   (se repite en bucle)
   ─────────────────────────────────────────────
-            ALL SYSTEMS READY  (arcade)</div>
+            ALL SYSTEMS READY  (arcade, aparece al final)</div>
 <table>
-  <tr><td class="cmd">boot2</td><td>Reconstruye la pantalla de arranque 2.0</td></tr>
-  <tr><td class="cmd">save 0</td><td>Guardarla (ya está en el slot 0, carga sola al abrir)</td></tr>
+  <tr><td class="cmd">boot2</td><td>Reconstruye la pantalla (slot 0, carga sola al abrir)</td></tr>
+  <tr><td class="cmd">replay</td><td>Reinicia el ensamblaje para repetir la toma</td></tr>
 </table>
+<div class="note"><b>ALL SYSTEMS READY no está desde el primer frame</b>: el
+recuadro va vacío mientras las dos mitades de la máquina se acercan, y el texto
+entra justo cuando terminan de unirse (~12 s), con el golpe háptico encima. La
+secuencia se repite sola en cada recarga.</div>
 <div class="note">Mezcla tipografías: arcade para titulares, terminal (VT323) para las corridas de texto.</div>
 
 <h2>Mapa de páginas — ZENG (azul)</h2>
