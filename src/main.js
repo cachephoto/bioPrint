@@ -8913,6 +8913,20 @@ function processTerminalCommand(command) {
         case 'páginas':
             listProfilePages(output);
             break;
+        // 📹 Brillo del video: "videobrillo 0.6" o "videobrillo 0.6 1.3"
+        case 'videobrillo':
+        case 'videogain': {
+            const gVal = parseFloat(args[0]);
+            const gmVal = args.length > 1 ? parseFloat(args[1]) : undefined;
+            if (isNaN(gVal)) {
+                showInfo('Uso: videobrillo <gain 0.1-2> [gamma 0.5-2]. Actual: gain 0.72, gamma 1.15', output);
+                break;
+            }
+            const n = setVideoBrightness(gVal, isNaN(gmVal) ? undefined : gmVal);
+            if (n) showSuccess(`Video: gain ${gVal}${!isNaN(gmVal) ? `, gamma ${gmVal}` : ''} (${n} panel/es)`, output);
+            else showError('No hay video en esta pantalla', output);
+            break;
+        }
         // 🔩 Rearmar la secuencia de ensamblaje (para repetir la toma)
         case 'replay':
         case 'rearmar':
@@ -20470,8 +20484,11 @@ function makeVideoPanel(panel, cfg) {
     const conf = {
         src:   cfg.src,
         tint:  cfg.tint || (PROFILE_BASE_COLOR[getProfile()] || '#00ff66'),
-        gain:  typeof cfg.gain === 'number' ? cfg.gain : 1.25,
-        gamma: typeof cfg.gamma === 'number' ? cfg.gamma : 0.85,
+        // gain baja el nivel general y gamma > 1 hunde los medios: así el video
+        // se queda por debajo del umbral de bloom (0.55) salvo en los altos, y
+        // el glow deja de tragarse el detalle.
+        gain:  typeof cfg.gain === 'number' ? cfg.gain : 0.72,
+        gamma: typeof cfg.gamma === 'number' ? cfg.gamma : 1.15,
         loop:  cfg.loop !== false
     };
 
@@ -20596,5 +20613,23 @@ function replayVideoPanels() {
     return n;
 }
 
+/**
+ * Ajusta el brillo del video en caliente. gain = nivel general,
+ * gamma = contraste de los medios (más alto, más hundidos).
+ * Se guarda en la página, así que la recarga lo respeta.
+ */
+function setVideoBrightness(gain, gamma) {
+    let n = 0;
+    videoPanels.forEach(panel => {
+        const mat = panel.fillMesh && panel.fillMesh.material;
+        if (!mat || !mat.uniforms) return;
+        if (typeof gain === 'number')  { mat.uniforms.gain.value = gain;   panel.videoData.gain = gain; }
+        if (typeof gamma === 'number') { mat.uniforms.gamma.value = gamma; panel.videoData.gamma = gamma; }
+        n++;
+    });
+    return n;
+}
+
+window.setVideoBrightness = setVideoBrightness;
 window.makeVideoPanel = makeVideoPanel;
 window.replayVideoPanels = replayVideoPanels;

@@ -108,8 +108,13 @@ Abajo:   BURGUER    ·  T-BONE     ·  AMBYSTOMA</div>
 <div class="note">El recuadro grande reproduce
 <span class="cmd">public/video/boot_sequence.mp4</span> teñido de verde por
 luminancia (se descarta el color original y su brillo modula el verde). Ajustes
-del teñido: <span class="cmd">gain</span> y <span class="cmd">gamma</span> en
-<span class="cmd">makeVideoPanel</span>.</div>
+del teñido en vivo, sin tocar código:</div>
+<table>
+  <tr><td class="cmd">videobrillo 0.72</td><td>Nivel general (default; más bajo = más detalle, menos glow)</td></tr>
+  <tr><td class="cmd">videobrillo 0.5 1.3</td><td>Nivel + contraste de medios</td></tr>
+</table>
+<div class="note">Con el nivel alto el video entra de lleno en el umbral de bloom
+y el glow se traga el detalle. 0.72 / 1.15 es el punto donde se ven los relieves.</div>
 <div class="note"><b>ALL SYSTEMS READY no está desde el primer frame</b>: el
 recuadro va vacío mientras las dos mitades de la máquina se acercan, y el texto
 entra al terminar la primera pasada del video (95%), con el golpe háptico encima. La
