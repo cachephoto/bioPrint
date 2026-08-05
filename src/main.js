@@ -881,7 +881,9 @@ const PROFILE_PAGES = {
     },
     v2: {
         1: 'ARRANQUE',
-        2: 'ESPECIMENES'
+        2: 'ESPECIMENES',
+        3: 'ARCHIVOS',
+        4: 'CATALOGO VACIO'
     }
 };
 
@@ -3639,6 +3641,13 @@ document.addEventListener('keydown', (event) => {
     let moveDelta = { dx: 0, dy: 0 };
     let deleteTriggered = false;
 
+    // 📁 ENTER abre Human.exe en la página de archivos
+    if (key === 'Enter' && !activelyWritingText && !terminalIsEffectivelyActive
+        && panels.some(p => p.isHumanViewer)) {
+        runHumanSequence(document.getElementById('terminal-output'));
+        return;
+    }
+
     switch (key) {
         case '+':
         case '=':
@@ -3987,6 +3996,10 @@ function animate() {
 
     // 🔩 Textos que esperan a que la máquina termine de armarse
     updateAssemblyReveals();
+
+    // 📁 Listados con una entrada parpadeando
+    updateBlinkingLists();
+    if (typeof updatePendingHumanSequence === 'function') updatePendingHumanSequence();
     
     controls.update();
     renderBioFX();
@@ -5266,6 +5279,9 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                     if (typeof clickedPanelData.navTargetSlot === 'number') {
                         const target = clickedPanelData.navTargetSlot;
                         const withRedAlert = !!clickedPanelData.redAlertOnNav;
+                        // Al llegar a la página destino se abre solo el archivo
+                        // humano (barra de carga + corazón).
+                        if (clickedPanelData.runHumanOnArrive) pendingHumanSequence = true;
                         startFlash(clickedPanelData);
                         console.log(`🔀 Botón de navegación → página ${target}${withRedAlert ? ' (ALERTA ROJA)' : ''}`);
                         setTimeout(() => {
@@ -6015,6 +6031,9 @@ function getSerializableConfig() {
                     stepperUnit: panel.stepperUnit || null,
                     termStream: panel.termStreamData ? JSON.parse(JSON.stringify(panel.termStreamData)) : null, // 💻 Terminal con texto corriendo
                     revealOnAssembly: !!panel.wasAssemblyReveal, // 🔩 Texto que espera al ensamblaje
+                    blinkList: panel.blinkListData ? JSON.parse(JSON.stringify(panel.blinkListData)) : null, // 📁 Listado con entrada parpadeando
+                    isHumanViewer: !!panel.isHumanViewer, // 📁 Visor donde se abre el archivo
+                    runHumanOnArrive: !!panel.runHumanOnArrive, // 📁 Al navegar, abre el archivo humano
                     paramValue: typeof panel.paramValue === 'number' ? panel.paramValue : null, // 🎚️ Parámetro ajustable
                     paramStep: typeof panel.paramStep === 'number' ? panel.paramStep : null,
                     paramMin: typeof panel.paramMin === 'number' ? panel.paramMin : null,
@@ -6392,8 +6411,14 @@ function loadConfiguration() {
                             if (panelInfo.behavior.revealOnAssembly) {
                                 armAssemblyReveal(panelData);
                             }
+                            if (panelInfo.behavior.blinkList) {
+                                makeBlinkingList(panelData, panelInfo.behavior.blinkList);
+                            }
                             if (typeof panelInfo.behavior.navTargetSlot === 'number') {
                                 panelData.navTargetSlot = panelInfo.behavior.navTargetSlot;
+                            }
+                            if (panelInfo.behavior.runHumanOnArrive) {
+                                panelData.runHumanOnArrive = true;
                             }
                             // 🚫 Restaurar botón ACCESS DENIED
                             if (panelInfo.behavior.showDeniedOnClick) {
@@ -6457,6 +6482,7 @@ function loadConfiguration() {
                             }, panelData);
                         }
 
+                        if (panelInfo.behavior.isHumanViewer) { panelData.isHumanViewer = true; }
                         if (panelInfo.behavior.modelData && panelInfo.behavior.modelData.modelUrl) {
                             const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName, userScale } = panelInfo.behavior.modelData;
                             loadModelToPanel(panelData, modelUrl, currentGridParams.cellSize).then(() => {
@@ -8383,8 +8409,14 @@ async function applyConfigurationFromData(configData) {
                         if (panelInfo.behavior.revealOnAssembly) {
                             armAssemblyReveal(panel);
                         }
+                        if (panelInfo.behavior.blinkList) {
+                            makeBlinkingList(panel, panelInfo.behavior.blinkList);
+                        }
                         if (typeof panelInfo.behavior.navTargetSlot === 'number') {
                             panel.navTargetSlot = panelInfo.behavior.navTargetSlot;
+                        }
+                        if (panelInfo.behavior.runHumanOnArrive) {
+                            panel.runHumanOnArrive = true;
                         }
                         // 🚫 Restaurar botón ACCESS DENIED
                         if (panelInfo.behavior.showDeniedOnClick) {
@@ -8445,6 +8477,7 @@ async function applyConfigurationFromData(configData) {
                         console.log(`GATC restaurado para panel P${orderNumber}`);
                     }
 
+                    if (panelInfo.behavior.isHumanViewer) { panel.isHumanViewer = true; }
                     if (panelInfo.behavior.modelData && panelInfo.behavior.modelData.modelUrl) {
                         const { modelUrl, modelName, isRotating, rotationSpeed, isModelButton, isFromModelsGrid, isModelDisplay, isFromModelCommand, isViewer, scientificName, userScale } = panelInfo.behavior.modelData;
                         console.log(`Restaurando modelo ${modelUrl} para panel P${orderNumber}`);
@@ -8814,6 +8847,16 @@ function processTerminalCommand(command) {
         case 'replay':
         case 'rearmar':
             replayAssembly(output);
+            break;
+        // 🕳️ VERSIÓN 2.0 — catálogo vacío (la celda central abre el archivo humano)
+        case 'vacio':
+        case 'empty':
+            buildV2EmptyGridScreen(output);
+            break;
+        // 📁 VERSIÓN 2.0 — archivos locales
+        case 'files':
+        case 'archivos':
+            buildV2FilesScreen(output);
             break;
         // 🧬 VERSIÓN 2.0 — catálogo de especímenes
         case 'models2':
@@ -19224,7 +19267,7 @@ async function useV2Grid() {
 
 const V2_SPECIMENS = [
     ['acot',   'tlaloc',  'tort'    ],  // arriba
-    ['discus', 'her',     'corazon' ],  // medio
+    ['discus', 'dog',     'corazon' ],  // medio
     ['burg',   'hueso',   'axolotl' ]   // abajo
 ];
 const V2_VIEWER_MODEL = 'axolotl';   // el que aparece cargado en el visor grande
@@ -19308,7 +19351,9 @@ function fitModelInsidePanel(panel, margin = 0.96) {
     return true;
 }
 
-async function buildV2ModelsScreen(output) {
+async function buildV2ModelsScreen(output, opts = {}) {
+    const withModels    = opts.withModels !== false;                 // la pág. 4 va vacía
+    const centerNavSlot = typeof opts.centerNavSlot === 'number' ? opts.centerNavSlot : null;
     const gp = await useV2Grid();
     if (!gp) { showError('Grid no disponible', output); return false; }
 
@@ -19336,8 +19381,7 @@ async function buildV2ModelsScreen(output) {
     // ── Columnas: barra lateral · centro (rejilla + teclado) · visor ──
     const SIDE_X0 = 2,  SIDE_X1 = 19;    // 18 celdas
     const MID_X0  = 22, MID_X1  = 48;    // 27 celdas — mismo ancho que el teclado
-    const VIEW_X0 = 51, VIEW_X1 = 76;    // 26 celdas
-    const FAR_X0  = 79, FAR_X1  = 86;
+    const VIEW_X0 = 51, VIEW_X1 = 86;    // 36 celdas — llega hasta el borde
 
     // ── Franjas de cabecera ──
     [[MID_X0, 33], [35, 48], [VIEW_X0, VIEW_X1]].forEach(([a, b]) => mk(a, b, 46, 49));
@@ -19350,10 +19394,8 @@ async function buildV2ModelsScreen(output) {
     window.setTextOnPanel(statusPanel, V2_STATUS_TEXT, 1.5, 'left',
         { font: 'terminal', vAlign: 'top' });
 
-    // ── Visor grande y panel del borde derecho ──
+    // ── Visor grande ──
     const viewer = mk(VIEW_X0, VIEW_X1, 17, 43);
-    mk(FAR_X0, FAR_X1, 17, 43);
-    mk(FAR_X0, FAR_X1, KEYB_Y, KEYB_Y + 9);
 
     // ── Rejilla 3x3: celdas de 9x9, cuadradas como en la referencia ──
     const CELL = 9;
@@ -19363,6 +19405,12 @@ async function buildV2ModelsScreen(output) {
             const minX = MID_X0 + col * CELL;
             const minY = 35 - row * CELL;        // row 0 = fila de arriba
             const p = mk(minX, minX + CELL - 1, minY, minY + CELL - 1);
+            // Celda del centro: al hacer click salta a otra página y abre el
+            // archivo humano allá.
+            if (centerNavSlot !== null && row === 1 && col === 1) {
+                p.navTargetSlot = centerNavSlot;
+                p.runHumanOnArrive = true;
+            }
             gridPanels.push({ panel: p, name: V2_SPECIMENS[row][col] });
         }
     }
@@ -19384,7 +19432,7 @@ async function buildV2ModelsScreen(output) {
     }
 
     // ── Los 9 especímenes, como botones ──
-    for (const { panel, name } of gridPanels) {
+    for (const { panel, name } of (withModels ? gridPanels : [])) {
         const url = `./models/${name}.obj`;
         const ok = await loadModelToPanel(panel, url, gp.cellSize);
         if (!ok) { console.warn(`No cargó el modelo ${name}`); continue; }
@@ -19401,11 +19449,19 @@ async function buildV2ModelsScreen(output) {
         fitModelInsidePanel(panel);
     }
 
-    if (output) showSuccess('Catálogo de especímenes 2.0 construido', output);
+    if (output) showSuccess(withModels
+        ? 'Catálogo de especímenes construido'
+        : 'Catálogo vacío construido — la celda central abre el archivo humano', output);
     return true;
 }
 
+/** Página 4: misma disposición que la 2, pero sólo con el axolote en el visor. */
+async function buildV2EmptyGridScreen(output) {
+    return buildV2ModelsScreen(output, { withModels: false, centerNavSlot: 3 });
+}
+
 window.buildV2ModelsScreen = buildV2ModelsScreen;
+window.buildV2EmptyGridScreen = buildV2EmptyGridScreen;
 window.getPanelAnimation = getPanelAnimation;
 window.setPanelAnimationTime = setPanelAnimationTime;
 window.replayPanelAnimation = replayPanelAnimation;
@@ -19474,3 +19530,222 @@ function replayAssembly(output) {
 
 window.armAssemblyReveal = armAssemblyReveal;
 window.replayAssembly = replayAssembly;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// 📁 BIOPRINT 2.0 — PÁGINA 3: ARCHIVOS
+// ════════════════════════════════════════════════════════════════════════════
+// Listado de archivos con "Human.exe" parpadeando · terminal con datos
+// corriendo · al pulsar ENTER se despliega la barra de carga y al terminar se
+// abre el corazón humano en el visor.
+// ════════════════════════════════════════════════════════════════════════════
+
+// `var` + guarda: animate() ya corre cuando se evalúa esta línea.
+var blinkingLists = new Set();
+
+const V2_FILES = [
+    'genome_index.dat',
+    'substrate_map.bin',
+    'cartridge_log.txt',
+    'tissue_lib.pak',
+    'Human.exe',
+    'neural_mesh.obj',
+    'donor_registry.db',
+    'BIOCORP_eula.txt',
+    'purge_queue.tmp'
+];
+const V2_HUMAN_INDEX = V2_FILES.indexOf('Human.exe');
+
+const V2_DATA_LINES = [
+    '> stream /dev/bioA0 --raw',
+    '  0x4F2A 8821 GATC ACGT .. OK',
+    '  0x4F2B 9134 TTAG CCGA .. OK',
+    '  0x4F2C 7756 CGAT TACG .. OK',
+    '  seq blocks 4096/4096',
+    '',
+    '> checksum --verify',
+    '  sha 1F:8C:20:9D ...... OK',
+    '  parity even .......... OK',
+    '',
+    '> index --rebuild',
+    '  entries 12844 ........ OK',
+    '  orphan refs 0 ........ OK',
+    '',
+    '> perm scan',
+    '  read  ............... 9/9',
+    '  write ............... 8/9',
+    '  exec  ............... 1/9  !',
+    '',
+    '  1 archivo restringido'
+];
+
+/** Lista de archivos con una entrada resaltada parpadeando. */
+function makeBlinkingList(panel, cfg) {
+    if (!panel) return null;
+    const conf = {
+        lines: cfg.lines || [],
+        blinkIndex: typeof cfg.blinkIndex === 'number' ? cfg.blinkIndex : -1,
+        speed: cfg.speed || 520,
+        fontSize: cfg.fontSize || 1.4
+    };
+    panel.blinkListData = conf;
+    panel.blinkState = { on: true, last: performance.now() };
+    blinkingLists.add(panel);
+    renderBlinkingList(panel);
+    return panel;
+}
+
+function renderBlinkingList(panel) {
+    const c = panel.blinkListData, st = panel.blinkState;
+    if (!c || !st) return;
+    // El resalte alterna marcadores en vez de ocultar la línea: así el archivo
+    // llama la atención sin desaparecer de la lista.
+    const body = c.lines.map((l, i) =>
+        i === c.blinkIndex
+            ? (st.on ? `> ${l} <` : `  ${l}  `)
+            : `  ${l}`
+    );
+    window.setTextOnPanel(panel, body.join('\n'), c.fontSize, 'left',
+        { font: 'terminal', vAlign: 'top' });
+}
+
+function updateBlinkingLists() {
+    if (!blinkingLists || blinkingLists.size === 0) return;
+    const now = performance.now();
+    blinkingLists.forEach(panel => {
+        if (!panel.group || !panels.includes(panel)) { blinkingLists.delete(panel); return; }
+        const st = panel.blinkState, c = panel.blinkListData;
+        if (!st || !c) return;
+        if (now - st.last >= c.speed) {
+            st.last = now;
+            st.on = !st.on;
+            renderBlinkingList(panel);
+        }
+    });
+}
+
+// ── Secuencia: ENTER → barra de carga → corazón ─────────────────────────────
+let humanSequenceRunning = false;
+
+// Cuando se llega a esta página desde un botón de otra, la secuencia se dispara
+// sola. Se resuelve con un vigilante porque la carga del slot es asíncrona y no
+// hay forma de saber desde el click cuándo terminó de montarse.
+var pendingHumanSequence = false;
+
+function updatePendingHumanSequence() {
+    if (!pendingHumanSequence || humanSequenceRunning) return;
+    const viewer = panels.find(p => p.isHumanViewer);
+    if (!viewer) return;                       // la página aún no está montada
+    pendingHumanSequence = false;
+    setTimeout(() => runHumanSequence(document.getElementById('terminal-output')), 600);
+}
+
+async function runHumanSequence(output) {
+    if (humanSequenceRunning) return false;
+    const viewer = panels.find(p => p.isHumanViewer);
+    if (!viewer) { if (output) showError('Esta página no tiene visor de archivo', output); return false; }
+
+    humanSequenceRunning = true;
+    const gp = getCurrentGridParams();
+
+    // La barra se ancla a un rectángulo sintético centrado en el visor:
+    // createProgressPanel la coloca dos celdas por encima del ancla.
+    const cx = Math.round((viewer.minCellIndex.x + viewer.maxCellIndex.x) / 2);
+    const cy = Math.round((viewer.minCellIndex.y + viewer.maxCellIndex.y) / 2);
+    const half = Math.floor((viewer.maxCellIndex.x - viewer.minCellIndex.x) * 0.35);
+    const anchor = {
+        minCellIndex: { x: cx - half, y: cy - 2 },
+        maxCellIndex: { x: cx + half, y: cy - 2 },
+        orderNumber: 900
+    };
+
+    const bar = createProgressPanel(anchor, gp);
+    panels.push(bar);
+    updatePanelGeometryAndPosition(bar, gp);
+    scene.add(bar.group);
+
+    hapticFeedbackAll(0);
+
+    // Llenado en ~4 s
+    await new Promise(resolve => {
+        const t0 = performance.now();
+        const DUR = 4000;
+        const step = () => {
+            const p = Math.min(100, ((performance.now() - t0) / DUR) * 100);
+            if (bar.drawProgress) bar.drawProgress(p, Math.sin(performance.now() / 120) * 0.5 + 0.5);
+            if (p >= 100) { setTimeout(resolve, 400); return; }
+            requestAnimationFrame(step);
+        };
+        step();
+    });
+
+    cleanupProgressPanel(bar, scene, panels);
+
+    // Se abre el corazón humano
+    const ok = await loadModelToPanel(viewer, './models/corazon.obj', gp.cellSize);
+    if (ok) {
+        viewer.modelData = {
+            name: 'corazon',
+            url: './models/corazon.obj',
+            isRotating: true,
+            rotationSpeed: 0.004,
+            isModelDisplay: true,
+            isFromModelCommand: true,
+            isViewer: true
+        };
+        viewer.isViewer = true;
+        fitModelInsidePanel(viewer);
+        hapticFeedbackAll(0);
+        if (output) showSuccess('Human.exe abierto: HOMO SAPIENS SAPIENS', output);
+    }
+    humanSequenceRunning = false;
+    return true;
+}
+
+async function buildV2FilesScreen(output) {
+    const gp = await useV2Grid();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+
+    if (bioKeybVisible) clearBioKeybOnly();
+    clearAllPanels(true, true);
+    terminalStreams.clear();
+    blinkingLists.clear();
+    await new Promise(r => setTimeout(r, 300));
+
+    const mk = (minX, maxX, minY, maxY) =>
+        createPanelFromBoundingBox({ minX, maxX, minY, maxY }, gp);
+
+    // Cabecera
+    const head = mk(2, 86, 46, 49);
+    window.setTextOnPanel(head, 'BIOCORP // ARCHIVOS LOCALES', 2.6, 'left',
+        { font: 'arcade' });
+
+    // Listado de archivos, con Human.exe parpadeando
+    const filesPanel = mk(2, 30, 6, 44);
+    makeBlinkingList(filesPanel, {
+        lines: V2_FILES,
+        blinkIndex: V2_HUMAN_INDEX,
+        fontSize: 2.6
+    });
+
+    // Terminal con datos corriendo
+    const dataPanel = mk(33, 86, 6, 16);
+    makeTerminalStream(dataPanel, {
+        lines: V2_DATA_LINES,
+        speed: 190,
+        rows: 9,
+        fontSize: 2.0,
+        loop: true,
+        cursor: true
+    });
+
+    // Visor: aquí se abre el corazón al terminar la carga
+    const viewer = mk(33, 86, 18, 44);
+    viewer.isHumanViewer = true;
+
+    if (output) showSuccess('Página de archivos construida — ENTER abre Human.exe', output);
+    return true;
+}
+
+window.buildV2FilesScreen = buildV2FilesScreen;
+window.runHumanSequence = runHumanSequence;
