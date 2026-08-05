@@ -19109,6 +19109,40 @@ window.makeTerminalStream = makeTerminalStream;
 // ════════════════════════════════════════════════════════════════════════════
 
 const BACKUP_KEYS_PREFIX = ['bioPrint_', 'bioFX_', 'gridConfig'];
+const BACKUP_STAMP_KEY = 'bioPrint_backup_stamp';
+
+/** Escribe un respaldo en localStorage y guarda su sello. Devuelve nº de claves. */
+function applyBackup(data) {
+    const keys = Object.keys(data).filter(k => k !== '__meta');
+    keys.forEach(k => localStorage.setItem(k, data[k]));
+    if (data.__meta) {
+        try { localStorage.setItem(BACKUP_STAMP_KEY, JSON.parse(data.__meta).savedAt || ''); }
+        catch (e) { /* respaldo viejo sin sello */ }
+    }
+    return keys.length;
+}
+
+/**
+ * Aviso de sincronización: si el respaldo del repo es distinto al último que se
+ * aplicó aquí, alguien trabajó en otra máquina. No se sobrescribe solo — el
+ * diseño local podría ser el bueno —, se avisa y el usuario decide con `import`.
+ */
+async function checkRepoBackup() {
+    try {
+        const res = await fetch(`./configs/${SEED_FILE}.json`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.__meta) return;
+        const repoStamp = JSON.parse(data.__meta).savedAt;
+        const localStamp = localStorage.getItem(BACKUP_STAMP_KEY);
+        if (repoStamp && repoStamp !== localStamp) {
+            const output = document.getElementById('terminal-output');
+            const msg = `Hay un respaldo más reciente en el repo (${repoStamp.slice(0, 16).replace('T', ' ')}). Escribe "import" para traerlo.`;
+            console.log('🔄 ' + msg);
+            if (output) showInfo(msg, output);
+        }
+    } catch (e) { /* sin servidor o sin respaldo: nada que avisar */ }
+}
 const SEED_FILE = 'bioprint_all';           // public/configs/bioprint_all.json
 const SEED_DONE_KEY = 'bioPrint_seeded_from';
 
@@ -19124,6 +19158,8 @@ function collectLocalState() {
 /** Vuelca el estado actual a public/configs/<name>.json (necesita el dev server). */
 async function exportStateToDisk(name = SEED_FILE, output) {
     const data = collectLocalState();
+    // Sello para poder detectar desde otra máquina que hay algo más nuevo.
+    data.__meta = JSON.stringify({ savedAt: new Date().toISOString() });
     try {
         const res = await fetch('/__bioprint/save', {
             method: 'POST',
@@ -19165,11 +19201,10 @@ async function importStateFromDisk(name = SEED_FILE, output) {
         const res = await fetch(`./configs/${name}.json`, { cache: 'no-store' });
         if (!res.ok) throw new Error(`no existe configs/${name}.json`);
         const data = await res.json();
-        const keys = Object.keys(data);
-        if (!keys.length) throw new Error('el respaldo está vacío');
-        keys.forEach(k => localStorage.setItem(k, data[k]));
+        const n = applyBackup(data);
+        if (!n) throw new Error('el respaldo está vacío');
         localStorage.setItem(SEED_DONE_KEY, name);
-        if (output) showSuccess(`Restauradas ${keys.length} claves desde ${name}.json. Recargando…`, output);
+        if (output) showSuccess(`Restauradas ${n} claves desde ${name}.json. Recargando…`, output);
         setTimeout(() => location.reload(), 800);
         return true;
     } catch (e) {
@@ -19192,8 +19227,8 @@ function importStateFromFile(output) {
         reader.onload = () => {
             try {
                 const data = JSON.parse(reader.result);
-                Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
-                if (output) showSuccess(`Restauradas ${Object.keys(data).length} claves. Recargando…`, output);
+                const n = applyBackup(data);
+                if (output) showSuccess(`Restauradas ${n} claves. Recargando…`, output);
                 setTimeout(() => location.reload(), 800);
             } catch (e) {
                 if (output) showError(`Archivo inválido: ${e.message}`, output);
@@ -19219,11 +19254,10 @@ async function seedFromRepoIfEmpty() {
         const res = await fetch(`./configs/${SEED_FILE}.json`, { cache: 'no-store' });
         if (!res.ok) return false;
         const data = await res.json();
-        const keys = Object.keys(data);
-        if (!keys.length) return false;
-        keys.forEach(k => localStorage.setItem(k, data[k]));
+        const n = applyBackup(data);
+        if (!n) return false;
         localStorage.setItem(SEED_DONE_KEY, SEED_FILE);
-        console.log(`🌱 Dispositivo nuevo: sembradas ${keys.length} claves desde el repo. Recargando…`);
+        console.log(`🌱 Dispositivo nuevo: sembradas ${n} claves desde el repo. Recargando…`);
         setTimeout(() => location.reload(), 400);
         return true;
     } catch {
@@ -19232,11 +19266,15 @@ async function seedFromRepoIfEmpty() {
 }
 
 // Se lanza al cargar la página, antes de que el usuario toque nada.
-seedFromRepoIfEmpty();
+seedFromRepoIfEmpty().then(sembrado => {
+    // Si no hubo que sembrar, al menos avisar si el repo trae algo más nuevo.
+    if (!sembrado) setTimeout(checkRepoBackup, 2500);
+});
 
 window.exportStateToDisk = exportStateToDisk;
 window.importStateFromDisk = importStateFromDisk;
 window.downloadStateFile = downloadStateFile;
+window.checkRepoBackup = checkRepoBackup;
 
 
 // ════════════════════════════════════════════════════════════════════════════
