@@ -889,7 +889,8 @@ const PROFILE_PAGES = {
         7: 'SUSCRIPCIONES',
         8: 'ANALISIS',
         9: 'PERFIL',
-        10: 'GENERANDO'
+        10: 'GENERANDO',
+        11: 'RENDER'
     }
 };
 
@@ -5361,6 +5362,14 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                     // 🔀 BOTÓN DE NAVEGACIÓN: si el panel tiene navTargetSlot, al hacer
                     // click carga esa página (con flash de confirmación).
                     // Si además tiene redAlertOnNav, activa el parpadeo rojo (ACCESS DENIED).
+                    // ⚡ Botón del cluster de GPU: dispara la aceleración
+                    if (clickedPanelData.gpuButton) {
+                        if (connectGpuCluster()) {
+                            setPanelTextVisible(clickedPanelData, false);   // el botón se apaga al usarse
+                            console.log('⚡ GPU cluster conectado a 80 Gbps');
+                        }
+                        return;
+                    }
                     if (typeof clickedPanelData.navTargetSlot === 'number') {
                         const target = clickedPanelData.navTargetSlot;
                         const withRedAlert = !!clickedPanelData.redAlertOnNav;
@@ -6120,6 +6129,7 @@ function getSerializableConfig() {
                     progressText: panel.progressTextData ? JSON.parse(JSON.stringify(panel.progressTextData)) : null, // ▓ Barra animada
                     liveTerm: panel.liveTermData ? JSON.parse(JSON.stringify(panel.liveTermData)) : null, // 🖥️ Terminal viva
                     video: panel.videoData ? JSON.parse(JSON.stringify(panel.videoData)) : null, // 📹 Video teñido
+                    gpuButton: !!panel.gpuButton, // ⚡ Botón del cluster de GPU
                     isHumanViewer: !!panel.isHumanViewer, // 📁 Visor donde se abre el archivo
                     runHumanOnArrive: !!panel.runHumanOnArrive, // 📁 Al navegar, abre el archivo humano
                     paramValue: typeof panel.paramValue === 'number' ? panel.paramValue : null, // 🎚️ Parámetro ajustable
@@ -6459,6 +6469,9 @@ function loadConfiguration() {
                     // texto perdía su destino al cargar la página.
                     if (panelInfo.behavior && typeof panelInfo.behavior.navTargetSlot === 'number') {
                         panelData.navTargetSlot = panelInfo.behavior.navTargetSlot;
+                    }
+                    if (panelInfo.behavior && panelInfo.behavior.gpuButton) {
+                        panelData.gpuButton = true;
                     }
 
                     // 🔥 NUEVO: Restaurar identidad de viewer incluso sin modelo cargado
@@ -8435,6 +8448,9 @@ async function applyConfigurationFromData(configData) {
                 if (panelInfo.behavior && typeof panelInfo.behavior.navTargetSlot === 'number') {
                     panel.navTargetSlot = panelInfo.behavior.navTargetSlot;
                 }
+                if (panelInfo.behavior && panelInfo.behavior.gpuButton) {
+                    panel.gpuButton = true;
+                }
 
                 // 🔥 NUEVO: Restaurar identidad de viewer incluso sin modelo cargado
                 if (panelInfo.behavior && panelInfo.behavior.modelData && panelInfo.behavior.modelData.isViewer) {
@@ -9003,6 +9019,16 @@ function processTerminalCommand(command) {
             else showError('No hay video en esta pantalla', output);
             break;
         }
+        // ⚡ Página 11 y su aceleración por GPU
+        case 'render11':
+        case 'render':
+            buildV2RenderScreen(output);
+            break;
+        case 'gpu':
+            if (args[0] === 'reset') { resetGpuCluster(); showSuccess('Render de vuelta a 875 h', output); }
+            else if (connectGpuCluster()) showSuccess('GPU CLUSTER conectado — 80 Gbps', output);
+            else showInfo('Ya estaba acelerado. "gpu reset" para repetir la toma.', output);
+            break;
         // 🔩 Rearmar la secuencia de ensamblaje (para repetir la toma)
         case 'replay':
         case 'rearmar':
@@ -20307,6 +20333,60 @@ const V2_SCENES = {
         return l.join('\n');
     },
 
+    render: t => V2_RENDER_SCENE(t),
+
+    renderLog: t => {
+        const st = v2RenderState;
+        const dt = (performance.now() - st.t0) / 1000;
+        const l = [];
+        if (st.phase === 0) {
+            l.push('> queue --status');
+            l.push('');
+            l.push('  posicion en cola ..... 1 284');
+            l.push('  prioridad ............ BAJA');
+            l.push('  nodos disponibles .... 0');
+            l.push('');
+            l.push(`  ${spin(t)} solicitando computo`);
+            l.push('');
+            l.push('  ningun cluster asignado.');
+            l.push('  el render local tardara');
+            l.push('  875 horas.');
+            l.push('');
+            l.push('  pulse CONNECT GPU CLUSTER');
+        } else {
+            // El handshake va apareciendo línea a línea
+            const pasos = [
+                '> gpu --attach biocorp.farm',
+                '',
+                '  handshake ............ OK',
+                '  cert 4F:19:C8:22 ..... OK',
+                '  enlace ........... 80 Gbps',
+                '  nodos ................. 128',
+                '  nucleos ............ 4 096',
+                '',
+                '> reschedule --render',
+                '  cola reprogramada .... OK',
+                '  memoria 512 GB ....... OK',
+                '  pipeline abierto ..... OK',
+                ''
+            ];
+            const extra = st.phase === 2 ? [
+                '> gpu --burst',
+                '  nodos ................. 512',
+                '  nucleos ........... 16 384',
+                '  throughput ...... saturado',
+                '',
+                '  estimacion revisada:',
+                '  875 h  ->  14 m  ->  38 s'
+            ] : [];
+            const todas = pasos.concat(extra);
+            const vis = Math.min(todas.length, 2 + Math.floor(dt * 6));
+            for (let i = 0; i < vis; i++) l.push(todas[i]);
+            if (vis < todas.length) l.push(`  ${spin(t)}`);
+        }
+        return l.join('\n');
+    },
+
     generando: t => {
         // 875 h restantes: la barra apenas se mueve, esa es la gracia
         const pct = 0.2 + t * 0.0009;
@@ -20761,3 +20841,137 @@ window.setPanelBackingOpacity = setPanelBackingOpacity;
 window.setVideoBrightness = setVideoBrightness;
 window.makeVideoPanel = makeVideoPanel;
 window.replayVideoPanels = replayVideoPanels;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// ⚡ PÁGINA 11 — RENDER Y ACELERACIÓN POR GPU
+// ════════════════════════════════════════════════════════════════════════════
+// Empieza con una estimación absurda (875 h) y la barra sin moverse. Al pulsar
+// CONNECT GPU CLUSTER entra un servidor a 80 Gbps: el tiempo cae a minutos y,
+// unos segundos después, a segundos. La escena no puede ser sólo función del
+// tiempo, así que lleva estado propio.
+// ════════════════════════════════════════════════════════════════════════════
+
+var v2RenderState = { phase: 0, t0: performance.now() };
+
+const GPU_PHASE2_DELAY = 4200;   // salto de minutos a segundos
+const V2_RENDER_TOTAL  = 412900; // capas del modelo
+
+/** Arranca la aceleración. Devuelve false si ya estaba en marcha. */
+function connectGpuCluster() {
+    if (v2RenderState.phase !== 0) return false;
+    v2RenderState.phase = 1;
+    v2RenderState.t0 = performance.now();
+    hapticFeedbackAll(0);
+    // El segundo salto entra solo: es el golpe dramático
+    setTimeout(() => {
+        if (v2RenderState.phase === 1) {
+            v2RenderState.phase = 2;
+            v2RenderState.t0 = performance.now();
+            hapticFeedbackAll(0);
+        }
+    }, GPU_PHASE2_DELAY);
+    return true;
+}
+
+/** Vuelve al estado inicial para repetir la toma. */
+function resetGpuCluster() {
+    v2RenderState = { phase: 0, t0: performance.now() };
+    panels.forEach(p => {
+        if (p.gpuButton) setPanelTextVisible(p, true);
+    });
+    return true;
+}
+
+// Escena de la página 11
+const V2_RENDER_SCENE = t => {
+    const st = v2RenderState;
+    const dt = (performance.now() - st.t0) / 1000;
+    const l = [];
+
+    if (st.phase === 0) {
+        const pct = 0.31 + dt * 0.0008;
+        l.push('  ESTADO      EN COLA');
+        l.push('  COMPUTO     LOCAL  1 nucleo');
+        l.push('  ENLACE      0.4 Mb/s');
+        l.push('');
+        l.push(`  [${bar(pct, 44)}]`);
+        l.push(`  ${pct.toFixed(3)} %`);
+        l.push('');
+        l.push('  TIME REMAINING   875 h 12 m');
+        l.push('');
+        l.push(`  ${spin(t)} depositando capa ${num(1 + dt * 0.4)} / ${num(V2_RENDER_TOTAL)}`);
+        l.push('');
+        l.push('  recursos insuficientes');
+        l.push('  esperando asignacion de computo');
+    } else if (st.phase === 1) {
+        // Salto a minutos: la barra sube de golpe y el reloj se desploma
+        const pct = Math.min(63, 2 + dt * 15);
+        const mins = Math.max(1, 14 - dt * 2.4);
+        l.push('  ESTADO      ACELERADO');
+        l.push('  COMPUTO     GPU CLUSTER  4 096 nucleos');
+        l.push('  ENLACE      80 Gbps');
+        l.push('');
+        l.push(`  [${bar(pct, 44)}]`);
+        l.push(`  ${pct.toFixed(1)} %`);
+        l.push('');
+        l.push(`  TIME REMAINING   ${Math.floor(mins)} m ${padL(Math.floor((mins % 1) * 60), 2)} s`);
+        l.push('');
+        l.push(`  ${spin(t)} depositando capa ${num(Math.min(V2_RENDER_TOTAL, 12000 + dt * 41000))} / ${num(V2_RENDER_TOTAL)}`);
+        l.push('');
+        l.push('  cluster remoto asignado');
+        l.push('  reprogramando cola de render');
+    } else {
+        // Segundos: cuenta atrás real y cierre
+        const pct = Math.min(100, 63 + dt * 9);
+        const secs = Math.max(0, 38 - dt * 4.2);
+        l.push('  ESTADO      MAXIMO RENDIMIENTO');
+        l.push('  COMPUTO     GPU CLUSTER  16 384 nucleos');
+        l.push('  ENLACE      80 Gbps  saturado');
+        l.push('');
+        l.push(`  [${bar(pct, 44)}]`);
+        l.push(`  ${pct.toFixed(1)} %`);
+        l.push('');
+        l.push(secs > 0.5 ? `  TIME REMAINING   ${secs.toFixed(1)} s`
+                          : '  TIME REMAINING   00.0 s');
+        l.push('');
+        l.push(pct >= 99.9
+            ? `  capa ${num(V2_RENDER_TOTAL)} / ${num(V2_RENDER_TOTAL)}`
+            : `  ${spin(t)} depositando capa ${num(Math.min(V2_RENDER_TOTAL, 260000 + dt * 38000))} / ${num(V2_RENDER_TOTAL)}`);
+        l.push('');
+        l.push(pct >= 99.9 ? '  RENDER COMPLETE' : '  volcando geometria a sustrato');
+        l.push(pct >= 99.9 ? '  modelo listo para impresion' : '  sin cuello de botella');
+    }
+    return l.join('\n');
+};
+
+async function buildV2RenderScreen(output) {
+    const gp = await v2PrepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    v2RenderState = { phase: 0, t0: performance.now() };
+
+    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    v2TermHeader(mk, 'render --subject @ZENG --queue');
+
+    // Bloque principal con el reloj y la barra
+    const panelRender = mk(3, 55, 8, 43);
+    makeLiveTerminal(panelRender, { scene: 'render', fontSize: 2.4 });
+
+    // Log de la conexión, a la derecha
+    const panelLog = mk(58, 86, 8, 43);
+    makeLiveTerminal(panelLog, { scene: 'renderLog', fontSize: 1.8 });
+
+    // El botón: grande y claro, para pulsarlo en cámara
+    const btn = mk(3, 55, 2, 6);
+    btn.gpuButton = true;
+    window.setTextOnPanel(btn, '>> CONNECT GPU CLUSTER  80 Gbps <<', 2.4, 'center',
+        { font: 'terminal' });
+
+    if (output) showSuccess('Página de render construida. Pulsa el botón o escribe "gpu".', output);
+    return true;
+}
+
+window.getRenderPhase = () => v2RenderState.phase;
+window.connectGpuCluster = connectGpuCluster;
+window.resetGpuCluster = resetGpuCluster;
+window.buildV2RenderScreen = buildV2RenderScreen;
