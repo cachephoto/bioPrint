@@ -3882,7 +3882,13 @@ document.addEventListener('keydown', (event) => {
             // 0 = inicio de la secuencia (login). 1-9 = páginas guardadas.
             if (!activelyWritingText && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
                 if (!hasSlotData(slotIndex)) {
-                    console.warn(`Tecla ${slotIndex}: slot vacío, nada que cargar`);
+                    // Antes esto no decía nada y parecía que la tecla no servía.
+                    const pages = PROFILE_PAGES[getProfile()] || {};
+                    const disponibles = Object.keys(pages).sort((a, b) => a - b).join(', ');
+                    const msg = `La página ${slotIndex} está vacía en ${profileInfo(getProfile()).label}. Disponibles: ${disponibles || 'ninguna'}.`;
+                    console.warn(msg);
+                    const out = document.getElementById('terminal-output');
+                    if (out) showInfo(msg, out);
                     event.preventDefault();
                     return;
                 }
@@ -8813,6 +8819,11 @@ function processTerminalCommand(command) {
     if (/^\d{1,2}$/.test(cmd)) {
         const n = parseInt(cmd, 10);
         const pages = PROFILE_PAGES[getProfile()] || {};
+        if (!hasSlotData(n)) {
+            const disponibles = Object.keys(pages).sort((a, b) => a - b).join(', ');
+            showError(`La página ${n} está vacía. Disponibles: ${disponibles || 'ninguna'}. Si vienes de otra máquina, prueba "import".`, output);
+            return;
+        }
         if (pages[n]) {
             showSuccess(`Página ${n} · ${pages[n]}`, output);
         } else {
