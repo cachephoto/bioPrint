@@ -50,6 +50,29 @@ function bioprintConfigStore() {
                 });
             });
 
+            // Captura de pantalla a archivo: el frontend manda un PNG en base64
+            server.middlewares.use('/__bioprint/shot', (req, res) => {
+                res.setHeader('Content-Type', 'application/json');
+                if (req.method !== 'POST') { res.statusCode = 405; return res.end('{"ok":false}'); }
+                let body = '';
+                req.on('data', c => { body += c; if (body.length > 40 * 1024 * 1024) req.destroy(); });
+                req.on('end', () => {
+                    try {
+                        const { name, dataUrl } = JSON.parse(body);
+                        const safe = String(name || 'shot').replace(/[^a-zA-Z0-9_-]/g, '');
+                        const b64 = String(dataUrl).replace(/^data:image\/png;base64,/, '');
+                        const dir = path.resolve('./public/shots');
+                        fs.mkdirSync(dir, { recursive: true });
+                        const file = path.join(dir, `${safe}.png`);
+                        fs.writeFileSync(file, Buffer.from(b64, 'base64'));
+                        res.end(JSON.stringify({ ok: true, file: `shots/${safe}.png`, bytes: fs.statSync(file).size }));
+                    } catch (e) {
+                        res.statusCode = 400;
+                        res.end(JSON.stringify({ ok: false, error: e.message }));
+                    }
+                });
+            });
+
             server.middlewares.use('/__bioprint/list', (req, res) => {
                 let files = [];
                 try {

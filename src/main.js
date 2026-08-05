@@ -8913,6 +8913,16 @@ function processTerminalCommand(command) {
         case 'páginas':
             listProfilePages(output);
             break;
+        // 📸 Captura de la pantalla actual a archivo
+        case 'captura':
+        case 'snapshot': {
+            const nombre = args[0] || ('pagina_' + Date.now());
+            snapshotToFile(nombre).then(r => {
+                if (r && r.ok) showSuccess(`Captura en ${r.file} (${Math.round(r.bytes / 1024)} KB)`, output);
+                else showError('No se pudo guardar la captura', output);
+            });
+            break;
+        }
         // 📹 Brillo del video: "videobrillo 0.6" o "videobrillo 0.6 1.3"
         case 'videobrillo':
         case 'videogain': {
@@ -20630,6 +20640,23 @@ function setVideoBrightness(gain, gamma) {
     return n;
 }
 
+/**
+ * Guarda una captura de la pantalla actual en public/shots/<nombre>.png.
+ * Hay que renderizar y leer el canvas en el mismo frame: sin
+ * preserveDrawingBuffer, el buffer se vacía en cuanto se cede el control.
+ */
+async function snapshotToFile(name) {
+    renderBioFX();
+    const dataUrl = renderer.domElement.toDataURL('image/png');
+    const res = await fetch('/__bioprint/shot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, dataUrl })
+    });
+    return res.json();
+}
+
+window.snapshotToFile = snapshotToFile;
 window.setVideoBrightness = setVideoBrightness;
 window.makeVideoPanel = makeVideoPanel;
 window.replayVideoPanels = replayVideoPanels;
