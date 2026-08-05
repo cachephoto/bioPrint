@@ -883,7 +883,13 @@ const PROFILE_PAGES = {
         1: 'ARRANQUE',
         2: 'ESPECIMENES',
         3: 'ARCHIVOS',
-        4: 'CATALOGO VACIO'
+        4: 'CATALOGO VACIO',
+        5: 'REDES',
+        6: 'COMPRAS',
+        7: 'SUSCRIPCIONES',
+        8: 'ANALISIS',
+        9: 'PERFIL',
+        10: 'GENERANDO'
     }
 };
 
@@ -3999,6 +4005,9 @@ function animate() {
 
     // 📁 Listados con una entrada parpadeando
     updateBlinkingLists();
+
+    // ▓ Barras de progreso animadas
+    updateProgressTexts();
     if (typeof updatePendingHumanSequence === 'function') updatePendingHumanSequence();
     
     controls.update();
@@ -6032,6 +6041,7 @@ function getSerializableConfig() {
                     termStream: panel.termStreamData ? JSON.parse(JSON.stringify(panel.termStreamData)) : null, // 💻 Terminal con texto corriendo
                     revealOnAssembly: !!panel.wasAssemblyReveal, // 🔩 Texto que espera al ensamblaje
                     blinkList: panel.blinkListData ? JSON.parse(JSON.stringify(panel.blinkListData)) : null, // 📁 Listado con entrada parpadeando
+                    progressText: panel.progressTextData ? JSON.parse(JSON.stringify(panel.progressTextData)) : null, // ▓ Barra animada
                     isHumanViewer: !!panel.isHumanViewer, // 📁 Visor donde se abre el archivo
                     runHumanOnArrive: !!panel.runHumanOnArrive, // 📁 Al navegar, abre el archivo humano
                     paramValue: typeof panel.paramValue === 'number' ? panel.paramValue : null, // 🎚️ Parámetro ajustable
@@ -6413,6 +6423,9 @@ function loadConfiguration() {
                             }
                             if (panelInfo.behavior.blinkList) {
                                 makeBlinkingList(panelData, panelInfo.behavior.blinkList);
+                            }
+                            if (panelInfo.behavior.progressText) {
+                                makeProgressText(panelData, panelInfo.behavior.progressText);
                             }
                             if (typeof panelInfo.behavior.navTargetSlot === 'number') {
                                 panelData.navTargetSlot = panelInfo.behavior.navTargetSlot;
@@ -8412,6 +8425,9 @@ async function applyConfigurationFromData(configData) {
                         if (panelInfo.behavior.blinkList) {
                             makeBlinkingList(panel, panelInfo.behavior.blinkList);
                         }
+                        if (panelInfo.behavior.progressText) {
+                            makeProgressText(panel, panelInfo.behavior.progressText);
+                        }
                         if (typeof panelInfo.behavior.navTargetSlot === 'number') {
                             panel.navTargetSlot = panelInfo.behavior.navTargetSlot;
                         }
@@ -8847,6 +8863,31 @@ function processTerminalCommand(command) {
         case 'replay':
         case 'rearmar':
             replayAssembly(output);
+            break;
+        // 🗂️ VERSIÓN 2.0 — expediente del usuario
+        case 'redes':
+        case 'social2':
+            buildV2SocialScreen(output);
+            break;
+        case 'compras':
+        case 'purchases':
+            buildV2PurchasesScreen(output);
+            break;
+        case 'subs':
+        case 'suscripciones':
+            buildV2SubsScreen(output);
+            break;
+        case 'analisis':
+        case 'análisis':
+            buildV2AnalysisScreen(output);
+            break;
+        case 'perfil2':
+        case 'profile2':
+            buildV2ProfileScreen(output);
+            break;
+        case 'generando':
+        case 'generating':
+            buildV2GeneratingScreen(output);
             break;
         // 🕳️ VERSIÓN 2.0 — catálogo vacío (la celda central abre el archivo humano)
         case 'vacio':
@@ -9865,9 +9906,14 @@ function initializeApp() {
 // Reemplazar la función mapLogo existente
 // Aplica la textura del logo BioCorp a un panel: UV "Contain" (centrado, sin distorsión)
 // + bring-to-front. Reutilizable desde mapLogo y desde las interfaces (print, etc.).
-function applyLogoTextureToPanel(panel, onSuccess, onError) {
+/**
+ * Aplica cualquier imagen como textura de un panel, encajándola sin deformar.
+ * Es la misma mecánica del logo, generalizada para los iconos de las páginas
+ * de redes y suscripciones.
+ */
+function applyImageTextureToPanel(panel, path, onSuccess, onError) {
     loadTexture(
-        './public/img/bioprint_logo.png',
+        path,
         (texture) => {
             if (!panel.fillMesh) { if (onError) onError(new Error('sin fillMesh')); return; }
             texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -9891,7 +9937,7 @@ function applyLogoTextureToPanel(panel, onSuccess, onError) {
             uvAttribute.needsUpdate = true;
             panel.hasTexture = true;
             panel.textureType = 'logo';
-            panel.texturePath = './public/img/bioprint_logo.png';
+            panel.texturePath = path;
             // Bring to front
             panel.fillMesh.renderOrder = 800;
             [panel.fillMesh.material, ...(panel.textureMaterials ? Object.values(panel.textureMaterials) : [])].forEach(m => {
@@ -9903,6 +9949,10 @@ function applyLogoTextureToPanel(panel, onSuccess, onError) {
         },
         (error) => { if (onError) onError(error); }
     );
+}
+
+function applyLogoTextureToPanel(panel, onSuccess, onError) {
+    return applyImageTextureToPanel(panel, './public/img/bioprint_logo.png', onSuccess, onError);
 }
 
 function mapLogo(args, output) {
@@ -19787,3 +19837,409 @@ async function buildV2FilesScreen(output) {
 
 window.buildV2FilesScreen = buildV2FilesScreen;
 window.runHumanSequence = runHumanSequence;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// 🗂️ BIOPRINT 2.0 — PÁGINAS 5 a 9: EL EXPEDIENTE DEL USUARIO
+// ════════════════════════════════════════════════════════════════════════════
+// Redes vinculadas · historial de compras · suscripciones · análisis masivo ·
+// perfil biométrico. Todo se refiere al usuario como @ZENG.
+// Sin marcas reales: los productos y servicios son genéricos.
+// ════════════════════════════════════════════════════════════════════════════
+
+const V2_USER = '@ZENG';
+
+/** Cabecera común de las páginas de expediente. */
+function v2Header(mk, titulo) {
+    const head = mk(2, 86, 46, 49);
+    window.setTextOnPanel(head, titulo, 2.6, 'left', { font: 'arcade' });
+    return head;
+}
+
+// ── Página 5: redes vinculadas ──────────────────────────────────────────────
+const V2_SOCIAL = [
+    { path: './public/img/meta.png',     handle: '@zeng_____',   dato: '2 314 posts' },
+    { path: './public/img/gmail.png',    handle: 'zeng@____.mx', dato: '41 208 correos' },
+    { path: './public/img/x.png',        handle: '@zeng__',      dato: '9 876 posts' },
+    { path: './public/img/linkedin.png', handle: 'in/zeng__',    dato: '312 contactos' }
+];
+
+async function buildV2SocialScreen(output) {
+    const gp = await useV2Grid();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    if (bioKeybVisible) clearBioKeybOnly();
+    clearAllPanels(true, true);
+    terminalStreams.clear(); blinkingLists.clear();
+    await new Promise(r => setTimeout(r, 300));
+
+    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    v2Header(mk, `REDES VINCULADAS  ${V2_USER}`);
+
+    // Cuatro columnas: icono arriba, identificador y dato debajo. El icono va
+    // más chico que la columna: a ancho completo se comía la pantalla y el
+    // cuarto se salía por el borde.
+    const COL_W = 17, GAP = 4, ICON_W = 12;
+    const x0 = 6;
+    V2_SOCIAL.forEach((red, i) => {
+        const a = x0 + i * (COL_W + GAP);
+        const b = a + COL_W - 1;
+        const sangria = Math.floor((COL_W - ICON_W) / 2);
+        const icono = mk(a + sangria, a + sangria + ICON_W - 1, 29, 40);
+        applyImageTextureToPanel(icono, red.path);
+        const txt = mk(a, b, 17, 27);
+        window.setTextOnPanel(txt, `${red.handle}\n\n${red.dato}\n\nVINCULADA`, 1.9, 'center',
+            { font: 'terminal' });
+    });
+
+    const pie = mk(4, 86, 5, 12);
+    window.setTextOnPanel(pie,
+        'PERMISO CONCEDIDO: lectura de publicaciones, mensajes directos,\n' +
+        'lista de contactos e historial de interacciones.\n' +
+        'Sincronización continua — última: hace 4 minutos.',
+        1.6, 'left', { font: 'terminal', vAlign: 'top' });
+
+    if (output) showSuccess('Página de redes construida', output);
+    return true;
+}
+
+// ── Página 6: historial de compras ──────────────────────────────────────────
+// Productos y servicios genéricos: ninguna marca real.
+const V2_PURCHASES = [
+    '2031-11-04   consola portatil 8K            $ 12 400',
+    '2031-11-04   pase de temporada anual        $  1 990',
+    '2031-10-27   control inalambrico x2         $  3 120',
+    '2031-10-19   moneda virtual 50 000          $  2 400',
+    '2031-10-11   audifonos envolventes          $  5 780',
+    '2031-09-30   silla ergonomica gamer         $  9 250',
+    '2031-09-22   teclado mecanico retro         $  3 640',
+    '2031-09-14   monitor 240Hz curvo            $ 18 900',
+    '2031-09-02   expansion campana espacial     $    890',
+    '2031-08-25   skin legendaria edicion lim.   $  1 250',
+    '2031-08-17   tarjeta grafica gen-12         $ 34 700',
+    '2031-08-06   suscripcion nube de guardado   $    320'
+];
+
+async function buildV2PurchasesScreen(output) {
+    const gp = await useV2Grid();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    if (bioKeybVisible) clearBioKeybOnly();
+    clearAllPanels(true, true);
+    terminalStreams.clear(); blinkingLists.clear();
+    await new Promise(r => setTimeout(r, 300));
+
+    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    v2Header(mk, `HISTORIAL DE COMPRAS  ${V2_USER}`);
+
+    const cab = mk(2, 62, 41, 44);
+    window.setTextOnPanel(cab, 'FECHA        CONCEPTO                       IMPORTE', 2.2, 'left',
+        { font: 'terminal', vAlign: 'middle' });
+
+    const lista = mk(2, 62, 8, 39);
+    window.setTextOnPanel(lista, V2_PURCHASES.join('\n'), 2.4, 'left',
+        { font: 'terminal', vAlign: 'top' });
+
+    const resumen = mk(65, 86, 8, 44);
+    window.setTextOnPanel(resumen,
+        'RESUMEN 12 MESES\n\n' +
+        'operaciones      147\n' +
+        'gasto total  $ 214 880\n' +
+        'ticket medio $   1 462\n\n' +
+        'CATEGORIA\n' +
+        'videojuegos      62%\n' +
+        'hardware         24%\n' +
+        'suscripciones     9%\n' +
+        'otros             5%\n\n' +
+        'PERFIL\n' +
+        'comprador impulsivo\n' +
+        'pico 23:00 - 03:00\n' +
+        'sensible a ediciones\n' +
+        'limitadas',
+        2.0, 'left', { font: 'terminal', vAlign: 'top' });
+
+    if (output) showSuccess('Historial de compras construido', output);
+    return true;
+}
+
+// ── Página 7: suscripciones ─────────────────────────────────────────────────
+const V2_SUBS = [
+    { icon: 'app_5.png',  nombre: 'ARENA+',      precio: '$ 249/mes' },
+    { icon: 'app_11.png', nombre: 'NUBE SAVE',   precio: '$  99/mes' },
+    { icon: 'app_3.png',  nombre: 'VOXCHAT',     precio: '$ 149/mes' },
+    { icon: 'app_14.png', nombre: 'STREAM PRO',  precio: '$ 399/mes' },
+    { icon: 'app_8.png',  nombre: 'MUSICA ILIM', precio: '$ 179/mes' },
+    { icon: 'app_19.png', nombre: 'PASE MUNDOS', precio: '$ 299/mes' },
+    { icon: 'app_2.png',  nombre: 'MERCADO 24',  precio: '$ 129/mes' },
+    { icon: 'app_16.png', nombre: 'MAPA VIVO',   precio: '$  79/mes' }
+];
+
+async function buildV2SubsScreen(output) {
+    const gp = await useV2Grid();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    if (bioKeybVisible) clearBioKeybOnly();
+    clearAllPanels(true, true);
+    terminalStreams.clear(); blinkingLists.clear();
+    await new Promise(r => setTimeout(r, 300));
+
+    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    v2Header(mk, `SUSCRIPCIONES ACTIVAS  ${V2_USER}`);
+
+    // Rejilla 4x2. Las dos filas van con posiciones explícitas: calculadas con
+    // un paso genérico, la segunda se salía por debajo del grid.
+    const COLS = 4, ICON = 13, GAPX = 6;
+    const x0 = 8;
+    const FILAS = [
+        { icono: [30, 42], texto: [25, 29] },   // fila de arriba
+        { icono: [12, 24], texto: [7, 11] }     // fila de abajo
+    ];
+    V2_SUBS.forEach((s, i) => {
+        const col = i % COLS, row = Math.floor(i / COLS);
+        const a = x0 + col * (ICON + GAPX);
+        const f = FILAS[row];
+        const icono = mk(a, a + ICON - 1, f.icono[0], f.icono[1]);
+        applyImageTextureToPanel(icono, './public/img/' + s.icon);
+        const txt = mk(a, a + ICON - 1, f.texto[0], f.texto[1]);
+        window.setTextOnPanel(txt, `${s.nombre}\n${s.precio}`, 1.7, 'center', { font: 'terminal' });
+    });
+
+    const pie = mk(8, 80, 2, 5);
+    window.setTextOnPanel(pie, '8 servicios activos  ·  $ 1 582 / mes  ·  renovacion automatica',
+        1.9, 'center', { font: 'terminal' });
+
+    if (output) showSuccess('Página de suscripciones construida', output);
+    return true;
+}
+
+// ── Página 8: análisis masivo ───────────────────────────────────────────────
+const V2_ANALYSIS_LINES = [
+    '> ingest social.stream',
+    '  posts ............ 12 190',
+    '  mensajes ......... 84 771',
+    '  reacciones ...... 220 418',
+    '',
+    '> ingest commerce.log',
+    '  operaciones ......... 147',
+    '  carritos abandon. ... 302',
+    '',
+    '> ingest biometrics',
+    '  pulsaciones/min ...... 74',
+    '  horas sueño ......... 5.2',
+    '  sesiones nocturnas .. 218',
+    '',
+    '> cross-reference',
+    '  correlaciones .... 41 882',
+    '  patrones .......... 1 204',
+    '',
+    '> modelo predictivo',
+    '  confianza ......... 97.4%'
+];
+
+async function buildV2AnalysisScreen(output) {
+    const gp = await useV2Grid();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    if (bioKeybVisible) clearBioKeybOnly();
+    clearAllPanels(true, true);
+    terminalStreams.clear(); blinkingLists.clear();
+    await new Promise(r => setTimeout(r, 300));
+
+    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    v2Header(mk, 'ANALISIS MASIVO');
+
+    // La cifra manda en la composición
+    const cifra = mk(4, 52, 28, 43);
+    window.setTextOnPanel(cifra, '70B\nDATA POINTS', 6.5, 'center', { font: 'arcade' });
+
+    const sujeto = mk(4, 52, 20, 26);
+    window.setTextOnPanel(sujeto, `Analizing ${V2_USER}...`, 3.2, 'center', { font: 'arcade' });
+
+    // Barra de análisis en marcha
+    const barra = mk(4, 52, 13, 18);
+    makeProgressText(barra, { width: 30, cycleMs: 9000, loop: true, fontSize: 2.0 });
+
+    // Terminal de ingesta a la derecha
+    const term = mk(55, 86, 13, 43);
+    makeTerminalStream(term, {
+        lines: V2_ANALYSIS_LINES,
+        speed: 210,
+        rows: 15,
+        fontSize: 1.7,
+        loop: true,
+        cursor: true
+    });
+
+    const pie = mk(4, 86, 5, 10);
+    window.setTextOnPanel(pie,
+        'Fuentes: redes vinculadas · historial de compras · suscripciones ·\n' +
+        'telemetria de dispositivo · registros biometricos.',
+        1.6, 'left', { font: 'terminal', vAlign: 'top' });
+
+    if (output) showSuccess('Página de análisis construida', output);
+    return true;
+}
+
+// ── Página 9: perfil biométrico ─────────────────────────────────────────────
+const V2_PROFILE_LINES = [
+    '> descargando perfil de usuario',
+    '',
+    '  HABITOS DE CONSUMO',
+    '  compra nocturna ...... 78%',
+    '  impulso vs plan ...... 4:1',
+    '  reincidencia marca ... alta',
+    '',
+    '  PREFERENCIAS',
+    '  formato ....... inmersivo',
+    '  sesion media ..... 4.7 hrs',
+    '  genero dominante . accion',
+    '',
+    '  GUSTOS',
+    '  paleta ......... saturada',
+    '  ritmo ............. rapido',
+    '  narrativa ...... opcional',
+    '',
+    '  PERFIL DE USUARIO',
+    '  segmento ... EARLY-ADOPTER',
+    '  fidelidad ............ 0.82',
+    '  prediccion ....... ALTA',
+    '',
+    '  descarga completa'
+];
+
+async function buildV2ProfileScreen(output) {
+    const gp = await useV2Grid();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    if (bioKeybVisible) clearBioKeybOnly();
+    clearAllPanels(true, true);
+    terminalStreams.clear(); blinkingLists.clear();
+    await new Promise(r => setTimeout(r, 300));
+
+    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    // La cabecera se rotula al final: si se hace antes de cargar el modelo, el
+    // texto se pierde durante esa espera y el recuadro queda vacío.
+    const head = mk(2, 86, 46, 49);
+
+    // El cuerpo, a la izquierda y a toda altura
+    const cuerpo = mk(4, 34, 4, 43);
+    const ok = await loadModelToPanel(cuerpo, './models/her.obj', gp.cellSize);
+    if (ok) {
+        cuerpo.modelData = {
+            name: 'her',
+            url: './models/her.obj',
+            isRotating: true,
+            rotationSpeed: 0.003,
+            isModelDisplay: true,
+            isFromModelCommand: true,
+            isViewer: true
+        };
+        cuerpo.isViewer = true;
+        fitModelInsidePanel(cuerpo);
+    }
+
+    // Descarga de parámetros, corriendo
+    const datos = mk(37, 86, 4, 43);
+    makeTerminalStream(datos, {
+        lines: V2_PROFILE_LINES,
+        speed: 230,
+        rows: 19,
+        fontSize: 1.8,
+        loop: true,
+        cursor: true
+    });
+
+    window.setTextOnPanel(head, `PERFIL DE USUARIO  ${V2_USER}`, 2.6, 'left', { font: 'arcade' });
+
+    if (output) showSuccess('Página de perfil construida', output);
+    return true;
+}
+
+window.buildV2SocialScreen    = buildV2SocialScreen;
+window.buildV2PurchasesScreen = buildV2PurchasesScreen;
+window.buildV2SubsScreen      = buildV2SubsScreen;
+window.buildV2AnalysisScreen  = buildV2AnalysisScreen;
+window.buildV2ProfileScreen   = buildV2ProfileScreen;
+
+
+// ── Barra de progreso animada, persistible ──────────────────────────────────
+// Dibujada con bloques de texto en vez de canvas: así se guarda con la página
+// como cualquier otro texto y se restaura sola al cargar el slot.
+var progressTexts = new Set();
+
+function makeProgressText(panel, cfg) {
+    if (!panel) return null;
+    const conf = {
+        label:    cfg.label || '',
+        width:    cfg.width || 28,
+        cycleMs:  cfg.cycleMs || 6000,      // duración de una pasada completa
+        from:     typeof cfg.from === 'number' ? cfg.from : 0,
+        to:       typeof cfg.to === 'number' ? cfg.to : 100,
+        loop:     cfg.loop !== false,
+        suffix:   cfg.suffix || '',
+        fontSize: cfg.fontSize || 1.8
+    };
+    panel.progressTextData = conf;
+    panel.progressTextState = { t0: performance.now() };
+    progressTexts.add(panel);
+    renderProgressText(panel);
+    return panel;
+}
+
+function renderProgressText(panel) {
+    const c = panel.progressTextData, st = panel.progressTextState;
+    if (!c || !st) return;
+    let k = (performance.now() - st.t0) / c.cycleMs;
+    if (c.loop) k = k % 1; else k = Math.min(1, k);
+    const pct = c.from + (c.to - c.from) * k;
+    const llenos = Math.round((pct / 100) * c.width);
+    const barra = '█'.repeat(Math.max(0, llenos)) + '░'.repeat(Math.max(0, c.width - llenos));
+    const linea = `[${barra}] ${pct.toFixed(1).padStart(5)}%${c.suffix}`;
+    window.setTextOnPanel(panel, c.label ? `${c.label}\n${linea}` : linea,
+        c.fontSize, 'center', { font: 'terminal' });
+}
+
+function updateProgressTexts() {
+    if (!progressTexts || progressTexts.size === 0) return;
+    progressTexts.forEach(panel => {
+        if (!panel.group || !panels.includes(panel)) { progressTexts.delete(panel); return; }
+        renderProgressText(panel);
+    });
+}
+
+// ── Página 10: generación del modelo ────────────────────────────────────────
+async function buildV2GeneratingScreen(output) {
+    const gp = await useV2Grid();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    if (bioKeybVisible) clearBioKeybOnly();
+    clearAllPanels(true, true);
+    terminalStreams.clear(); blinkingLists.clear(); progressTexts.clear();
+    await new Promise(r => setTimeout(r, 300));
+
+    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    v2Header(mk, 'GENERANDO MODELO');
+
+    const titulo = mk(6, 82, 33, 43);
+    window.setTextOnPanel(titulo, 'GENERATING MODEL', 6.0, 'center', { font: 'arcade' });
+
+    const estado = mk(6, 82, 26, 31);
+    window.setTextOnPanel(estado, 'MODELING IN PROGRESS', 3.0, 'center', { font: 'arcade' });
+
+    // Avance lentísimo: la barra apenas se mueve, que es la gracia
+    const barra = mk(6, 82, 17, 24);
+    makeProgressText(barra, {
+        width: 42,
+        from: 0.2, to: 3.4,
+        cycleMs: 240000,
+        loop: false,
+        fontSize: 2.2
+    });
+
+    const tiempo = mk(6, 82, 9, 15);
+    window.setTextOnPanel(tiempo, 'TIME REMAINING   875 HORAS', 2.6, 'center', { font: 'arcade' });
+
+    const pie = mk(6, 82, 4, 7);
+    window.setTextOnPanel(pie, 'no interrumpa el proceso · el sustrato se degrada al detenerse',
+        1.6, 'center', { font: 'terminal' });
+
+    if (output) showSuccess('Página de generación construida', output);
+    return true;
+}
+
+window.makeProgressText = makeProgressText;
+window.buildV2GeneratingScreen = buildV2GeneratingScreen;
