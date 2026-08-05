@@ -20520,8 +20520,16 @@ function makeVideoPanel(panel, cfg) {
         depthWrite: false
     });
 
+    // updatePanelColor y la reconstrucción de geometría sólo respetan el material
+    // de un panel si declara hasTexture + textureMaterials. Sin esto, cualquier
+    // hover, flash o refresco de color sustituía el shader por el relleno plano
+    // y el recuadro se veía de un verde liso en vez del video.
     panel.fillMesh.material = material;
     panel.fillMesh.renderOrder = 700;
+    panel.hasTexture = true;
+    panel.textureType = 'video';
+    panel.texturePath = conf.src;
+    panel.textureMaterials = { normal: material, hover: material, selected: material };
 
     // Encajar el video en el panel sin deformarlo (mismo criterio que el logo)
     const ajustarUV = () => {
