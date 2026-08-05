@@ -918,6 +918,11 @@ function resolveProfile(name) {
 // El verde brilla mucho más que el azul a igual luminancia: con el umbral de
 // bloom por defecto la pantalla se quema y el texto deja de leerse. Cada perfil
 // arranca con su propio ajuste de glow.
+// Densidad de cuadrícula propia de cada versión. Es canónica: manda sobre lo
+// que haya guardado el estilo visual, porque si no, una restauración tardía
+// revierte la densidad y deja los paneles de la página fuera de la rejilla.
+const PROFILE_DIVISIONS = { v1: 24, v2: 50 };
+
 const PROFILE_BASE_FX = {
     v1: null, // el azul se queda con los valores por defecto de bioFX
     v2: { intensity: 1, glowIntensity: 0.55, glowRadius: 0.45, glowThreshold: 0.55 }
@@ -935,6 +940,11 @@ function loadBioFXVisualStyle() {
                 colorPicker.value = base;
                 if (typeof updateBioFXEffect === 'function') updateBioFXEffect();
                 console.log(`Versión ${profileInfo(prof).label}: color base ${base} aplicado`);
+            }
+            const divNew = PROFILE_DIVISIONS[prof];
+            if (divNew && currentDivisions !== divNew) {
+                currentDivisions = divNew;
+                updateGrid(divNew);
             }
             const fx = PROFILE_BASE_FX[prof];
             if (fx) {
@@ -963,6 +973,14 @@ function loadBioFXVisualStyle() {
             }
         }
         
+        // La densidad de la versión manda sobre la guardada
+        const divProfile = PROFILE_DIVISIONS[getProfile()];
+        if (divProfile && currentDivisions !== divProfile) {
+            console.log(`Densidad canónica de la versión: ${currentDivisions} -> ${divProfile}`);
+            currentDivisions = divProfile;
+            updateGrid(divProfile);
+        }
+
         // Aplicar valores guardados de bioFX
         if (visualStyle.color) colorPicker.value = visualStyle.color;
         if (visualStyle.blendType) blendTypePicker.value = visualStyle.blendType;
@@ -4017,6 +4035,9 @@ function animate() {
 
     // 🖥️ Terminales vivas del expediente
     updateLiveTerminals();
+
+    // 📹 Reproductores de video
+    updateVideoPanels();
     if (typeof updatePendingHumanSequence === 'function') updatePendingHumanSequence();
     
     controls.update();
@@ -6052,6 +6073,7 @@ function getSerializableConfig() {
                     blinkList: panel.blinkListData ? JSON.parse(JSON.stringify(panel.blinkListData)) : null, // 📁 Listado con entrada parpadeando
                     progressText: panel.progressTextData ? JSON.parse(JSON.stringify(panel.progressTextData)) : null, // ▓ Barra animada
                     liveTerm: panel.liveTermData ? JSON.parse(JSON.stringify(panel.liveTermData)) : null, // 🖥️ Terminal viva
+                    video: panel.videoData ? JSON.parse(JSON.stringify(panel.videoData)) : null, // 📹 Video teñido
                     isHumanViewer: !!panel.isHumanViewer, // 📁 Visor donde se abre el archivo
                     runHumanOnArrive: !!panel.runHumanOnArrive, // 📁 Al navegar, abre el archivo humano
                     paramValue: typeof panel.paramValue === 'number' ? panel.paramValue : null, // 🎚️ Parámetro ajustable
@@ -6381,6 +6403,12 @@ function loadConfiguration() {
                 if(panelData.group) {
                     scene.add(panelData.group);
                     panels.push(panelData);
+
+                    // 📹 Al mismo nivel que los modelos: un panel de video no tiene
+                    // texto y, anidado en el bloque de texto, nunca se restauraba.
+                    if (panelInfo.behavior && panelInfo.behavior.video) {
+                        makeVideoPanel(panelData, panelInfo.behavior.video);
+                    }
 
                     // 🔥 NUEVO: Restaurar identidad de viewer incluso sin modelo cargado
                     if (panelInfo.behavior && panelInfo.behavior.modelData && panelInfo.behavior.modelData.isViewer) {
@@ -8349,6 +8377,11 @@ async function applyConfigurationFromData(configData) {
                 scene.add(panel.group);
                 panels.push(panel); // Añadir a la lista global de paneles
                 
+                // 📹 Al mismo nivel que los modelos, por lo mismo
+                if (panelInfo.behavior && panelInfo.behavior.video) {
+                    makeVideoPanel(panel, panelInfo.behavior.video);
+                }
+
                 // 🔥 NUEVO: Restaurar identidad de viewer incluso sin modelo cargado
                 if (panelInfo.behavior && panelInfo.behavior.modelData && panelInfo.behavior.modelData.isViewer) {
                     if (!panel.modelData) {
@@ -19106,34 +19139,8 @@ async function buildV2BootScreen(output) {
     window.setTextOnPanel(headerPanel, V2_HEADER_LINES.join('\n'), 1.4, 'left',
         { font: 'terminal', vAlign: 'top' });
 
-    // Megazord animado dentro del recuadro grande
-    (async () => {
-        const ok = await loadModelToPanel(viewerPanel, './models/megazord.fbx', gp.cellSize);
-        if (ok) {
-            viewerPanel.modelData = {
-                name: 'megazord',
-                url: './models/megazord.fbx',
-                isRotating: true,
-                rotationSpeed: 0.004,
-                isViewer: true
-            };
-            // loadModelToPanel oculta el marco cuando el modelo es FBX; aquí el
-            // recuadro es parte del diseño, así que lo devolvemos a la vista.
-            if (viewerPanel.fillMesh) {
-                viewerPanel.fillMesh.visible = true;
-                viewerPanel.fillMesh.userData = { ...(viewerPanel.fillMesh.userData || {}), ignoreRaycast: false };
-            }
-            if (viewerPanel.borderLines) {
-                viewerPanel.borderLines.forEach(l => {
-                    l.visible = true;
-                    l.userData = { ...(l.userData || {}), ignoreRaycast: false };
-                });
-            }
-            scalePanelModel(viewerPanel, 1.45);
-        } else {
-            console.warn('No se pudo cargar megazord.fbx');
-        }
-    })();
+    // Video de arranque, teñido del verde de la interfaz
+    makeVideoPanel(viewerPanel, { src: './video/boot_sequence.mp4' });
 
     // Título en arcade — el contraste con la terminal es lo que da el look.
     // Se queda oculto hasta que los dos bloques del megazord terminan de unirse.
@@ -19368,8 +19375,20 @@ async function useV2Grid() {
     await waitForStableGrid();
     if (currentDivisions !== V2_DIVISIONS) {
         setGridDivisions(V2_DIVISIONS);
-        saveBioFXVisualStyle();          // que sobreviva a la recarga
-        await new Promise(r => setTimeout(r, 700));
+        saveBioFXVisualStyle();
+        // Esperar de verdad a que el grid nuevo cuaje. Con una espera fija, los
+        // paneles se creaban a medio cambio de densidad y quedaban descolocados
+        // o fuera de cámara.
+        const t0 = performance.now();
+        while (performance.now() - t0 < 8000) {
+            const gp = getCurrentGridParams();
+            const listo = gp && gp.cellsX >= 60 && gp.cellsY >= 30 &&
+                Math.abs(gp.cellSize - gp.width / gp.cellsX) < 0.05 &&
+                !gridAnimationInProgress;
+            if (listo) break;
+            await new Promise(r => setTimeout(r, 100));
+        }
+        await new Promise(r => setTimeout(r, 250));
     }
     return getCurrentGridParams();
 }
@@ -19608,16 +19627,24 @@ function armAssemblyReveal(panel) {
 function updateAssemblyReveals() {
     if (!assemblyReveals || assemblyReveals.size === 0) return;
 
-    // El modelo animado es el FBX de la pantalla (el megazord)
-    const source = panels.find(p => p.modelData && typeof p.modelData.url === 'string'
+    // El disparador puede ser un FBX animado o un panel de video: lo que haya
+    // en la pantalla marca el momento en que la máquina termina de armarse.
+    const fbx = panels.find(p => p.modelData && typeof p.modelData.url === 'string'
         && /\.fbx$/i.test(p.modelData.url));
+    const vid = panels.find(p => p.videoEl && panels.includes(p));
+
+    let progreso = null;
+    if (fbx) {
+        const anim = getPanelAnimation(fbx);
+        if (anim) progreso = anim.finished ? 1 : anim.progress;
+    } else if (vid && vid.videoEl && vid.videoEl.duration) {
+        progreso = vid.videoEl.currentTime / vid.videoEl.duration;
+    }
 
     assemblyReveals.forEach(panel => {
         if (!panel.group || !panels.includes(panel)) { assemblyReveals.delete(panel); return; }
-        if (!source) return;                      // el modelo aún no carga
-        const anim = getPanelAnimation(source);
-        if (!anim) return;
-        if (anim.finished || anim.progress >= ASSEMBLY_PROGRESS) {
+        if (progreso === null) return;            // aún no hay fuente lista
+        if (progreso >= ASSEMBLY_PROGRESS) {
             setPanelTextVisible(panel, true);
             panel.revealOnAssembly = false;
             assemblyReveals.delete(panel);
@@ -19630,9 +19657,10 @@ function updateAssemblyReveals() {
 function replayAssembly(output) {
     const source = panels.find(p => p.modelData && typeof p.modelData.url === 'string'
         && /\.fbx$/i.test(p.modelData.url));
-    if (!source) { if (output) showError('No hay modelo animado en esta pantalla', output); return false; }
+    const videos = replayVideoPanels();
+    if (!source && !videos) { if (output) showError('No hay animación ni video en esta pantalla', output); return false; }
     panels.filter(p => p.wasAssemblyReveal).forEach(p => armAssemblyReveal(p));
-    replayPanelAnimation(source);
+    if (source) replayPanelAnimation(source);
     if (output) showSuccess('Secuencia de ensamblaje reiniciada', output);
     return true;
 }
@@ -20398,3 +20426,167 @@ async function buildV2GeneratingScreen(output) {
 window.makeProgressText = makeProgressText;
 window.makeLiveTerminal = makeLiveTerminal;
 window.buildV2GeneratingScreen = buildV2GeneratingScreen;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// 📹 PANEL DE VIDEO TEÑIDO
+// ════════════════════════════════════════════════════════════════════════════
+// El video entra como textura y se pinta del color de la interfaz por
+// luminancia: se descarta el color original y se usa su brillo para modular el
+// verde. Así encaja con el resto aunque el material de origen sea a color.
+// ════════════════════════════════════════════════════════════════════════════
+
+var videoPanels = new Set();
+
+const VIDEO_TINT_VS = `
+    varying vec2 vUv;
+    void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+`;
+
+const VIDEO_TINT_FS = `
+    uniform sampler2D map;
+    uniform vec3  tint;
+    uniform float gain;
+    uniform float gamma;
+    varying vec2 vUv;
+    void main() {
+        // Fuera del recorte no se dibuja nada: evita el borde estirado
+        if (vUv.x < 0.0 || vUv.x > 1.0 || vUv.y < 0.0 || vUv.y > 1.0) discard;
+        vec3 c = texture2D(map, vUv).rgb;
+        float l = dot(c, vec3(0.299, 0.587, 0.114));   // luminancia
+        gl_FragColor = vec4(tint * pow(l, gamma) * gain, 1.0);
+    }
+`;
+
+/**
+ * Convierte un panel en reproductor de video teñido.
+ * cfg = { src, tint:'#00ff66', gain, gamma, loop }
+ */
+function makeVideoPanel(panel, cfg) {
+    if (!panel || !panel.fillMesh) return null;
+    const conf = {
+        src:   cfg.src,
+        tint:  cfg.tint || (PROFILE_BASE_COLOR[getProfile()] || '#00ff66'),
+        gain:  typeof cfg.gain === 'number' ? cfg.gain : 1.25,
+        gamma: typeof cfg.gamma === 'number' ? cfg.gamma : 0.85,
+        loop:  cfg.loop !== false
+    };
+
+    const video = document.createElement('video');
+    video.src = conf.src;
+    video.loop = conf.loop;
+    video.muted = true;            // sin muted, el navegador bloquea el autoplay
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.style.display = 'none';
+    document.body.appendChild(video);
+    // El navegador puede bloquear el autoplay incluso en silencio. Se reintenta
+    // en el loop y, además, al primer gesto del usuario: en set no puede quedar
+    // congelado en el primer frame.
+    const arrancar = () => video.play().catch(() => {});
+    arrancar();
+    ['pointerdown', 'keydown'].forEach(ev =>
+        window.addEventListener(ev, arrancar, { once: true }));
+
+    const texture = new THREE.VideoTexture(video);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    // Hasta que llegue el primer fotograma, la textura está en blanco y el
+    // panel se vería de un verde plano y brillante. Se arranca en negro para
+    // que en cámara el recuadro esté oscuro, no encendido.
+    texture.image = texture.image || video;
+    const negro = document.createElement('canvas');
+    negro.width = negro.height = 2;
+    const nctx = negro.getContext('2d');
+    nctx.fillStyle = '#000'; nctx.fillRect(0, 0, 2, 2);
+    const placeholder = new THREE.CanvasTexture(negro);
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+
+    const col = new THREE.Color(conf.tint);
+    const material = new THREE.ShaderMaterial({
+        uniforms: {
+            map:   { value: placeholder },
+            tint:  { value: new THREE.Vector3(col.r, col.g, col.b) },
+            gain:  { value: conf.gain },
+            gamma: { value: conf.gamma }
+        },
+        vertexShader: VIDEO_TINT_VS,
+        fragmentShader: VIDEO_TINT_FS,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false
+    });
+
+    panel.fillMesh.material = material;
+    panel.fillMesh.renderOrder = 700;
+
+    // Encajar el video en el panel sin deformarlo (mismo criterio que el logo)
+    const ajustarUV = () => {
+        if (!video.videoWidth) return;
+        const geo = panel.fillMesh.geometry;
+        const uv = geo.attributes.uv;
+        const aspectVideo = video.videoWidth / video.videoHeight;
+        const w = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
+        const h = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+        const ratio = (w / h) / aspectVideo;
+        for (let i = 0; i < uv.count; i++) {
+            const u = uv.getX(i), v = uv.getY(i);
+            let nu = u, nv = v;
+            if (ratio < 1) nv = 0.5 + (v - 0.5) / ratio;
+            else           nu = 0.5 + (u - 0.5) * ratio;
+            uv.setXY(i, nu, nv);
+        }
+        uv.needsUpdate = true;
+    };
+    if (video.readyState >= 1) ajustarUV();
+    else video.addEventListener('loadedmetadata', ajustarUV, { once: true });
+
+    // Cambiar del negro al video en cuanto haya un fotograma de verdad
+    const usarVideo = () => { material.uniforms.map.value = texture; };
+    if (video.readyState >= 2) usarVideo();
+    else video.addEventListener('loadeddata', usarVideo, { once: true });
+
+    panel.videoData = conf;                 // lo que se guarda con la página
+    panel.videoEl = video;
+    panel.videoTexture = texture;
+    videoPanels.add(panel);
+    return panel;
+}
+
+/** Limpia los reproductores de paneles que ya no existen. */
+var __videoRetry = 0;
+
+function updateVideoPanels() {
+    if (!videoPanels || videoPanels.size === 0) return;
+
+    // Reintento de arranque cada segundo mientras siga pausado
+    const now = performance.now();
+    const reintentar = now - __videoRetry > 1000;
+    if (reintentar) __videoRetry = now;
+
+    videoPanels.forEach(panel => {
+        if (reintentar && panel.videoEl && panel.videoEl.paused && !panel.videoEl.ended) {
+            panel.videoEl.play().catch(() => {});
+        }
+        if (!panel.group || !panels.includes(panel)) {
+            if (panel.videoEl) { try { panel.videoEl.pause(); panel.videoEl.remove(); } catch (e) {} }
+            if (panel.videoTexture) { try { panel.videoTexture.dispose(); } catch (e) {} }
+            videoPanels.delete(panel);
+        }
+    });
+}
+
+/** Vuelve a empezar el video (para repetir la toma). */
+function replayVideoPanels() {
+    let n = 0;
+    videoPanels.forEach(panel => {
+        if (panel.videoEl) { panel.videoEl.currentTime = 0; panel.videoEl.play().catch(() => {}); n++; }
+    });
+    return n;
+}
+
+window.makeVideoPanel = makeVideoPanel;
+window.replayVideoPanels = replayVideoPanels;

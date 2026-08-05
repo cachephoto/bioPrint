@@ -103,11 +103,16 @@ Abajo:   BURGUER    ·  T-BONE     ·  AMBYSTOMA</div>
             ALL SYSTEMS READY  (arcade, aparece al final)</div>
 <table>
   <tr><td class="cmd">boot2</td><td>Reconstruye la pantalla (página 1, carga sola al abrir)</td></tr>
-  <tr><td class="cmd">replay</td><td>Reinicia el ensamblaje para repetir la toma</td></tr>
+  <tr><td class="cmd">replay</td><td>Reinicia el video / ensamblaje para repetir la toma</td></tr>
 </table>
+<div class="note">El recuadro grande reproduce
+<span class="cmd">public/video/boot_sequence.mp4</span> teñido de verde por
+luminancia (se descarta el color original y su brillo modula el verde). Ajustes
+del teñido: <span class="cmd">gain</span> y <span class="cmd">gamma</span> en
+<span class="cmd">makeVideoPanel</span>.</div>
 <div class="note"><b>ALL SYSTEMS READY no está desde el primer frame</b>: el
 recuadro va vacío mientras las dos mitades de la máquina se acercan, y el texto
-entra justo cuando terminan de unirse (~12 s), con el golpe háptico encima. La
+entra al terminar la primera pasada del video (95%), con el golpe háptico encima. La
 secuencia se repite sola en cada recarga.</div>
 <div class="note">Mezcla tipografías: arcade para titulares, terminal (VT323) para las corridas de texto.</div>
 
