@@ -889,6 +889,13 @@ export async function loadModelToPanel(panel, modelUrl, gridSize) {
             }
         });
         
+        // renderOrder va en las mallas, no en el Group: en Three.js no se hereda.
+        // Sin esto, el fondo oscuro de los paneles de la 2.0 se dibujaba encima
+        // del modelo y lo apagaba.
+        model.traverse(o => {
+            if (o.isMesh || o.isSkinnedMesh || o.isLine || o.isLineSegments) o.renderOrder = 120;
+        });
+
         console.log(`Modelo cargado exitosamente: ${modelUrl}`);
         console.log(`  - Tamaño original: ${modelSize.x.toFixed(2)} x ${modelSize.y.toFixed(2)} x ${modelSize.z.toFixed(2)}`);
         console.log(`  - Panel: ${panelWidth.toFixed(2)} x ${panelHeight.toFixed(2)}`);

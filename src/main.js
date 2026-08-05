@@ -4783,6 +4783,51 @@ function updatePanelGeometryAndPosition(panelData, gridParams) {
 }
 
 // Función para crear UN panel desde bounding box de índices
+// ── Fondo de panel: baja la cuadrícula donde hay un recuadro ────────────────
+// La rejilla del fondo se colaba por debajo de los paneles y competía con los
+// textos. Cada panel recibe un plano oscuro entre la rejilla y su contenido:
+// la cuadrícula sigue ahí, pero atenuada justo donde estorba.
+var PANEL_BACKING_OPACITY = 0.72;
+
+function addPanelBacking(panel, gridParams) {
+    if (!panel || !panel.group || panel.backingMesh) return null;
+    // Sólo la versión verde: ZENG ya está aprobada con su cuadrícula a la vista.
+    if (getProfile() !== 'v2') return null;
+    const w = (panel.maxCellIndex.x - panel.minCellIndex.x + 1) * gridParams.cellSize;
+    const h = (panel.maxCellIndex.y - panel.minCellIndex.y + 1) * gridParams.cellSize;
+    const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: PANEL_BACKING_OPACITY,
+            depthTest: false,
+            depthWrite: false
+        })
+    );
+    mesh.position.z = -0.01;          // detrás del relleno del panel
+    mesh.renderOrder = 50;            // encima de la rejilla, debajo de todo lo demás
+    mesh.userData.isPanelBacking = true;
+    mesh.userData.ignoreRaycast = true;
+    panel.group.add(mesh);
+    panel.backingMesh = mesh;
+    return mesh;
+}
+
+/** Ajusta en vivo cuánto se atenúa la cuadrícula bajo los paneles. */
+function setPanelBackingOpacity(v) {
+    PANEL_BACKING_OPACITY = Math.max(0, Math.min(1, v));
+    let n = 0;
+    panels.forEach(p => {
+        if (p.backingMesh && p.backingMesh.material) {
+            p.backingMesh.material.opacity = PANEL_BACKING_OPACITY;
+            p.backingMesh.material.needsUpdate = true;
+            n++;
+        }
+    });
+    return n;
+}
+
 function createPanelFromBoundingBox(bboxIndices, gridParams) {
      const panelData = {
         group: null,
@@ -4801,6 +4846,7 @@ function createPanelFromBoundingBox(bboxIndices, gridParams) {
     if (panelData.group) {
         scene.add(panelData.group);
         panels.push(panelData);
+        addPanelBacking(panelData, gridParams);
         
         // Crear etiqueta con número de orden
         createPanelOrderLabel(panelData);
@@ -6408,6 +6454,11 @@ function loadConfiguration() {
                     // texto y, anidado en el bloque de texto, nunca se restauraba.
                     if (panelInfo.behavior && panelInfo.behavior.video) {
                         makeVideoPanel(panelData, panelInfo.behavior.video);
+                    }
+                    // 🔀 Lo mismo con la navegación: una celda con modelo y sin
+                    // texto perdía su destino al cargar la página.
+                    if (panelInfo.behavior && typeof panelInfo.behavior.navTargetSlot === 'number') {
+                        panelData.navTargetSlot = panelInfo.behavior.navTargetSlot;
                     }
 
                     // 🔥 NUEVO: Restaurar identidad de viewer incluso sin modelo cargado
@@ -8381,6 +8432,9 @@ async function applyConfigurationFromData(configData) {
                 if (panelInfo.behavior && panelInfo.behavior.video) {
                     makeVideoPanel(panel, panelInfo.behavior.video);
                 }
+                if (panelInfo.behavior && typeof panelInfo.behavior.navTargetSlot === 'number') {
+                    panel.navTargetSlot = panelInfo.behavior.navTargetSlot;
+                }
 
                 // 🔥 NUEVO: Restaurar identidad de viewer incluso sin modelo cargado
                 if (panelInfo.behavior && panelInfo.behavior.modelData && panelInfo.behavior.modelData.isViewer) {
@@ -8913,6 +8967,18 @@ function processTerminalCommand(command) {
         case 'páginas':
             listProfilePages(output);
             break;
+        // ▩ Atenuación de la cuadrícula bajo los paneles
+        case 'fondo':
+        case 'backing': {
+            const v = parseFloat(args[0]);
+            if (isNaN(v)) {
+                showInfo(`Uso: fondo 0-1 (actual ${PANEL_BACKING_OPACITY}). 0 = cuadrícula a la vista, 1 = fondo opaco.`, output);
+                break;
+            }
+            const n = setPanelBackingOpacity(v);
+            showSuccess(`Fondo de panel a ${PANEL_BACKING_OPACITY} (${n} paneles)`, output);
+            break;
+        }
         // 📸 Captura de la pantalla actual a archivo
         case 'captura':
         case 'snapshot': {
@@ -19419,7 +19485,7 @@ async function useV2Grid() {
 
 const V2_SPECIMENS = [
     ['acot',   'tlaloc',  'tort'    ],  // arriba
-    ['discus', 'dog',     'corazon' ],  // medio
+    ['discus', 'pollo',   'corazon' ],  // medio — la celda central abre el archivo
     ['burg',   'hueso',   'axolotl' ]   // abajo
 ];
 const V2_VIEWER_MODEL = 'axolotl';   // el que aparece cargado en el visor grande
@@ -19596,6 +19662,8 @@ async function buildV2ModelsScreen(output, opts = {}) {
             isModelButton: true,
             isFromModelsGrid: true
         };
+        // La celda del centro no carga en el visor: abre los archivos locales
+        if (name === V2_SPECIMENS[1][1]) panel.navTargetSlot = 3;
         // El auto-fit los deja chicos; en la referencia llenan su recuadro.
         scalePanelModel(panel, 1.2);
         fitModelInsidePanel(panel);
@@ -20007,7 +20075,7 @@ function updateLiveTerminals() {
 // Nada de redes reales: ni marcas ni logotipos de terceros.
 const V2_ACCOUNTS = [
     { icon: 'app_12.png', red: 'ORBITA',   id: '@zeng_____',   base: 2314,  rate: 0.7 },
-    { icon: 'app_10.png', red: 'CORREO-Z', id: 'zeng@nodo.mx', base: 41208, rate: 3.1 },
+    { icon: 'app_10.png', red: 'SUPER FANS', id: '@zeng_fan', base: 41208, rate: 3.1 },
     { icon: 'app_3.png',  red: 'PULSO',    id: '@zeng__',      base: 9876,  rate: 1.9 },
     { icon: 'app_20.png', red: 'NEXO',     id: 'nx/zeng__',    base: 312,   rate: 0.2 }
 ];
@@ -20071,7 +20139,7 @@ const V2_SCENES = {
         });
         l.push('');
         l.push(`  registros leidos ..... ${padL(num(1284991 + t * 137), 11)}`);
-        l.push(`  mensajes privados .... ${padL(num(84771 + t * 6), 11)}`);
+        l.push(`  suscriptores ......... ${padL(num(84771 + t * 6), 11)}`);
         l.push(`  contactos mapeados ... ${padL(num(4102 + t * 0.9), 11)}`);
         l.push('');
         l.push(`  [${bar(Math.min(99.9, ramp(t, 99.9, 26)), 34)}] ${padL(Math.min(99.9, ramp(t, 99.9, 26)).toFixed(1), 5)}%`);
@@ -20180,30 +20248,62 @@ const V2_SCENES = {
     },
 
     perfil: t => {
+        // Bloques que van apareciendo uno a uno: el volcado se lee como algo
+        // que la máquina está sacando del cuerpo, no como una ficha ya hecha.
         const bloques = [
+            ['IDENTIDAD', [
+                ['sujeto',          '@ZENG'],
+                ['edad estimada',   '27 anos'],
+                ['complexion',      'media'],
+                ['huella biometrica', 'CONFIRMADA']]],
             ['HABITOS DE CONSUMO', [
-                ['compra nocturna', '78%'], ['impulso vs plan', '4:1'], ['reincidencia', 'alta']]],
+                ['compra nocturna',  '78%'],
+                ['impulso vs plan',  '4 : 1'],
+                ['ventana critica',  '23:00-03:00'],
+                ['reincidencia',     'alta'],
+                ['gasto restringido','27%']]],
             ['PREFERENCIAS', [
-                ['formato', 'inmersivo'], ['sesion media', '4.7 hrs'], ['genero', 'accion']]],
+                ['formato',       'inmersivo'],
+                ['sesion media',  '4.7 hrs'],
+                ['genero',        'accion'],
+                ['tolerancia espera', 'baja'],
+                ['sensibilidad precio', 'nula']]],
             ['GUSTOS', [
-                ['paleta', 'saturada'], ['ritmo', 'rapido'], ['narrativa', 'opcional']]],
+                ['paleta',     'saturada'],
+                ['ritmo',      'rapido'],
+                ['narrativa',  'opcional'],
+                ['companía',   'evitada'],
+                ['repeticion', 'buscada']]],
+            ['SENALES BIOMETRICAS', [
+                ['pulso reposo',  '74 bpm'],
+                ['sueno',         '5.2 hrs'],
+                ['cortisol',      'elevado'],
+                ['sedentarismo',  'severo']]],
             ['PERFIL DE USUARIO', [
-                ['segmento', 'EARLY-ADOPTER'], ['fidelidad', '0.82'], ['prediccion', 'ALTA']]]
+                ['segmento',    'EARLY-ADOPTER'],
+                ['fidelidad',   '0.82'],
+                ['influencia',  '0.34'],
+                ['prediccion',  'ALTA'],
+                ['clasificacion', 'EXPLOTABLE']]]
         ];
         const l = [];
-        let mostradas = 1 + Math.floor(t * 1.4);
+        // Una línea nueva cada ~0.55 s; al llegar al final se queda quieto
+        let quedan = 3 + Math.floor(t * 1.8);
+        const total = bloques.reduce((a, b) => a + b[1].length + 2, 0);
         for (const [titulo, filas] of bloques) {
-            if (mostradas <= 0) break;
+            if (quedan <= 0) break;
             l.push(`  ${titulo}`);
+            quedan--;
             for (const [k, v] of filas) {
-                if (mostradas-- <= 0) break;
-                l.push(`    ${pad(k, 16)} ${padL(v, 14)}`);
+                if (quedan-- <= 0) break;
+                l.push(`    ${pad(k, 20)} ${padL(v, 14)}`);
             }
             l.push('');
         }
-        const p = Math.min(100, ramp(t, 100, 9));
+        const p = Math.min(100, quedan > 0 ? 100 : (3 + Math.floor(t * 1.8)) / total * 100);
         l.push(`  [${bar(p, 30)}] ${padL(p.toFixed(0), 3)}%`);
-        l.push(p >= 99.5 ? '  descarga completa' : `  ${spin(t)} descargando`);
+        l.push(p >= 99.5 ? '  volcado completo — 41 882 registros'
+                         : `  ${spin(t)} extrayendo del sujeto`);
         return l.join('\n');
     },
 
@@ -20657,6 +20757,7 @@ async function snapshotToFile(name) {
 }
 
 window.snapshotToFile = snapshotToFile;
+window.setPanelBackingOpacity = setPanelBackingOpacity;
 window.setVideoBrightness = setVideoBrightness;
 window.makeVideoPanel = makeVideoPanel;
 window.replayVideoPanels = replayVideoPanels;
