@@ -858,14 +858,16 @@ function saveBioFXVisualStyle() {
 }
 
 // Color base por perfil de interfaz (se aplica la primera vez que se usa el perfil)
-const PROFILE_BASE_COLOR = { v1: '#0096ff', v2: '#00ff66' };
+const PROFILE_BASE_COLOR = { v1: '#0096ff', v1en: '#0096ff', v2: '#00ff66', v2en: '#00ff66' };
 
 // Nombre propio de cada versión de la interfaz. La clave interna ('v1'/'v2') no
 // cambia nunca: es la que forma las claves de localStorage donde viven los slots,
 // así que renombrar aquí no mueve ni un diseño guardado.
 const PROFILE_INFO = {
-    v1: { label: 'ZENG',         color: 'azul',  alias: ['v1', 'zeng', 'azul'] },
-    v2: { label: 'BIOPRINT 2.0', color: 'verde', alias: ['v2', '2.0', 'bp2', 'verde', 'terminal'] }
+    v1:    { label: 'ZENG ES',         color: 'azul',  lang: 'es', alias: ['v1', 'zeng', 'zenges', 'zeng-es', 'azul'] },
+    v1en:  { label: 'ZENG EN',         color: 'azul',  lang: 'en', alias: ['v1en', 'zengen', 'zeng-en'] },
+    v2:    { label: 'BIOPRINT 2.0 ES', color: 'verde', lang: 'es', alias: ['v2', '2.0', 'bp2', 'verde', 'terminal', '2.0es', '2.0-es'] },
+    v2en:  { label: 'BIOPRINT 2.0 EN', color: 'verde', lang: 'en', alias: ['v2en', '2.0en', '2.0-en', 'bp2en'] }
 };
 
 function profileInfo(key) {
@@ -875,6 +877,8 @@ function profileInfo(key) {
 // 📄 Páginas numeradas de cada versión. El número ES el slot, así que la tecla
 // del número y el comando del mismo nombre llevan a la misma página.
 const PROFILE_PAGES = {
+    get v1en() { return PROFILE_PAGES.v1; },
+    get v2en() { return PROFILE_PAGES.v2; },
     v1: {
         0: 'LOGIN', 1: 'PRINT', 4: '3D PRINT', 5: 'WELCOME',
         6: 'TERMS', 7: 'APPS', 8: 'ACCESS DENIED', 9: 'SETTINGS'
@@ -922,11 +926,13 @@ function resolveProfile(name) {
 // Densidad de cuadrícula propia de cada versión. Es canónica: manda sobre lo
 // que haya guardado el estilo visual, porque si no, una restauración tardía
 // revierte la densidad y deja los paneles de la página fuera de la rejilla.
-const PROFILE_DIVISIONS = { v1: 24, v2: 50 };
+const PROFILE_DIVISIONS = { v1: 24, v1en: 24, v2: 50, v2en: 50 };
 
 const PROFILE_BASE_FX = {
     v1: null, // el azul se queda con los valores por defecto de bioFX
-    v2: { intensity: 1, glowIntensity: 0.55, glowRadius: 0.45, glowThreshold: 0.55 }
+    v1en: null,
+    v2:   { intensity: 1, glowIntensity: 0.55, glowRadius: 0.45, glowThreshold: 0.55 },
+    v2en: { intensity: 1, glowIntensity: 0.55, glowRadius: 0.45, glowThreshold: 0.55 }
 };
 
 function loadBioFXVisualStyle() {
@@ -9019,6 +9025,18 @@ function processTerminalCommand(command) {
             else showError('No hay video en esta pantalla', output);
             break;
         }
+        // 🌐 Idioma de la interfaz
+        case 'idioma':
+        case 'lang': {
+            const l = (args[0] || '').toLowerCase();
+            if (l !== 'es' && l !== 'en') {
+                showInfo(`Idioma actual: ${getLang()}. Uso: idioma es | idioma en. Luego reconstruye las páginas.`, output);
+                break;
+            }
+            setLang(l);
+            showSuccess(`Idioma: ${l}. Reconstruye las páginas para verlo (o cambia de versión).`, output);
+            break;
+        }
         // ⚡ Página 11 y su aceleración por GPU
         case 'render11':
         case 'render':
@@ -9482,6 +9500,8 @@ function processTerminalCommand(command) {
                 break;
             }
             setProfileKey(key);
+            // Cada perfil trae su idioma: cambiar de versión cambia el idioma solo
+            if (PROFILE_INFO[key].lang) setLang(PROFILE_INFO[key].lang);
             showSuccess(`Versión "${PROFILE_INFO[key].label}" activada (${PROFILE_INFO[key].color}). Recargando…`, output);
             // Recargar para reinicializar slots y color del perfil
             setTimeout(() => location.reload(), 600);
@@ -19515,7 +19535,8 @@ const V2_SPECIMENS = [
     ['burg',   'hueso',   'axolotl' ]   // abajo
 ];
 const V2_VIEWER_MODEL = 'axolotl';   // el que aparece cargado en el visor grande
-const V2_STATUS_TEXT  = 'Escaneo de óptica interrumpido.';
+const V2_STATUS_TEXT_ES = 'Escaneo de optica interrumpido.';
+const V2_STATUS_TEXT_EN = 'Optical scan interrupted.';
 
 /**
  * Verifica que el modelo de un panel quepa en su recuadro y, si se sale, lo
@@ -19635,7 +19656,7 @@ async function buildV2ModelsScreen(output, opts = {}) {
 
     // Estado al pie. Con 18 celdas de ancho el texto ya cabe sin partirse.
     const statusPanel = mk(SIDE_X0, SIDE_X1, 4, 12);
-    window.setTextOnPanel(statusPanel, V2_STATUS_TEXT, 1.5, 'left',
+    window.setTextOnPanel(statusPanel, T(V2_STATUS_TEXT_ES, V2_STATUS_TEXT_EN), 1.5, 'left',
         { font: 'terminal', vAlign: 'top' });
 
     // ── Visor grande ──
@@ -19972,7 +19993,7 @@ async function buildV2FilesScreen(output) {
 
     // Cabecera
     const head = mk(2, 86, 46, 49);
-    window.setTextOnPanel(head, 'BIOCORP // ARCHIVOS LOCALES', 2.6, 'left',
+    window.setTextOnPanel(head, T('BIOCORP // ARCHIVOS LOCALES','BIOCORP // LOCAL FILES'), 2.6, 'left',
         { font: 'arcade' });
 
     // Listado de archivos, con Human.exe parpadeando
@@ -20015,6 +20036,26 @@ window.runHumanSequence = runHumanSequence;
 // ════════════════════════════════════════════════════════════════════════════
 
 const V2_USER = '@ZENG';
+
+// ── Idioma ──────────────────────────────────────────────────────────────────
+// Las páginas de la 2.0 se generan por código, así que basta con elegir la
+// cadena al construirlas. T(es, en) devuelve la que toca. El idioma se guarda
+// por perfil, así que cada versión (ZENG / 2.0) puede estar en su idioma y
+// coexistir con la otra.
+const LANG_KEY = 'bioPrint_lang';
+
+function getLang() {
+    try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'es'; } catch (e) { return 'es'; }
+}
+function setLang(l) {
+    try { localStorage.setItem(LANG_KEY, l === 'en' ? 'en' : 'es'); } catch (e) {}
+    return getLang();
+}
+/** Elige cadena según el idioma activo. */
+function T(es, en) { return getLang() === 'en' ? en : es; }
+
+window.getLang = getLang;
+window.setLang = setLang;
 
 /** Cabecera común de las páginas de expediente. */
 function v2Header(mk, titulo) {
@@ -20156,7 +20197,7 @@ const V2_SCENES = {
 
     redes: t => {
         const l = [];
-        l.push(`${spin(t)} sincronizando ${V2_ACCOUNTS.length} cuentas vinculadas`);
+        l.push(`${spin(t)} ${T('sincronizando','syncing')} ${V2_ACCOUNTS.length} ${T('cuentas vinculadas','linked accounts')}`);
         l.push('');
         V2_ACCOUNTS.forEach((a, i) => {
             const rama = i === V2_ACCOUNTS.length - 1 ? '`-' : '|-';
@@ -20164,14 +20205,14 @@ const V2_SCENES = {
             l.push(`  ${rama} ${pad(a.red, 10)} ${pad(a.id, 13)} ${padL(num(n), 8)} reg   OK`);
         });
         l.push('');
-        l.push(`  registros leidos ..... ${padL(num(1284991 + t * 137), 11)}`);
-        l.push(`  suscriptores ......... ${padL(num(84771 + t * 6), 11)}`);
-        l.push(`  contactos mapeados ... ${padL(num(4102 + t * 0.9), 11)}`);
+        l.push(`  ${pad(T('registros leidos','records read'), 20)} ${padL(num(1284991 + t * 137), 11)}`);
+        l.push(`  ${pad(T('suscriptores','subscribers'), 20)} ${padL(num(84771 + t * 6), 11)}`);
+        l.push(`  ${pad(T('contactos mapeados','mapped contacts'), 20)} ${padL(num(4102 + t * 0.9), 11)}`);
         l.push('');
         l.push(`  [${bar(Math.min(99.9, ramp(t, 99.9, 26)), 34)}] ${padL(Math.min(99.9, ramp(t, 99.9, 26)).toFixed(1), 5)}%`);
         l.push('');
-        l.push(`  permisos: lectura publicaciones / mensajes / contactos`);
-        l.push(`  sync continuo${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
+        l.push(T('  permisos: lectura publicaciones / mensajes / contactos','  granted: read posts / messages / contacts'));
+        l.push(`  ${T('sync continuo','continuous sync')}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
         return l.join('\n');
     },
 
@@ -20180,7 +20221,7 @@ const V2_SCENES = {
         const FILAS = 13;                    // ventana visible
         const paso = Math.floor(t * 1.3);    // un renglón nuevo cada ~0.8 s
         const l = [];
-        l.push(`  FECHA        CONCEPTO                  IMPORTE`);
+        l.push(T('  FECHA        CONCEPTO                  IMPORTE','  DATE         ITEM                      AMOUNT'));
         l.push(`  ${'-'.repeat(46)}`);
         let marcados = 0;
         for (let k = 0; k < FILAS; k++) {
@@ -20189,11 +20230,11 @@ const V2_SCENES = {
             l.push(`  ${f}  ${flag ? '[R]' : '   '} ${pad(c, 22)} ${padL('$ ' + num(p), 9)}`);
         }
         l.push(`  ${'-'.repeat(46)}`);
-        l.push(`  ${spin(t)} leyendo registro   linea ${num(paso + FILAS)} / ${num(4128)}`);
+        l.push(`  ${spin(t)} ${T('leyendo registro','reading ledger')}   ${T('linea','line')} ${num(paso + FILAS)} / ${num(4128)}`);
         l.push('');
-        l.push(`  operaciones ......... ${padL(num(147 + paso), 9)}`);
-        l.push(`  acumulado ........... ${padL('$ ' + num(214880 + paso * 890), 9)}`);
-        l.push(`  [R] restringido ..... ${padL(num(41 + Math.floor(paso / 2)), 9)}`);
+        l.push(`  ${pad(T('operaciones','transactions'), 18)} ${padL(num(147 + paso), 9)}`);
+        l.push(`  ${pad(T('acumulado','running total'), 18)} ${padL('$ ' + num(214880 + paso * 890), 9)}`);
+        l.push(`  ${pad('[R] ' + T('restringido','restricted'), 18)} ${padL(num(41 + Math.floor(paso / 2)), 9)}`);
         return l.join('\n');
     },
 
@@ -20211,19 +20252,19 @@ const V2_SCENES = {
             l.push(`  ${pad(n, 14)} ${bar(p / 48 * 100, 11)} ${padL(p.toFixed(0), 3)}%`);
         });
         l.push('');
-        l.push(`  gasto 12m ..... $ ${num(214880)}`);
-        l.push(`  ticket medio .. $ ${num(1462)}`);
+        l.push(`  ${pad(T('gasto 12m','spend 12m'), 14)} $ ${num(214880)}`);
+        l.push(`  ${pad(T('ticket medio','avg ticket'), 14)} $ ${num(1462)}`);
         l.push('');
-        l.push(`  ${spin(t)} clasificando`);
+        l.push(`  ${spin(t)} ${T('clasificando','classifying')}`);
         l.push('');
-        l.push(`  comprador impulsivo`);
-        l.push(`  pico 23:00 - 03:00`);
-        l.push(`  sensible a ediciones`);
-        l.push(`  limitadas`);
+        l.push(T('  comprador impulsivo','  impulse buyer'));
+        l.push(T('  pico 23:00 - 03:00','  peak 23:00 - 03:00'));
+        l.push(T('  sensible a ediciones','  drawn to limited'));
+        l.push(T('  limitadas','  editions'));
         l.push('');
-        l.push(`  [R] 27% del gasto`);
-        l.push(`  patron nocturno`);
-        l.push(`  recurrencia mensual`);
+        l.push(T('  [R] 27% del gasto','  [R] 27% of spend'));
+        l.push(T('  patron nocturno','  nocturnal pattern'));
+        l.push(T('  recurrencia mensual','  monthly recurrence'));
         return l.join('\n');
     },
 
@@ -20233,15 +20274,15 @@ const V2_SCENES = {
         V2_SUBS.forEach((s, i) => {
             const rama = i === V2_SUBS.length - 1 ? '`-' : '|-';
             const dias = 30 - Math.floor((t * 2 + i * 4) % 30);
-            l.push(`  ${rama} ${pad(s.nombre, 13)} $ ${padL(s.precio, 3)}/mes   renueva en ${padL(dias, 2)}d`);
+            l.push(`  ${rama} ${pad(s.nombre, 13)} $ ${padL(s.precio, 3)}/${T('mes','mo')}   ${T('renueva en','renews in')} ${padL(dias, 2)}d`);
         });
         l.push('');
-        l.push(`  ${spin(t)} verificando metodos de pago`);
+        l.push(`  ${spin(t)} ${T('verificando metodos de pago','verifying payment methods')}`);
         l.push('');
-        l.push(`  activas ....... ${V2_SUBS.length}`);
-        l.push(`  mensual ....... $ ${num(total)}`);
-        l.push(`  anual ......... $ ${num(total * 12)}`);
-        l.push(`  renovacion automatica: SI`);
+        l.push(`  ${pad(T('activas','active'), 14)} ${V2_SUBS.length}`);
+        l.push(`  ${pad(T('mensual','monthly'), 14)} $ ${num(total)}`);
+        l.push(`  ${pad(T('anual','yearly'), 14)} $ ${num(total * 12)}`);
+        l.push(T('  renovacion automatica: SI','  auto-renewal: ON'));
         return l.join('\n');
     },
 
@@ -20266,10 +20307,10 @@ const V2_SCENES = {
             l.push(`  ${pad(n, 14)} ${bar(p, 16)} ${padL(p.toFixed(0), 3)}%  ${padL(num(tot * p / 100), 8)}/${num(tot)}`);
         });
         l.push('');
-        l.push(`  ${spin(t)} cruzando referencias`);
-        l.push(`  correlaciones ..... ${padL(num(ramp(t, 41882, 20)), 8)}`);
-        l.push(`  patrones .......... ${padL(num(ramp(t, 1204, 24)), 8)}`);
-        l.push(`  confianza ......... ${padL(Math.min(97.4, ramp(t, 97.4, 16)).toFixed(1) + '%', 8)}`);
+        l.push(`  ${spin(t)} ${T('cruzando referencias','cross-referencing')}`);
+        l.push(`  ${pad(T('correlaciones','correlations'), 18)} ${padL(num(ramp(t, 41882, 20)), 8)}`);
+        l.push(`  ${pad(T('patrones','patterns'), 18)} ${padL(num(ramp(t, 1204, 24)), 8)}`);
+        l.push(`  ${pad(T('confianza','confidence'), 18)} ${padL(Math.min(97.4, ramp(t, 97.4, 16)).toFixed(1) + '%', 8)}`);
         return l.join('\n');
     },
 
@@ -20277,40 +20318,40 @@ const V2_SCENES = {
         // Bloques que van apareciendo uno a uno: el volcado se lee como algo
         // que la máquina está sacando del cuerpo, no como una ficha ya hecha.
         const bloques = [
-            ['IDENTIDAD', [
-                ['sujeto',          '@ZENG'],
-                ['edad estimada',   '27 anos'],
-                ['complexion',      'media'],
-                ['huella biometrica', 'CONFIRMADA']]],
-            ['HABITOS DE CONSUMO', [
-                ['compra nocturna',  '78%'],
-                ['impulso vs plan',  '4 : 1'],
-                ['ventana critica',  '23:00-03:00'],
-                ['reincidencia',     'alta'],
-                ['gasto restringido','27%']]],
-            ['PREFERENCIAS', [
-                ['formato',       'inmersivo'],
-                ['sesion media',  '4.7 hrs'],
-                ['genero',        'accion'],
-                ['tolerancia espera', 'baja'],
-                ['sensibilidad precio', 'nula']]],
-            ['GUSTOS', [
-                ['paleta',     'saturada'],
-                ['ritmo',      'rapido'],
-                ['narrativa',  'opcional'],
-                ['companía',   'evitada'],
-                ['repeticion', 'buscada']]],
-            ['SENALES BIOMETRICAS', [
-                ['pulso reposo',  '74 bpm'],
-                ['sueno',         '5.2 hrs'],
-                ['cortisol',      'elevado'],
-                ['sedentarismo',  'severo']]],
-            ['PERFIL DE USUARIO', [
-                ['segmento',    'EARLY-ADOPTER'],
-                ['fidelidad',   '0.82'],
-                ['influencia',  '0.34'],
-                ['prediccion',  'ALTA'],
-                ['clasificacion', 'EXPLOTABLE']]]
+            [T('IDENTIDAD','IDENTITY'), [
+                [T('sujeto','subject'), '@ZENG'],
+                [T('edad estimada','estimated age'), T('27 anos','27 yrs')],
+                [T('complexion','build'), T('media','average')],
+                [T('huella biometrica','biometric print'), T('CONFIRMADA','CONFIRMED')]]],
+            [T('HABITOS DE CONSUMO','CONSUMPTION HABITS'), [
+                [T('compra nocturna','night purchases'), '78%'],
+                [T('impulso vs plan','impulse vs plan'), '4 : 1'],
+                [T('ventana critica','critical window'), '23:00-03:00'],
+                [T('reincidencia','repeat rate'), T('alta','high')],
+                [T('gasto restringido','restricted spend'), '27%']]],
+            [T('PREFERENCIAS','PREFERENCES'), [
+                [T('formato','format'), T('inmersivo','immersive')],
+                [T('sesion media','avg session'), '4.7 hrs'],
+                [T('genero','genre'), T('accion','action')],
+                [T('tolerancia espera','wait tolerance'), T('baja','low')],
+                [T('sensibilidad precio','price sensitivity'), T('nula','none')]]],
+            [T('GUSTOS','TASTES'), [
+                [T('paleta','palette'), T('saturada','saturated')],
+                [T('ritmo','pacing'), T('rapido','fast')],
+                [T('narrativa','narrative'), T('opcional','optional')],
+                [T('compania','company'), T('evitada','avoided')],
+                [T('repeticion','repetition'), T('buscada','sought')]]],
+            [T('SENALES BIOMETRICAS','BIOMETRIC SIGNALS'), [
+                [T('pulso reposo','resting pulse'), '74 bpm'],
+                [T('sueno','sleep'), '5.2 hrs'],
+                ['cortisol', T('elevado','elevated')],
+                [T('sedentarismo','sedentary'), T('severo','severe')]]],
+            [T('PERFIL DE USUARIO','USER PROFILE'), [
+                [T('segmento','segment'), 'EARLY-ADOPTER'],
+                [T('fidelidad','loyalty'), '0.82'],
+                [T('influencia','influence'), '0.34'],
+                [T('prediccion','prediction'), T('ALTA','HIGH')],
+                [T('clasificacion','classification'), T('EXPLOTABLE','EXPLOITABLE')]]]
         ];
         const l = [];
         // Una línea nueva cada ~0.55 s; al llegar al final se queda quieto
@@ -20328,8 +20369,8 @@ const V2_SCENES = {
         }
         const p = Math.min(100, quedan > 0 ? 100 : (3 + Math.floor(t * 1.8)) / total * 100);
         l.push(`  [${bar(p, 30)}] ${padL(p.toFixed(0), 3)}%`);
-        l.push(p >= 99.5 ? '  volcado completo — 41 882 registros'
-                         : `  ${spin(t)} extrayendo del sujeto`);
+        l.push(p >= 99.5 ? T('  volcado completo - 41 882 registros','  dump complete - 41 882 records')
+                         : `  ${spin(t)} ${T('extrayendo del sujeto','extracting from subject')}`);
         return l.join('\n');
     },
 
@@ -20342,17 +20383,17 @@ const V2_SCENES = {
         if (st.phase === 0) {
             l.push('> queue --status');
             l.push('');
-            l.push('  posicion en cola ..... 1 284');
-            l.push('  prioridad ............ BAJA');
-            l.push('  nodos disponibles .... 0');
+            l.push(T('  posicion en cola ..... 1 284','  queue position ....... 1 284'));
+            l.push(T('  prioridad ............ BAJA','  priority ............. LOW'));
+            l.push(T('  nodos disponibles .... 0','  nodes available ...... 0'));
             l.push('');
-            l.push(`  ${spin(t)} solicitando computo`);
+            l.push(`  ${spin(t)} ${T('solicitando computo','requesting compute')}`);
             l.push('');
-            l.push('  ningun cluster asignado.');
-            l.push('  el render local tardara');
-            l.push('  875 horas.');
+            l.push(T('  ningun cluster asignado.','  no cluster assigned.'));
+            l.push(T('  el render local tardara','  local render will take'));
+            l.push(T('  875 horas.','  875 hours.'));
             l.push('');
-            l.push('  pulse CONNECT GPU CLUSTER');
+            l.push(T('  pulse CONNECT GPU CLUSTER','  press CONNECT GPU CLUSTER'));
         } else {
             // El handshake va apareciendo línea a línea
             const pasos = [
@@ -20360,23 +20401,23 @@ const V2_SCENES = {
                 '',
                 '  handshake ............ OK',
                 '  cert 4F:19:C8:22 ..... OK',
-                '  enlace ........... 80 Gbps',
-                '  nodos ................. 128',
-                '  nucleos ............ 4 096',
+                T('  enlace ........... 80 Gbps','  link ............. 80 Gbps'),
+                T('  nodos ................. 128','  nodes ................. 128'),
+                T('  nucleos ............ 4 096','  cores .............. 4 096'),
                 '',
                 '> reschedule --render',
-                '  cola reprogramada .... OK',
-                '  memoria 512 GB ....... OK',
-                '  pipeline abierto ..... OK',
+                T('  cola reprogramada .... OK','  queue rescheduled .... OK'),
+                T('  memoria 512 GB ....... OK','  memory 512 GB ........ OK'),
+                T('  pipeline abierto ..... OK','  pipeline open ........ OK'),
                 ''
             ];
             const extra = st.phase === 2 ? [
                 '> gpu --burst',
-                '  nodos ................. 512',
-                '  nucleos ........... 16 384',
-                '  throughput ...... saturado',
+                T('  nodos ................. 512','  nodes ................. 512'),
+                T('  nucleos ........... 16 384','  cores ............. 16 384'),
+                T('  throughput ...... saturado','  throughput ..... saturated'),
                 '',
-                '  estimacion revisada:',
+                T('  estimacion revisada:','  revised estimate:'),
                 '  875 h  ->  14 m  ->  38 s'
             ] : [];
             const todas = pasos.concat(extra);
@@ -20400,11 +20441,11 @@ const V2_SCENES = {
         const seg = Math.floor(t) % 60;
         l.push(`  TIME REMAINING   875 h ${padL(59 - Math.floor(t / 60) % 60, 2)} m ${padL(59 - seg, 2)} s`);
         l.push('');
-        l.push(`  ${spin(t)} depositando capa ${num(1 + t * 0.4)} / 412 900`);
-        l.push(`  sustrato 37.0C   ph 7.38   viscosidad 1.04`);
+        l.push(`  ${spin(t)} ${T('depositando capa','depositing layer')} ${num(1 + t * 0.4)} / 412 900`);
+        l.push(T('  sustrato 37.0C   ph 7.38   viscosidad 1.04','  substrate 37.0C   ph 7.38   viscosity 1.04'));
         l.push('');
-        l.push('  no interrumpa el proceso');
-        l.push('  el sustrato se degrada al detenerse');
+        l.push(T('  no interrumpa el proceso','  do not interrupt the process'));
+        l.push(T('  el sustrato se degrada al detenerse','  substrate degrades if halted'));
         return l.join('\n');
     }
 };
@@ -20517,13 +20558,19 @@ async function buildV2AnalysisScreen(output) {
     makeLiveTerminal(barras, { scene: 'analisisBarras', fontSize: 2.0 });
 
     const fuentes = mk(3, 44, 3, 19);
-    window.setTextOnPanel(fuentes,
+    window.setTextOnPanel(fuentes, T(
         'fuentes activas\n\n' +
         '  cuentas vinculadas\n' +
         '  historial de compras\n' +
         '  suscripciones\n' +
         '  telemetria de dispositivo\n' +
         '  registros biometricos',
+        'active sources\n\n' +
+        '  linked accounts\n' +
+        '  purchase history\n' +
+        '  subscriptions\n' +
+        '  device telemetry\n' +
+        '  biometric records'),
         1.8, 'left', { font: 'terminal', vAlign: 'top' });
 
     if (output) showSuccess('Página de análisis construida', output);
@@ -20891,25 +20938,25 @@ const V2_RENDER_SCENE = t => {
 
     if (st.phase === 0) {
         const pct = 0.31 + dt * 0.0008;
-        l.push('  ESTADO      EN COLA');
-        l.push('  COMPUTO     LOCAL  1 nucleo');
-        l.push('  ENLACE      0.4 Mb/s');
+        l.push(T('  ESTADO      EN COLA','  STATUS      QUEUED'));
+        l.push(T('  COMPUTO     LOCAL  1 nucleo','  COMPUTE     LOCAL  1 core'));
+        l.push(T('  ENLACE      0.4 Mb/s','  LINK        0.4 Mb/s'));
         l.push('');
         l.push(`  [${bar(pct, 44)}]`);
         l.push(`  ${pct.toFixed(3)} %`);
         l.push('');
         l.push('  TIME REMAINING   875 h 12 m');
         l.push('');
-        l.push(`  ${spin(t)} depositando capa ${num(1 + dt * 0.4)} / ${num(V2_RENDER_TOTAL)}`);
+        l.push(`  ${spin(t)} ${T('depositando capa','depositing layer')} ${num(1 + dt * 0.4)} / ${num(V2_RENDER_TOTAL)}`);
         l.push('');
-        l.push('  recursos insuficientes');
-        l.push('  esperando asignacion de computo');
+        l.push(T('  recursos insuficientes','  insufficient resources'));
+        l.push(T('  esperando asignacion de computo','  awaiting compute allocation'));
     } else if (st.phase === 1) {
         // Salto a minutos: la barra sube de golpe y el reloj se desploma
         const pct = Math.min(63, 2 + dt * 15);
         const mins = Math.max(1, 14 - dt * 2.4);
-        l.push('  ESTADO      ACELERADO');
-        l.push('  COMPUTO     GPU CLUSTER  4 096 nucleos');
+        l.push(T('  ESTADO      ACELERADO','  STATUS      ACCELERATED'));
+        l.push(T('  COMPUTO     GPU CLUSTER  4 096 nucleos','  COMPUTE     GPU CLUSTER  4 096 cores'));
         l.push('  ENLACE      80 Gbps');
         l.push('');
         l.push(`  [${bar(pct, 44)}]`);
@@ -20917,17 +20964,17 @@ const V2_RENDER_SCENE = t => {
         l.push('');
         l.push(`  TIME REMAINING   ${Math.floor(mins)} m ${padL(Math.floor((mins % 1) * 60), 2)} s`);
         l.push('');
-        l.push(`  ${spin(t)} depositando capa ${num(Math.min(V2_RENDER_TOTAL, 12000 + dt * 41000))} / ${num(V2_RENDER_TOTAL)}`);
+        l.push(`  ${spin(t)} ${T('depositando capa','depositing layer')} ${num(Math.min(V2_RENDER_TOTAL, 12000 + dt * 41000))} / ${num(V2_RENDER_TOTAL)}`);
         l.push('');
-        l.push('  cluster remoto asignado');
-        l.push('  reprogramando cola de render');
+        l.push(T('  cluster remoto asignado','  remote cluster assigned'));
+        l.push(T('  reprogramando cola de render','  rescheduling render queue'));
     } else {
         // Segundos: cuenta atrás real y cierre
         const pct = Math.min(100, 63 + dt * 9);
         const secs = Math.max(0, 38 - dt * 4.2);
-        l.push('  ESTADO      MAXIMO RENDIMIENTO');
-        l.push('  COMPUTO     GPU CLUSTER  16 384 nucleos');
-        l.push('  ENLACE      80 Gbps  saturado');
+        l.push(T('  ESTADO      MAXIMO RENDIMIENTO','  STATUS      PEAK THROUGHPUT'));
+        l.push(T('  COMPUTO     GPU CLUSTER  16 384 nucleos','  COMPUTE     GPU CLUSTER  16 384 cores'));
+        l.push(T('  ENLACE      80 Gbps  saturado','  LINK        80 Gbps  saturated'));
         l.push('');
         l.push(`  [${bar(pct, 44)}]`);
         l.push(`  ${pct.toFixed(1)} %`);
@@ -20936,11 +20983,11 @@ const V2_RENDER_SCENE = t => {
                           : '  TIME REMAINING   00.0 s');
         l.push('');
         l.push(pct >= 99.9
-            ? `  capa ${num(V2_RENDER_TOTAL)} / ${num(V2_RENDER_TOTAL)}`
-            : `  ${spin(t)} depositando capa ${num(Math.min(V2_RENDER_TOTAL, 260000 + dt * 38000))} / ${num(V2_RENDER_TOTAL)}`);
+            ? `  ${T('capa','layer')} ${num(V2_RENDER_TOTAL)} / ${num(V2_RENDER_TOTAL)}`
+            : `  ${spin(t)} ${T('depositando capa','depositing layer')} ${num(Math.min(V2_RENDER_TOTAL, 260000 + dt * 38000))} / ${num(V2_RENDER_TOTAL)}`);
         l.push('');
-        l.push(pct >= 99.9 ? '  RENDER COMPLETE' : '  volcando geometria a sustrato');
-        l.push(pct >= 99.9 ? '  modelo listo para impresion' : '  sin cuello de botella');
+        l.push(pct >= 99.9 ? '  RENDER COMPLETE' : T('  volcando geometria a sustrato','  writing geometry to substrate'));
+        l.push(pct >= 99.9 ? T('  modelo listo para impresion','  model ready to print') : T('  sin cuello de botella','  no bottleneck'));
     }
     return l.join('\n');
 };
