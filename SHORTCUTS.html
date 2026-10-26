@@ -34,10 +34,29 @@
 <h1>bioPrint · Guía de rodaje</h1>
 <div class="sub">Secuencia completa, atajos y comandos</div>
 
+<h2>HOME — el punto de partida</h2>
+<table class="pages">
+  <tr><td class="cmd">home</td><td>Abre el selector. También <span class="cmd">inicio</span> o <span class="cmd">menu</span>.</td></tr>
+</table>
+<div class="note">Desde el home se ve <b>todo</b> de un vistazo: las cuatro
+versiones (ZENG ES/EN y 2.0 ES/EN), el idioma, y una ficha por cada página
+existente. Se toca la ficha, o se escribe su número. La versión y el idioma
+activos salen con el recuadro relleno.</div>
+<div class="note"><b>Táctil:</b> toda la interfaz responde al toque — fichas,
+botones de navegación, +/- de los ajustes y el botón de GPU. Un toque corto
+sin desplazamiento cuenta como click; arrastrar sigue sirviendo para dibujar
+paneles.</div>
+<div class="note"><b>Todo es código:</b> las páginas ya no se cargan de los
+slots guardados, se construyen al vuelo. Eso significa que la app arranca
+completa en cualquier máquina recién clonada, sin <span class="cmd">import</span>.
+Los slots siguen ahí para guardar variantes a mano.</div>
+<div class="note"><b>Texto vivo:</b> toda página con texto lleva una línea que
+se escribe sola, se borra y vuelve a empezar. Nunca hay una pantalla quieta.</div>
+
 <h2>Dos interfaces en la misma app</h2>
 <table class="pages">
-  <tr><td>ZENG</td><td>azul · 8 páginas terminadas · <span class="cmd">perfil zeng</span></td></tr>
-  <tr><td>BIOPRINT 2.0</td><td>verde, estilo terminal · <span class="cmd">perfil 2.0</span> ← <b>en la que trabajamos</b></td></tr>
+  <tr><td>ZENG</td><td>azul · 8 páginas · ES e inglés · <span class="cmd">perfil zeng</span> / <span class="cmd">perfil zeng-en</span></td></tr>
+  <tr><td>BIOPRINT 2.0</td><td>verde, estilo terminal · 11 páginas · ES e inglés · <span class="cmd">perfil 2.0</span> / <span class="cmd">perfil 2.0-en</span> ← <b>en la que trabajamos</b></td></tr>
 </table>
 <div class="note">También responden a <span class="cmd">perfil azul</span> / <span class="cmd">perfil verde</span>. Sin argumento, <span class="cmd">perfil</span> dice cuál está activa.</div>
 <div class="note">Cada perfil guarda sus 30 slots, su ajuste de imagen y su

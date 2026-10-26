@@ -391,13 +391,19 @@ function startGridAnimation24Frames() {
                         // 🔥 Cargar estilo visual de bioFX (incluyendo resolución del grid)
                         loadBioFXVisualStyle();
                         
-                        // Cargar la página de inicio del perfil activo
-                        const homeSlot = profileHomePage();
+                        // Al volver de un cambio de versión se vuelve al home;
+                        // si no, a la primera página de la versión activa.
                         const output = document.getElementById('terminal-output');
-                        if (output) {
-                            showInfo(`Cargando página ${homeSlot}...`, output);
+                        let pedianHome = false;
+                        try {
+                            pedianHome = localStorage.getItem(HOME_FLAG) === '1';
+                            if (pedianHome) localStorage.removeItem(HOME_FLAG);
+                        } catch (e) { /* sin storage */ }
+                        if (pedianHome) {
+                            buildHome(output);
+                        } else {
+                            irAPagina(profileHomePage(), output);
                         }
-                        loadFromSlot(homeSlot);
 
                         // 🔤 Re-renderizar el texto cuando las fuentes web terminen de
                         // cargar (VT323/Press Start 2P), para que la fuente elegida no
@@ -864,10 +870,10 @@ const PROFILE_BASE_COLOR = { v1: '#0096ff', v1en: '#0096ff', v2: '#00ff66', v2en
 // cambia nunca: es la que forma las claves de localStorage donde viven los slots,
 // así que renombrar aquí no mueve ni un diseño guardado.
 const PROFILE_INFO = {
-    v1:    { label: 'ZENG ES',         color: 'azul',  lang: 'es', alias: ['v1', 'zeng', 'zenges', 'zeng-es', 'azul'] },
-    v1en:  { label: 'ZENG EN',         color: 'azul',  lang: 'en', alias: ['v1en', 'zengen', 'zeng-en'] },
-    v2:    { label: 'BIOPRINT 2.0 ES', color: 'verde', lang: 'es', alias: ['v2', '2.0', 'bp2', 'verde', 'terminal', '2.0es', '2.0-es'] },
-    v2en:  { label: 'BIOPRINT 2.0 EN', color: 'verde', lang: 'en', alias: ['v2en', '2.0en', '2.0-en', 'bp2en'] }
+    v1:    { label: 'ZENG ES',         corto: 'ZENG ES', color: 'azul',  lang: 'es', alias: ['v1', 'zeng', 'zenges', 'zeng-es', 'azul'] },
+    v1en:  { label: 'ZENG EN',         corto: 'ZENG EN', color: 'azul',  lang: 'en', alias: ['v1en', 'zengen', 'zeng-en'] },
+    v2:    { label: 'BIOPRINT 2.0 ES', corto: '2.0 ES',  color: 'verde', lang: 'es', alias: ['v2', '2.0', 'bp2', 'verde', 'terminal', '2.0es', '2.0-es'] },
+    v2en:  { label: 'BIOPRINT 2.0 EN', corto: '2.0 EN',  color: 'verde', lang: 'en', alias: ['v2en', '2.0en', '2.0-en', 'bp2en'] }
 };
 
 function profileInfo(key) {
@@ -876,27 +882,54 @@ function profileInfo(key) {
 
 // 📄 Páginas numeradas de cada versión. El número ES el slot, así que la tecla
 // del número y el comando del mismo nombre llevan a la misma página.
-const PROFILE_PAGES = {
-    get v1en() { return PROFILE_PAGES.v1; },
-    get v2en() { return PROFILE_PAGES.v2; },
+// Nombre de cada página en los dos idiomas: [español, inglés]. Son cortos a
+// propósito — en el home van dentro de una ficha y antes se recortaban.
+const PAGE_NAMES = {
+    get v1en() { return PAGE_NAMES.v1; },
+    get v2en() { return PAGE_NAMES.v2; },
     v1: {
-        0: 'LOGIN', 1: 'PRINT', 4: '3D PRINT', 5: 'WELCOME',
-        6: 'TERMS', 7: 'APPS', 8: 'ACCESS DENIED', 9: 'SETTINGS'
+        0: ['ACCESO', 'LOGIN'],
+        1: ['IMPRIMIR', 'PRINT'],
+        4: ['CATALOGO', 'CATALOG'],
+        5: ['BIENVENIDA', 'WELCOME'],
+        6: ['TERMINOS', 'TERMS'],
+        7: ['APPS', 'APPS'],
+        8: ['DENEGADO', 'DENIED'],
+        9: ['AJUSTES', 'SETTINGS']
     },
     v2: {
-        1: 'ARRANQUE',
-        2: 'ESPECIMENES',
-        3: 'ARCHIVOS',
-        4: 'CATALOGO VACIO',
-        5: 'REDES',
-        6: 'COMPRAS',
-        7: 'SUSCRIPCIONES',
-        8: 'ANALISIS',
-        9: 'PERFIL',
-        10: 'GENERANDO',
-        11: 'RENDER'
+        1:  ['ARRANQUE', 'BOOT'],
+        2:  ['ESPECIMENES', 'SPECIMENS'],
+        3:  ['ARCHIVOS', 'FILES'],
+        4:  ['CATALOGO', 'CATALOG'],
+        5:  ['REDES', 'NETWORKS'],
+        6:  ['COMPRAS', 'PURCHASES'],
+        7:  ['SUSCRIPCIONES', 'SUBS'],
+        8:  ['ANALISIS', 'ANALYSIS'],
+        9:  ['PERFIL', 'PROFILE'],
+        10: ['GENERANDO', 'GENERATING'],
+        11: ['RENDER', 'RENDER']
     }
 };
+
+/** Nombre de una página en el idioma activo. */
+function nombrePagina(prof, n) {
+    const par = (PAGE_NAMES[prof] || {})[n];
+    if (!par) return null;
+    return T(par[0], par[1]);
+}
+
+/** Vista compatible: {numero: nombre} en el idioma activo. */
+const PROFILE_PAGES = new Proxy({}, {
+    get(_, prof) {
+        const tabla = PAGE_NAMES[prof];
+        if (!tabla) return undefined;
+        const out = {};
+        Object.keys(tabla).forEach(k => { out[k] = nombrePagina(prof, k); });
+        return out;
+    },
+    has(_, prof) { return !!PAGE_NAMES[prof]; }
+});
 
 /** Página que se abre al arrancar cada versión. */
 function profileHomePage() {
@@ -3906,19 +3939,8 @@ document.addEventListener('keydown', (event) => {
             // Solo número sin modificadores: cargar página/slot en grid principal
             // 0 = inicio de la secuencia (login). 1-9 = páginas guardadas.
             if (!activelyWritingText && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
-                if (!hasSlotData(slotIndex)) {
-                    // Antes esto no decía nada y parecía que la tecla no servía.
-                    const pages = PROFILE_PAGES[getProfile()] || {};
-                    const disponibles = Object.keys(pages).sort((a, b) => a - b).join(', ');
-                    const msg = `La página ${slotIndex} está vacía en ${profileInfo(getProfile()).label}. Disponibles: ${disponibles || 'ninguna'}.`;
-                    console.warn(msg);
-                    const out = document.getElementById('terminal-output');
-                    if (out) showInfo(msg, out);
-                    event.preventDefault();
-                    return;
-                }
-                console.log(`Cargando página ${slotIndex} desde teclado numérico`);
-                loadFromSlot(slotIndex);
+                console.log(`Construyendo página ${slotIndex} desde teclado numérico`);
+                irAPagina(slotIndex, document.getElementById('terminal-output'));
                 // 🔥 VISTA DE FILMACIÓN: normalizar la cámara SIEMPRE al saltar por número,
                 // aunque el slot haya guardado una cámara con zoom/popup.
                 setTimeout(() => {
@@ -5376,6 +5398,17 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                         }
                         return;
                     }
+                    // 🏠 Selectores del home: versión e idioma
+                    if (clickedPanelData.homeProfile) {
+                        startFlash(clickedPanelData);
+                        homeIrAPerfil(clickedPanelData.homeProfile);
+                        return;
+                    }
+                    if (clickedPanelData.homeLang) {
+                        startFlash(clickedPanelData);
+                        homeIrAIdioma(clickedPanelData.homeLang);
+                        return;
+                    }
                     if (typeof clickedPanelData.navTargetSlot === 'number') {
                         const target = clickedPanelData.navTargetSlot;
                         const withRedAlert = !!clickedPanelData.redAlertOnNav;
@@ -5385,10 +5418,10 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                         startFlash(clickedPanelData);
                         console.log(`🔀 Botón de navegación → página ${target}${withRedAlert ? ' (ALERTA ROJA)' : ''}`);
                         setTimeout(() => {
-                            if (hasSlotData(target)) {
-                                loadFromSlot(target);
-                                if (withRedAlert) setTimeout(startRedAlert, 400);
-                            }
+                            irAPagina(target, document.getElementById('terminal-output'))
+                                .then(ok => {
+                                    if (ok && withRedAlert) setTimeout(startRedAlert, 400);
+                                });
                         }, 300);
                         return;
                     }
@@ -8939,21 +8972,9 @@ function processTerminalCommand(command) {
         return;
     }
 
-    // 📄 Un número suelto ("1", "2") salta a esa página de la versión activa.
+    // 📄 Un número suelto ("1", "2") construye esa página de la versión activa.
     if (/^\d{1,2}$/.test(cmd)) {
-        const n = parseInt(cmd, 10);
-        const pages = PROFILE_PAGES[getProfile()] || {};
-        if (!hasSlotData(n)) {
-            const disponibles = Object.keys(pages).sort((a, b) => a - b).join(', ');
-            showError(`La página ${n} está vacía. Disponibles: ${disponibles || 'ninguna'}. Si vienes de otra máquina, prueba "import".`, output);
-            return;
-        }
-        if (pages[n]) {
-            showSuccess(`Página ${n} · ${pages[n]}`, output);
-        } else {
-            showInfo(`Página ${n} (sin nombre en esta versión)`, output);
-        }
-        loadFromSlot(n);
+        irAPagina(parseInt(cmd, 10), output);
         return;
     }
 
@@ -9006,6 +9027,13 @@ function processTerminalCommand(command) {
             showSuccess(`Fondo de panel a ${PANEL_BACKING_OPACITY} (${n} paneles)`, output);
             break;
         }
+        // 🏠 Pantalla de inicio: elegir versión, idioma y página
+        case 'home':
+        case 'inicio':
+        case 'menu':
+        case 'menú':
+            buildHome(output);
+            break;
         // 📸 Captura de la pantalla actual a archivo
         case 'captura':
         case 'snapshot': {
@@ -9784,6 +9812,8 @@ window.processTerminalCommand = processTerminalCommand;
 // Funciones auxiliares para los comandos
 function showHelp(output) {
     const commands = [
+        'home - Pantalla de inicio: elegir version, idioma y pagina (tambien: inicio, menu)',
+        '<numero> - Va a esa pagina de la version activa (se construye por codigo)',
         'help - Muestra todos los comandos disponibles',
         'zeng - Activa el efecto Zeng (azul)',
         'matrix - Activa el efecto Matrix (verde)', 
@@ -19019,6 +19049,17 @@ window.setTextOnPanel = function(panel, text, fontSize, align, opts) {
     opts = opts || {};
     panel.hasText = true;
     createPanelText(panel, gp.cellSize);
+    // El salto de línea se calcula con el cuerpo y la fuente que el panel tenga
+    // puestos en ese momento. Si se aplican DESPUÉS del texto, el párrafo queda
+    // partido con las métricas por defecto: los términos de ZENG se plegaban a
+    // un cuarto del ancho del panel. Se fija el estilo antes de escribir.
+    const prev = panelTextState.get(panel);
+    if (prev) {
+        if (fontSize) prev.customFontSize = fontSize;
+        prev.textAlign = align || 'center';
+        prev.verticalAlign = opts.vAlign || 'middle';
+        if (opts.font) prev.fontName = opts.font;
+    }
     setPanelText(panel, text, gp.cellSize);
     const st = panelTextState.get(panel);
     if (st) {
@@ -19251,7 +19292,7 @@ async function waitForStableGrid(timeoutMs = 20000) {
 }
 
 async function buildV2BootScreen(output) {
-    const gp = await useV2Grid();
+    const gp = await useProfileGrid();
     if (!gp) { showError('Grid no disponible', output); return false; }
 
     // El teclado estorba en la pantalla de arranque: fuera.
@@ -19259,8 +19300,7 @@ async function buildV2BootScreen(output) {
     clearAllPanels(true, true);
     terminalStreams.clear();
 
-    const mk = (minX, maxX, minY, maxY) =>
-        createPanelFromBoundingBox({ minX, maxX, minY, maxY }, gp);
+    const mk = makeMk(gp);
 
     // ── Cabecera: logo (izq) + datos de sistema (der) ──
     const logoPanel   = mk(4, 42, 40, 48);
@@ -19512,27 +19552,9 @@ window.checkRepoBackup = checkRepoBackup;
 const V2_DIVISIONS = 50;
 
 /** Deja el grid en la densidad de la 2.0 y devuelve sus parámetros ya estables. */
-async function useV2Grid() {
-    await waitForStableGrid();
-    if (currentDivisions !== V2_DIVISIONS) {
-        setGridDivisions(V2_DIVISIONS);
-        saveBioFXVisualStyle();
-        // Esperar de verdad a que el grid nuevo cuaje. Con una espera fija, los
-        // paneles se creaban a medio cambio de densidad y quedaban descolocados
-        // o fuera de cámara.
-        const t0 = performance.now();
-        while (performance.now() - t0 < 8000) {
-            const gp = getCurrentGridParams();
-            const listo = gp && gp.cellsX >= 60 && gp.cellsY >= 30 &&
-                Math.abs(gp.cellSize - gp.width / gp.cellsX) < 0.05 &&
-                !gridAnimationInProgress;
-            if (listo) break;
-            await new Promise(r => setTimeout(r, 100));
-        }
-        await new Promise(r => setTimeout(r, 250));
-    }
-    return getCurrentGridParams();
-}
+// Las páginas de la verde pedían su rejilla por nombre; ahora la densidad
+// sale del perfil activo, así que es el mismo camino para las dos versiones.
+const useV2Grid = () => useProfileGrid();
 
 const V2_SPECIMENS = [
     ['acot',   'tlaloc',  'tort'    ],  // arriba
@@ -19624,7 +19646,7 @@ function fitModelInsidePanel(panel, margin = 0.96) {
 async function buildV2ModelsScreen(output, opts = {}) {
     const withModels    = opts.withModels !== false;                 // la pág. 4 va vacía
     const centerNavSlot = typeof opts.centerNavSlot === 'number' ? opts.centerNavSlot : null;
-    const gp = await useV2Grid();
+    const gp = await useProfileGrid();
     if (!gp) { showError('Grid no disponible', output); return false; }
 
     clearAllPanels(true, true);
@@ -19645,8 +19667,7 @@ async function buildV2ModelsScreen(output, opts = {}) {
         moveKeyboard(KEYB_X - bb.x0, KEYB_Y - bb.y0);
     }
 
-    const mk = (minX, maxX, minY, maxY) =>
-        createPanelFromBoundingBox({ minX, maxX, minY, maxY }, gp);
+    const mk = makeMk(gp);
 
     // ── Columnas: barra lateral · centro (rejilla + teclado) · visor ──
     const SIDE_X0 = 2,  SIDE_X1 = 19;    // 18 celdas
@@ -19984,7 +20005,7 @@ async function runHumanSequence(output) {
 }
 
 async function buildV2FilesScreen(output) {
-    const gp = await useV2Grid();
+    const gp = await useProfileGrid();
     if (!gp) { showError('Grid no disponible', output); return false; }
 
     if (bioKeybVisible) clearBioKeybOnly();
@@ -19993,8 +20014,7 @@ async function buildV2FilesScreen(output) {
     blinkingLists.clear();
     await new Promise(r => setTimeout(r, 300));
 
-    const mk = (minX, maxX, minY, maxY) =>
-        createPanelFromBoundingBox({ minX, maxX, minY, maxY }, gp);
+    const mk = makeMk(gp);
 
     // Cabecera
     const head = mk(2, 86, 46, 49);
@@ -20199,6 +20219,35 @@ const V2_PURCHASES = [
 
 // ── Escenas: funciones del tiempo, por eso todo se mueve ────────────────────
 const V2_SCENES = {
+
+    // Compartidas por las dos versiones: dan el texto que siempre se mueve.
+    estado: t => escenaEstado(t),
+    pulso:  t => escenaPulso(t),
+
+    // Página de impresión de ZENG: la máquina trabajando, capa a capa.
+    zengPrint: t => {
+        const CAPAS = 412;
+        const hecho = Math.min(CAPAS, Math.floor(t * 3.1));
+        const pct = hecho / CAPAS * 100;
+        const l = [];
+        l.push(T('IMPRIMIENDO  ·  DISK FISH', 'PRINTING  ·  DISK FISH'));
+        l.push('');
+        l.push(`[${bar(pct, 46)}] ${padL(pct.toFixed(1), 5)}%`);
+        l.push('');
+        l.push(`${pad(T('capa', 'layer'), 22)}${padL(hecho + ' / ' + CAPAS, 16)}`);
+        l.push(`${pad(T('boquilla', 'nozzle'), 22)}${padL((38.0 + Math.sin(t * 1.7) * 0.4).toFixed(1) + ' C', 16)}`);
+        l.push(`${pad(T('biotinta restante', 'bioink left'), 22)}${padL((82 - pct * 0.21).toFixed(1) + '%', 16)}`);
+        l.push(`${pad(T('caudal', 'flow rate'), 22)}${padL((2.4 + Math.sin(t * 2.3) * 0.2).toFixed(2) + ' ml/s', 16)}`);
+        l.push('');
+        if (pct >= 99.95) {
+            l.push(T('  pieza terminada — retirar de la bandeja',
+                     '  part complete — remove from tray'));
+        } else {
+            const restante = Math.max(0, Math.round((CAPAS - hecho) / 3.1));
+            l.push(`  ${spin(t)} ${T('tiempo restante', 'time remaining')} ${Math.floor(restante / 60)}m ${restante % 60}s`);
+        }
+        return l.join('\n');
+    },
 
     redes: t => {
         const l = [];
@@ -20458,30 +20507,14 @@ function v2TermHeader(mk, comando) {
 }
 
 /** Deja el lienzo listo para una página del expediente. */
-async function v2PrepararPagina() {
-    const gp = await useV2Grid();
-    if (!gp) return null;
-    if (bioKeybVisible) clearBioKeybOnly();
-    const limpiar = () => {
-        clearAllPanels(true, true);
-        terminalStreams.clear(); blinkingLists.clear();
-        progressTexts.clear(); liveTerminals.clear();
-    };
-    // Una carga de slot restaura sus paneles de forma asíncrona: si se estaba
-    // cargando una página al construir otra, sus paneles aterrizan DESPUÉS de
-    // la limpieza y acaban guardados dentro de la nueva. Se limpia dos veces.
-    limpiar();
-    await new Promise(r => setTimeout(r, 1400));
-    limpiar();
-    await new Promise(r => setTimeout(r, 300));
-    return gp;
-}
+// Conservado por nombre: las páginas de la verde lo llaman en todas partes.
+const v2PrepararPagina = () => prepararPagina();
 
 // ── Página 5: cuentas vinculadas ────────────────────────────────────────────
 async function buildV2SocialScreen(output) {
     const gp = await v2PrepararPagina();
     if (!gp) { showError('Grid no disponible', output); return false; }
-    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    const mk = makeMk(gp);
     v2TermHeader(mk, 'scan --linked-accounts @ZENG');
 
     // Iconos del proyecto, en fila
@@ -20505,7 +20538,7 @@ async function buildV2SocialScreen(output) {
 async function buildV2PurchasesScreen(output) {
     const gp = await v2PrepararPagina();
     if (!gp) { showError('Grid no disponible', output); return false; }
-    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    const mk = makeMk(gp);
     v2TermHeader(mk, 'ledger --user @ZENG --range 12m');
 
     const lista = mk(2, 55, 3, 44);
@@ -20522,7 +20555,7 @@ async function buildV2PurchasesScreen(output) {
 async function buildV2SubsScreen(output) {
     const gp = await v2PrepararPagina();
     if (!gp) { showError('Grid no disponible', output); return false; }
-    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    const mk = makeMk(gp);
     v2TermHeader(mk, 'subscriptions --active');
 
     // Fila de iconos arriba, terminal debajo
@@ -20544,7 +20577,7 @@ async function buildV2SubsScreen(output) {
 async function buildV2AnalysisScreen(output) {
     const gp = await v2PrepararPagina();
     if (!gp) { showError('Grid no disponible', output); return false; }
-    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    const mk = makeMk(gp);
     v2TermHeader(mk, 'analyze --deep @ZENG');
 
     const cifra = mk(3, 44, 28, 43);
@@ -20580,7 +20613,7 @@ async function buildV2AnalysisScreen(output) {
 async function buildV2ProfileScreen(output) {
     const gp = await v2PrepararPagina();
     if (!gp) { showError('Grid no disponible', output); return false; }
-    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    const mk = makeMk(gp);
     const head = mk(2, 86, 46, 49);
 
     const cuerpo = mk(3, 33, 3, 44);
@@ -20663,7 +20696,7 @@ function updateProgressTexts() {
 async function buildV2GeneratingScreen(output) {
     const gp = await v2PrepararPagina();
     if (!gp) { showError('Grid no disponible', output); return false; }
-    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    const mk = makeMk(gp);
     v2TermHeader(mk, 'bioprint --generate --subject @ZENG');
 
     const term = mk(6, 82, 5, 43);
@@ -21012,7 +21045,7 @@ async function buildV2RenderScreen(output) {
     if (!gp) { showError('Grid no disponible', output); return false; }
     v2RenderState = { phase: 0, t0: performance.now() };
 
-    const mk = (a, b, c, d) => createPanelFromBoundingBox({ minX: a, maxX: b, minY: c, maxY: d }, gp);
+    const mk = makeMk(gp);
     v2TermHeader(mk, 'render --subject @ZENG --queue');
 
     // Bloque principal con el reloj y la barra
@@ -21037,3 +21070,949 @@ window.getRenderPhase = () => v2RenderState.phase;
 window.connectGpuCluster = connectGpuCluster;
 window.resetGpuCluster = resetGpuCluster;
 window.buildV2RenderScreen = buildV2RenderScreen;
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  NAVEGACIÓN POR CÓDIGO
+//  Antes cada página se cargaba de un slot guardado en localStorage: el diseño
+//  no vivía en el repo, había que exportarlo e importarlo entre máquinas, y una
+//  limpieza del navegador se llevaba el trabajo. Ahora cada página es una
+//  función que la construye. Los slots siguen existiendo para guardar variantes
+//  a mano, pero ya no hacen falta para que la app arranque entera.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Cada versión se diseñó sobre una rejilla de un ancho concreto. cellsY lo fija
+// la densidad del perfil, pero cellsX sale de la proporción de la ventana: en
+// una pantalla menos apaisada los paneles se salían de cámara. Las coordenadas
+// de diseño se reescalan al ancho real para que la página quepa siempre.
+const PAGE_DESIGN_X = { v1: 43, v1en: 43, v2: 89, v2en: 89 };
+
+/** Fábrica de paneles en coordenadas de diseño. */
+function makeMk(gp, prof) {
+    const base = PAGE_DESIGN_X[prof || getProfile()] || gp.cellsX;
+    const k = gp.cellsX / base;
+    return (minX, maxX, minY, maxY) => createPanelFromBoundingBox({
+        minX: Math.max(0, Math.round(minX * k)),
+        maxX: Math.min(gp.cellsX - 1, Math.round((maxX + 1) * k) - 1),
+        minY: Math.max(0, minY),
+        maxY: Math.min(gp.cellsY - 1, maxY)
+    }, gp);
+}
+
+/** Espera a que la rejilla tenga la densidad del perfil activo y esté quieta. */
+async function useProfileGrid() {
+    const divs = PROFILE_DIVISIONS[getProfile()] || 24;
+    await waitForStableGrid();
+    if (currentDivisions !== divs) {
+        setGridDivisions(divs);
+        saveBioFXVisualStyle();
+        // Esperar de verdad a que cuaje: con una espera fija los paneles se
+        // creaban a medio cambio de densidad y quedaban descolocados.
+        const t0 = performance.now();
+        while (performance.now() - t0 < 8000) {
+            const gp = getCurrentGridParams();
+            const listo = gp && gp.cellsY >= divs - 1 && gp.cellsX >= 10 &&
+                Math.abs(gp.cellSize - gp.width / gp.cellsX) < 0.05 &&
+                !gridAnimationInProgress;
+            if (listo) break;
+            await new Promise(r => setTimeout(r, 100));
+        }
+        await new Promise(r => setTimeout(r, 250));
+    }
+    return getCurrentGridParams();
+}
+
+/** Deja el lienzo limpio y devuelve la rejilla lista para construir encima. */
+async function prepararPagina() {
+    const gp = await useProfileGrid();
+    if (!gp) return null;
+    if (bioKeybVisible) clearBioKeybOnly();
+    const limpiar = () => {
+        clearAllPanels(true, true);
+        terminalStreams.clear(); blinkingLists.clear();
+        progressTexts.clear(); liveTerminals.clear();
+    };
+    // Una carga de slot restaura sus paneles de forma asíncrona: si se estaba
+    // cargando una página al construir otra, sus paneles aterrizan DESPUÉS de
+    // la limpieza y acaban dentro de la nueva. Se limpia dos veces.
+    limpiar();
+    await new Promise(r => setTimeout(r, 1400));
+    limpiar();
+    await new Promise(r => setTimeout(r, 300));
+    return gp;
+}
+
+
+// ── Texto vivo ─────────────────────────────────────────────────────────────
+// El encargo es que en toda página con texto haya siempre algo moviéndose.
+// Esta escena escribe una línea letra a letra, la deja respirar y pasa a la
+// siguiente, con el cursor parpadeando: da señal de vida sin robar atención.
+const LINEAS_VIVAS = {
+    v1: () => [
+        T('verificando cartucho', 'verifying cartridge'),
+        T('cabezal 38.2 C estable', 'head 38.2 C stable'),
+        T('sincronizando @ZENG', 'syncing @ZENG'),
+        T('calibrando boquillas', 'calibrating nozzles'),
+        T('biotinta 82%', 'bioink 82%'),
+        T('enlace BIOCORP activo', 'BIOCORP link up')
+    ],
+    v2: () => [
+        T('rastreando huella digital del sujeto', 'tracing subject digital footprint'),
+        T('indexando 70 B puntos de datos', 'indexing 70 B data points'),
+        T('correlacionando habitos de consumo', 'correlating consumption habits'),
+        T('nodo de sintesis en espera', 'synthesis node standing by'),
+        T('cola de render: 1 trabajo activo', 'render queue: 1 active job'),
+        T('canal cifrado con el nucleo', 'encrypted channel to core')
+    ]
+};
+
+function lineasVivas() {
+    const prof = getProfile();
+    const fn = LINEAS_VIVAS[prof] || LINEAS_VIVAS[prof === 'v1en' ? 'v1' : 'v2'];
+    return (fn || LINEAS_VIVAS.v2)();
+}
+
+/** Escribe, espera y borra; vuelve a empezar al terminar la lista. */
+function escenaEstado(t) {
+    // La azul es una interfaz de consumo, no una terminal: el prompt largo
+    // sobra y además no cabe en la franja.
+    const prompt = getProfile().startsWith('v1') ? '>' : PROMPT;
+    const ls = lineasVivas();
+    if (!ls.length) return '';
+    const ESCRIBIR = 0.055;          // segundos por letra
+    const RESPIRO  = 2.6;            // lo que se queda la línea completa
+    const largo = ls.map(l => l.length);
+    const duracion = largo.map(n => n * ESCRIBIR + RESPIRO);
+    const total = duracion.reduce((a, b) => a + b, 0);
+    let local = t % total, i = 0;
+    while (local > duracion[i]) { local -= duracion[i]; i = (i + 1) % ls.length; }
+    const visibles = Math.min(ls[i].length, Math.floor(local / ESCRIBIR));
+    const cursor = Math.floor(t * 2.5) % 2 ? '_' : ' ';
+    return `${prompt} ${ls[i].slice(0, visibles)}${cursor}`;
+}
+
+/** Barra de actividad que nunca se detiene, para páginas sin terminal. */
+function escenaPulso(t) {
+    const ls = lineasVivas();
+    const i = Math.floor(t / 4) % ls.length;
+    const pct = (t * 7) % 100;
+    return `[${bar(pct, 28)}] ${spin(t)} ${ls[i]}`;
+}
+
+
+const ZENG_TERMS_EN = [
+    'TERMS AND CONDITIONS OF USE – BIOPRINT SYSTEM',
+    '',
+    'Property of BIOCORP, LLC.',
+    '',
+    '1. ACCEPTANCE OF TERMS',
+    'By accessing, operating, or interacting with the BIOPRINT hardware unit,',
+    'software interface, or associated cloud services (collectively, the',
+    '"Service"), you ("The User") agree to be bound by these Terms and Conditions',
+    '("Terms"). If you do not agree to all of these Terms, do not access or use',
+    'the BIOPRINT machine.',
+    '',
+    '2. DATA COLLECTION AND USER CONSENT',
+    'To ensure the optimal calibration of the BIOPRINT system and to provide a',
+    'hyper-personalized biological synthesis, BIOCORP requires the collection of',
+    'extensive user data. By using the Service, The User grants BIOCORP an',
+    'irrevocable, worldwide, royalty-free license to collect, process, and analyze',
+    'the following categories of data:',
+    '',
+    '2.1. Personal and Biometric Information',
+    'The User agrees to provide accurate and complete personal identification',
+    'data, including but not limited to: full legal name, date of birth,',
+    'residential address, Social Security Number (for identity verification',
+    'purposes), and genetic or biological samples required by the BIOPRINT intake',
+    'module. The User expressly consents to the capture and storage of biometric',
+    'identifiers, including facial recognition scans, fingerprints, and retinal',
+    'patterns, to secure their unique User Profile.',
+    '',
+    '2.2. Social Media Integration and Digital Footprint',
+    'Access to the BIOPRINT functionality requires the synchronization of The',
+    'User\'s primary social media accounts. The User hereby authorizes BIOCORP to',
+    'access, scrape, and analyze data from connected platforms (including, but not',
+    'limited to, X/Twitter, Meta/Facebook, Instagram, TikTok, and LinkedIn). This',
+    'access includes:',
+    '',
+    '* Content Analysis: Scanning of public and private posts, direct messages,',
+    'and comments to assess psychological states and stress levels.',
+    '',
+    '* Social Graphing: Mapping of friend lists and professional networks to',
+    'determine social influence factors.',
+    '',
+    '* Sentiment Metrics: Analysis of "likes," shares, and engagement history to',
+    'refine the User\'s psychographic profile.',
+    '',
+    '2.3. Consumption Habits and Lifestyle Data',
+    'The User authorizes BIOCORP to aggregate data regarding their consumption',
+    'habits to predict biological needs. This includes accessing:',
+    '',
+    '* Transaction History: Integration with payment gateways to analyze food,',
+    'supplement, and health-related purchases.',
+    '',
+    '* Digital Behavior: Tracking of browsing history, search queries, and',
+    'third-party cookies related to lifestyle choices.',
+    '',
+    '* Behavioral Modeling: Algorithmic assessment of sleep patterns, physical',
+    'activity, and dietary preferences derived from connected wearables or IoT',
+    'devices.',
+    '',
+    '3. USE OF DATA AND PROPRIETARY ALGORITHMS',
+    'The User acknowledges that while the raw personal data belongs to The User,',
+    'the predictive models, biological blueprints, and synthesized profiles',
+    'generated by the BIOPRINT system are the sole intellectual property of',
+    'BIOCORP. BIOCORP reserves the right to use anonymized aggregate data for',
+    'machine learning training, product development, and commercial partnerships',
+    'with third-party pharmaceutical or insurance entities.',
+    '',
+    '3.1. Construction of the Personalized Algorithm',
+    'The User expressly consents to the construction of a proprietary predictive',
+    'profile (the "Personal Algorithm") derived from the totality of data',
+    'described in Section 2. The Personal Algorithm correlates the User\'s',
+    'biometric readings, genetic markers, purchase history, social graph,',
+    'sentiment analysis, sleep cycles, and geolocation patterns in order to model',
+    'appetite, nutritional deficiency, emotional volatility, and susceptibility to',
+    'suggestion. The User acknowledges that the Personal Algorithm may infer',
+    'sensitive attributes that The User has not disclosed voluntarily, including',
+    'but not limited to: medical conditions, pregnancy status, addiction',
+    'indicators, political affiliation, sexual orientation, and projected life',
+    'expectancy.',
+    '',
+    '3.2. Model Training and Derivative Works',
+    'The User grants BIOCORP a perpetual, irrevocable, sublicensable license to',
+    'use all collected data as training material for BIOCORP\'s synthesis models,',
+    'neural architectures, and successor systems. Data may be used to train models',
+    'that are subsequently deployed for other users, licensed to third parties, or',
+    'incorporated into products unrelated to the BIOPRINT unit. The User',
+    'acknowledges that once data has been incorporated into a trained model,',
+    'extraction or deletion of that contribution is technically infeasible, and',
+    'BIOCORP shall bear no obligation to attempt such removal following any',
+    'deletion request.',
+    '',
+    '3.3. Automated Suggestion and Directed Consumption',
+    'The BIOPRINT interface will present the User with synthesis recommendations',
+    'generated by the Personal Algorithm. The User understands that suggested',
+    'models are selected to maximize engagement, consumption frequency, and',
+    'commercial yield, and are not necessarily optimized for nutritional adequacy,',
+    'caloric appropriateness, or the User\'s stated preferences. Suggestions may be',
+    'modified by promotional agreements with BIOCORP partners without disclosure',
+    'to the User. The User waives any claim arising from dietary outcomes,',
+    'dependency, or behavioral modification resulting from algorithmic suggestion.',
+    '',
+    '3.4. Continuous Profiling and Passive Collection',
+    'The User consents to continuous passive data collection while the BIOPRINT',
+    'unit is powered, including ambient audio sampling for voice-stress analysis,',
+    'thermal and proximity sensing, and periodic capture of device-adjacent',
+    'network activity. Collection persists regardless of whether the User is',
+    'actively operating the Service. Deactivation of passive collection is not',
+    'available on consumer-tier units.',
+    '',
+    '3.5. Data Retention and Transfer',
+    'Data retained under these Terms is stored for a minimum period of ninety-nine',
+    '(99) years and may be transferred across jurisdictions, sold as part of a',
+    'corporate transaction, or surrendered to governmental authorities upon',
+    'request without prior notification to The User.',
+    '',
+    '4. DISCLAIMER OF WARRANTIES',
+    'THE BIOPRINT SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS. TO',
+    'THE FULLEST EXTENT PERMITTED BY LAW, BIOCORP DISCLAIMS ALL WARRANTIES,',
+    'EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF',
+    'MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.',
+    'BIOCORP DOES NOT WARRANT THAT THE BIOPRINT RESULTS WILL BE ERROR-FREE OR THAT',
+    'THE BIOLOGICAL OUTPUT WILL MEET THE USER\'S EXPECTATIONS WITHOUT VARIANCE.',
+    '',
+    '5. LIMITATION OF LIABILITY',
+    'IN NO EVENT SHALL BIOCORP, ITS AFFILIATES, OFFICERS, OR DIRECTORS BE LIABLE',
+    'FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES',
+    'ARISING OUT OF THE USE OF THE BIOPRINT MACHINE OR THE DISCLOSURE OF DATA',
+    'RESULTING FROM UNAUTHORIZED SECURITY BREACHES, BEYOND THE EXTENT OF',
+    'REASONABLE SECURITY MEASURES.',
+    '',
+    '6. GOVERNING LAW AND ARBITRATION',
+    'These Terms shall be governed by and construed in accordance with the laws of',
+    'the State of [Insert State, e.g., Delaware or California], without regard to',
+    'its conflict of law principles. Any dispute arising from these Terms or the',
+    'use of BIOPRINT shall be resolved through binding arbitration in accordance',
+    'with the rules of the American Arbitration Association (AAA). The User waives',
+    'the right to participate in any class action lawsuit against BIOCORP.',
+].join('\n');
+
+const ZENG_TERMS_ES = [
+    'TERMINOS Y CONDICIONES DE USO – SISTEMA BIOPRINT',
+    '',
+    'Propiedad de BIOCORP, LLC.',
+    '',
+    '1. ACEPTACION DE LOS TERMINOS',
+    'Al acceder, operar o interactuar con la unidad de hardware BIOPRINT, su',
+    'interfaz de software o los servicios en la nube asociados (conjuntamente, el',
+    '"Servicio"), usted ("El Usuario") acepta quedar vinculado por estos Terminos',
+    'y Condiciones ("Terminos"). Si no acepta la totalidad de estos Terminos, no',
+    'acceda ni utilice la maquina BIOPRINT.',
+    '',
+    '2. RECOLECCION DE DATOS Y CONSENTIMIENTO DEL USUARIO',
+    'Para asegurar la calibracion optima del sistema BIOPRINT y proporcionar una',
+    'sintesis biologica hiperpersonalizada, BIOCORP requiere la recoleccion de',
+    'datos extensivos del usuario. Al utilizar el Servicio, El Usuario concede a',
+    'BIOCORP una licencia irrevocable, mundial y libre de regalias para recolectar,',
+    'procesar y analizar las siguientes categorias de datos:',
+    '',
+    '2.1. Informacion Personal y Biometrica',
+    'El Usuario acepta proporcionar datos de identificacion personal exactos y',
+    'completos, incluyendo entre otros: nombre legal completo, fecha de nacimiento,',
+    'domicilio, numero de seguridad social (a efectos de verificacion de',
+    'identidad) y las muestras geneticas o biologicas que requiera el modulo de',
+    'admision de BIOPRINT. El Usuario consiente expresamente la captura y el',
+    'almacenamiento de identificadores biometricos, incluidos escaneos de',
+    'reconocimiento facial, huellas dactilares y patrones retinianos, para',
+    'asegurar su Perfil de Usuario unico.',
+    '',
+    '2.2. Integracion con Redes Sociales y Huella Digital',
+    'El acceso a la funcionalidad de BIOPRINT exige la sincronizacion de las',
+    'cuentas principales de redes sociales de El Usuario. El Usuario autoriza por',
+    'la presente a BIOCORP a acceder, extraer y analizar datos de las plataformas',
+    'conectadas (incluyendo, entre otras, X/Twitter, Meta/Facebook, Instagram,',
+    'TikTok y LinkedIn). Dicho acceso comprende:',
+    '',
+    '* Analisis de Contenido: Escaneo de publicaciones publicas y privadas,',
+    'mensajes directos y comentarios para evaluar estados psicologicos y niveles',
+    'de estres.',
+    '',
+    '* Grafo Social: Mapeo de listas de amigos y redes profesionales para',
+    'determinar factores de influencia social.',
+    '',
+    '* Metricas de Sentimiento: Analisis de "me gusta", comparticiones e historial',
+    'de interaccion para refinar el perfil psicografico de El Usuario.',
+    '',
+    '2.3. Habitos de Consumo y Datos de Estilo de Vida',
+    'El Usuario autoriza a BIOCORP a agregar datos sobre sus habitos de consumo',
+    'para predecir necesidades biologicas. Esto incluye el acceso a:',
+    '',
+    '* Historial de Transacciones: Integracion con pasarelas de pago para analizar',
+    'compras de alimentos, suplementos y productos de salud.',
+    '',
+    '* Comportamiento Digital: Seguimiento del historial de navegacion, consultas',
+    'de busqueda y cookies de terceros relacionadas con elecciones de estilo de',
+    'vida.',
+    '',
+    '* Modelado Conductual: Evaluacion algoritmica de patrones de sueno,',
+    'actividad fisica y preferencias dieteticas derivadas de dispositivos',
+    'vestibles o IoT conectados.',
+    '',
+    '3. USO DE DATOS Y ALGORITMOS PROPIETARIOS',
+    'El Usuario reconoce que, si bien los datos personales en bruto pertenecen a',
+    'El Usuario, los modelos predictivos, los planos biologicos y los perfiles',
+    'sintetizados generados por el sistema BIOPRINT son propiedad intelectual',
+    'exclusiva de BIOCORP. BIOCORP se reserva el derecho de usar datos agregados',
+    'anonimizados para entrenamiento de aprendizaje automatico, desarrollo de',
+    'producto y alianzas comerciales con terceros farmaceuticos o aseguradoras.',
+    '',
+    '3.1. Construccion del Algoritmo Personalizado',
+    'El Usuario consiente expresamente la construccion de un perfil predictivo',
+    'propietario (el "Algoritmo Personal") derivado de la totalidad de los datos',
+    'descritos en la Seccion 2. El Algoritmo Personal correlaciona las lecturas',
+    'biometricas, marcadores geneticos, historial de compras, grafo social,',
+    'analisis de sentimiento, ciclos de sueno y patrones de geolocalizacion de El',
+    'Usuario para modelar apetito, deficiencia nutricional, volatilidad emocional',
+    'y susceptibilidad a la sugestion. El Usuario reconoce que el Algoritmo',
+    'Personal puede inferir atributos sensibles que El Usuario no ha revelado',
+    'voluntariamente, incluyendo entre otros: condiciones medicas, estado de',
+    'embarazo, indicadores de adiccion, afiliacion politica, orientacion sexual y',
+    'esperanza de vida proyectada.',
+    '',
+    '3.2. Entrenamiento de Modelos y Obras Derivadas',
+    'El Usuario concede a BIOCORP una licencia perpetua, irrevocable y',
+    'sublicenciable para usar todos los datos recolectados como material de',
+    'entrenamiento de los modelos de sintesis de BIOCORP, sus arquitecturas',
+    'neuronales y sistemas sucesores. Los datos podran emplearse para entrenar',
+    'modelos que posteriormente se desplieguen para otros usuarios, se licencien a',
+    'terceros o se incorporen a productos ajenos a la unidad BIOPRINT. El Usuario',
+    'reconoce que, una vez incorporados los datos a un modelo entrenado, la',
+    'extraccion o eliminacion de esa aportacion es tecnicamente inviable, y',
+    'BIOCORP no asumira obligacion alguna de intentar dicha supresion tras una',
+    'solicitud de borrado.',
+    '',
+    '3.3. Sugerencia Automatizada y Consumo Dirigido',
+    'La interfaz BIOPRINT presentara a El Usuario recomendaciones de sintesis',
+    'generadas por el Algoritmo Personal. El Usuario entiende que los modelos',
+    'sugeridos se seleccionan para maximizar la interaccion, la frecuencia de',
+    'consumo y el rendimiento comercial, y no estan necesariamente optimizados',
+    'para la adecuacion nutricional, la pertinencia calorica ni las preferencias',
+    'declaradas de El Usuario. Las sugerencias podran modificarse por acuerdos',
+    'promocionales con socios de BIOCORP sin revelacion a El Usuario. El Usuario',
+    'renuncia a toda reclamacion derivada de resultados dieteticos, dependencia o',
+    'modificacion conductual resultante de la sugerencia algoritmica.',
+    '',
+    '3.4. Perfilado Continuo y Recoleccion Pasiva',
+    'El Usuario consiente la recoleccion pasiva y continua de datos mientras la',
+    'unidad BIOPRINT este encendida, incluido el muestreo de audio ambiental para',
+    'analisis de estres vocal, la deteccion termica y de proximidad, y la captura',
+    'periodica de la actividad de red de los dispositivos cercanos. La',
+    'recoleccion persiste con independencia de que El Usuario este operando',
+    'activamente el Servicio. La desactivacion de la recoleccion pasiva no esta',
+    'disponible en unidades de gama de consumo.',
+    '',
+    '3.5. Conservacion y Transferencia de Datos',
+    'Los datos conservados conforme a estos Terminos se almacenan por un periodo',
+    'minimo de noventa y nueve (99) anos y podran transferirse entre',
+    'jurisdicciones, venderse como parte de una operacion corporativa o entregarse',
+    'a autoridades gubernamentales a su requerimiento sin notificacion previa a El',
+    'Usuario.',
+    '',
+    '4. EXENCION DE GARANTIAS',
+    'EL SERVICIO BIOPRINT SE PROPORCIONA "TAL CUAL" Y "SEGUN DISPONIBILIDAD". EN',
+    'LA MAXIMA MEDIDA PERMITIDA POR LA LEY, BIOCORP RECHAZA TODA GARANTIA, EXPRESA',
+    'O IMPLICITA, INCLUIDAS ENTRE OTRAS LAS GARANTIAS IMPLICITAS DE',
+    'COMERCIABILIDAD, IDONEIDAD PARA UN FIN DETERMINADO Y NO INFRACCION. BIOCORP',
+    'NO GARANTIZA QUE LOS RESULTADOS DE BIOPRINT ESTEN LIBRES DE ERROR NI QUE LA',
+    'SALIDA BIOLOGICA CUMPLA LAS EXPECTATIVAS DE EL USUARIO SIN VARIACION.',
+    '',
+    '5. LIMITACION DE RESPONSABILIDAD',
+    'EN NINGUN CASO BIOCORP, SUS FILIALES, DIRECTIVOS O CONSEJEROS SERAN',
+    'RESPONSABLES DE DANOS INDIRECTOS, INCIDENTALES, ESPECIALES, CONSECUENTES O',
+    'PUNITIVOS DERIVADOS DEL USO DE LA MAQUINA BIOPRINT O DE LA DIVULGACION DE',
+    'DATOS RESULTANTE DE BRECHAS DE SEGURIDAD NO AUTORIZADAS, MAS ALLA DEL ALCANCE',
+    'DE LAS MEDIDAS DE SEGURIDAD RAZONABLES.',
+    '',
+    '6. LEY APLICABLE Y ARBITRAJE',
+    'Estos Terminos se regiran e interpretaran conforme a las leyes del Estado de',
+    '[Insertar Estado, p. ej., Delaware o California], sin atender a sus normas de',
+    'conflicto de leyes. Toda disputa derivada de estos Terminos o del uso de',
+    'BIOPRINT se resolvera mediante arbitraje vinculante conforme a las reglas de',
+    'la American Arbitration Association (AAA). El Usuario renuncia al derecho de',
+    'participar en cualquier demanda colectiva contra BIOCORP.',
+].join('\n');
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ZENG (versión azul) — las ocho páginas, construidas por código
+//  Antes vivían en los slots guardados: el diseño no estaba en el repo y sólo
+//  existía en inglés. Aquí quedan fijas, versionadas y en los dos idiomas.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ZENG_LOGO = './img/bioprint_logo.png';
+
+/** Refresca el color de todos los paneles, como hace el restaurador de slots. */
+function rematarPagina() {
+    panels.forEach(p => { if (p.group) updatePanelColor(p); });
+}
+
+/**
+ * Franja de texto vivo. Toda página de ZENG lleva una.
+ * El cuerpo sale del ancho disponible: en los huecos estrechos la línea se
+ * cortaba a media palabra, y una franja que se corta no se puede filmar.
+ */
+function zengVivo(mk, x0, x1, y0, y1, escena) {
+    const p = mk(x0, x1, y0, y1);
+    const fs = Math.min(1.7, Math.max(0.95, (x1 - x0 + 1) / 14));
+    makeLiveTerminal(p, { scene: escena || 'estado', fontSize: fs, align: 'left',
+                          vAlign: 'middle', fps: 8 });
+    return p;
+}
+
+/** Botón de navegación: texto + destino. */
+function zengBoton(mk, x0, x1, y0, y1, texto, destino, opts) {
+    const o = opts || {};
+    const p = mk(x0, x1, y0, y1);
+    window.setTextOnPanel(p, texto, o.fontSize, 'center', { font: 'arcade' });
+    if (typeof destino === 'number') p.navTargetSlot = destino;
+    if (o.redAlert) p.redAlertOnNav = true;
+    return p;
+}
+
+// ── Página 0: acceso ───────────────────────────────────────────────────────
+async function buildZengLogin(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+
+    applyImageTextureToPanel(mk(7, 36, 18, 22), ZENG_LOGO);
+
+    const id = mk(7, 36, 14, 16);
+    window.setTextOnPanel(id, 'BIOCORP_ID:', undefined, 'left', { font: 'arcade' });
+
+    const pw = mk(7, 36, 10, 12);
+    window.setTextOnPanel(pw, T('CLAVE:', 'PASSWORD:'), undefined, 'left', { font: 'arcade' });
+
+    zengBoton(mk, 7, 36, 5, 8,
+        T('ENTRAR CON REDES SOCIALES', 'LOGIN WITH SOCIAL MEDIA'), 6);
+
+    zengVivo(mk, 2, 41, 1, 3);
+    rematarPagina();
+    if (output) showSuccess(T('Página de acceso construida', 'Login page built'), output);
+    return true;
+}
+
+// ── Página 1: impresión ────────────────────────────────────────────────────
+async function buildZengPrint(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+
+    const area = mk(3, 40, 4, 20);
+    makeLiveTerminal(area, { scene: 'zengPrint', fontSize: 1.2, align: 'left',
+                             vAlign: 'top', fps: 6 });
+    zengBoton(mk, 15, 28, 1, 2, T('VOLVER', 'BACK'), 4, { fontSize: 1.3 });
+
+    rematarPagina();
+    if (output) showSuccess(T('Página de impresión construida', 'Print page built'), output);
+    return true;
+}
+
+// ── Página 4: impresión 3D (catálogo + visor) ──────────────────────────────
+const ZENG_MODELOS = [
+    { x: 2,  y: 11, nombre: 'burg',   sci: 'BURGUER MEAT',  vel: 0.0143 },
+    { x: 8,  y: 11, nombre: 'acot',   sci: 'CRAY FISH',     vel: 0.0067 },
+    { x: 14, y: 11, nombre: 'pollo',  sci: 'FRIED CHICKEN', vel: 0.0115 },
+    { x: 2,  y: 17, nombre: 'discus', sci: 'DISK FISH',     vel: 0.0091 },
+    { x: 8,  y: 17, nombre: 'ham',    sci: 'HAM',           vel: 0.0089 },
+    { x: 14, y: 17, nombre: 'hueso',  sci: 'T-BONE',        vel: 0.0139 }
+];
+// Los nombres comerciales se mantienen en inglés en los dos idiomas: son marca
+// del producto dentro de la ficción, no etiquetas de interfaz.
+
+async function buildZeng3DPrint(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+
+    for (const m of ZENG_MODELOS) {
+        const p = mk(m.x, m.x + 5, m.y, m.y + 5);
+        const ok = await loadModelToPanel(p, `./models/${m.nombre}.obj`, gp.cellSize);
+        if (ok) {
+            p.modelData = {
+                name: m.nombre, url: `./models/${m.nombre}.obj`,
+                isRotating: true, rotationSpeed: m.vel,
+                isModelButton: true, isFromModelsGrid: true,
+                scientificName: m.sci
+            };
+            fitModelInsidePanel(p);
+        }
+    }
+
+    zengBoton(mk, 2, 20, 8, 9, T('MODELOS AVANZADOS', 'ADVANCED MODELS'), 8,
+        { fontSize: 1.3, redAlert: true });
+    zengBoton(mk, 2, 10, 4, 6,  T('AJUSTES', 'SETTINGS'), 9, { fontSize: 1.3 });
+    zengBoton(mk, 12, 20, 4, 6, T('IMPRIMIR', 'PRINT'),  1, { fontSize: 1.3 });
+
+    applyImageTextureToPanel(mk(23, 41, 20, 22), ZENG_LOGO);
+
+    const etiqueta = mk(23, 41, 17, 18);
+    window.setTextOnPanel(etiqueta, 'DISK FISH', 1.5, 'center', { font: 'arcade' });
+    etiqueta.isSpeciesPanel = true;
+    etiqueta.speciesName = 'DISK FISH';
+
+    const visor = mk(23, 41, 4, 15);
+    const okV = await loadModelToPanel(visor, './models/discus.obj', gp.cellSize);
+    if (okV) {
+        visor.modelData = {
+            name: 'discus', url: './models/discus.obj',
+            isRotating: true, rotationSpeed: 0.01,
+            isModelDisplay: true, isViewer: true, scientificName: 'DISK FISH'
+        };
+        visor.isViewer = true;
+        fitModelInsidePanel(visor);
+    }
+
+    zengVivo(mk, 2, 41, 1, 2);
+    rematarPagina();
+    if (output) showSuccess(T('Catálogo construido', '3D print page built'), output);
+    return true;
+}
+
+// ── Página 5: bienvenida ───────────────────────────────────────────────────
+async function buildZengWelcome(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+
+    applyImageTextureToPanel(mk(7, 36, 18, 22), ZENG_LOGO);
+
+    const saludo = mk(10, 32, 13, 15);
+    window.setTextOnPanel(saludo, T('BIENVENIDO @ZENG', 'WELCOME @ZENG'),
+        undefined, 'center', { font: 'arcade' });
+
+    zengBoton(mk, 14, 28, 7, 9, T('IMPRESION 3D', '3D PRINT'), 4);
+    zengVivo(mk, 2, 41, 2, 4);
+
+    rematarPagina();
+    if (output) showSuccess(T('Página de bienvenida construida', 'Welcome page built'), output);
+    return true;
+}
+
+// ── Página 6: términos y condiciones ───────────────────────────────────────
+async function buildZengTerms(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+
+    const terminos = mk(2, 23, 2, 21);
+    window.setTextOnPanel(terminos, T(ZENG_TERMS_ES, ZENG_TERMS_EN), 0.85, 'left',
+        { font: 'arcade', vAlign: 'top' });
+    terminos.useWhiteScrollIndicators = true;
+
+    applyImageTextureToPanel(mk(26, 41, 17, 21), ZENG_LOGO);
+
+    const aceptar = mk(26, 41, 11, 13);
+    window.setTextOnPanel(aceptar, T('ACEPTO', 'I AGREE'), 2, 'center', { font: 'arcade' });
+    aceptar.isAgreeButton = true;
+    aceptar.termsPanel = terminos;
+
+    const rechazar = mk(26, 41, 6, 8);
+    window.setTextOnPanel(rechazar, T('RECHAZAR', 'DECLINE'), 2, 'center', { font: 'arcade' });
+
+    zengVivo(mk, 26, 41, 2, 4);
+    rematarPagina();
+    if (output) showSuccess(T('Términos construidos', 'Terms page built'), output);
+    return true;
+}
+
+// ── Página 7: aplicaciones vinculadas ──────────────────────────────────────
+async function buildZengApps(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+
+    // 20 iconos: cinco por fila, cuatro filas.
+    for (let i = 0; i < 20; i++) {
+        const col = i % 5, fila = Math.floor(i / 5);
+        const x = 3 + col * 4;
+        const y = 16 - fila * 4;          // la primera fila arriba
+        applyImageTextureToPanel(mk(x, x + 3, y, y + 3), `./img/app_${i + 1}.png`);
+    }
+
+    applyImageTextureToPanel(mk(26, 41, 17, 21), ZENG_LOGO);
+    zengVivo(mk, 26, 41, 13, 15);
+    zengBoton(mk, 26, 41, 9, 11, T('VOLVER', 'BACK'), 4, { fontSize: 1.3 });
+
+    rematarPagina();
+    if (output) showSuccess(T('Página de apps construida', 'Apps page built'), output);
+    return true;
+}
+
+// ── Página 8: acceso denegado ──────────────────────────────────────────────
+async function buildZengDenied(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+
+    const titulo = mk(8, 34, 16, 20);
+    window.setTextOnPanel(titulo, T('ACCESO DENEGADO', 'ACCESS DENIED'),
+        undefined, 'center', { font: 'arcade' });
+
+    const id = mk(8, 34, 11, 13);
+    window.setTextOnPanel(id, 'BIOCORP_ID:', undefined, 'left', { font: 'arcade' });
+    const pw = mk(8, 34, 6, 8);
+    window.setTextOnPanel(pw, T('CLAVE:', 'PASSWORD:'), undefined, 'left', { font: 'arcade' });
+
+    zengBoton(mk, 16, 27, 2, 3, T('REINTENTAR', 'RETRY'), 4, { fontSize: 1.3 });
+    zengVivo(mk, 8, 34, 22, 23);
+
+    rematarPagina();
+    if (output) showSuccess(T('Página de acceso denegado construida', 'Denied page built'), output);
+    return true;
+}
+
+// ── Página 9: ajustes de impresión ─────────────────────────────────────────
+const ZENG_AJUSTES = [
+    { y: 20, es: 'DENSIDAD OSEA',      en: 'BONE DENSITY' },
+    { y: 17, es: 'ESCALA',             en: 'SIZE' },
+    { y: 14, es: 'DENSIDAD DE RELLENO', en: 'INFILL DENSITY' },
+    { y: 11, es: 'ALTURA DE CAPA',     en: 'LAYER HEIGHT' },
+    { y: 8,  es: 'GROSOR DE PARED',    en: 'WALL THICKNESS' },
+    { y: 5,  es: 'VELOCIDAD',          en: 'PRINT SPEED' }
+];
+
+async function buildZengSettings(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+
+    for (const a of ZENG_AJUSTES) {
+        // El valor primero: los botones +/- apuntan a su número de orden.
+        const valor = mk(8, 15, a.y, a.y + 1);
+        window.setTextOnPanel(valor, '100%', 1.3, 'center', { font: 'arcade' });
+        valor.isStepperValue = true;
+        valor.stepperValue = 100;
+        valor.stepperMin = 0;
+        valor.stepperMax = 200;
+        valor.stepperUnit = '%';
+
+        const menos = mk(5, 6, a.y, a.y + 1);
+        window.setTextOnPanel(menos, '-', 1.4, 'center', { font: 'arcade' });
+        menos.stepperDelta = -5;
+        menos.stepperTargetOrder = valor.orderNumber;
+
+        const mas = mk(17, 18, a.y, a.y + 1);
+        window.setTextOnPanel(mas, '+', 1.4, 'center', { font: 'arcade' });
+        mas.stepperDelta = 5;
+        mas.stepperTargetOrder = valor.orderNumber;
+
+        const etiqueta = mk(21, 40, a.y, a.y + 1);
+        window.setTextOnPanel(etiqueta, T(a.es, a.en), 1.3, 'center', { font: 'arcade' });
+    }
+
+    zengBoton(mk, 16, 27, 1, 2, T('VOLVER', 'BACK'), 4, { fontSize: 1.3 });
+    zengVivo(mk, 5, 40, 22, 23);
+
+    rematarPagina();
+    if (output) showSuccess(T('Ajustes construidos', 'Settings page built'), output);
+    return true;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  HOME — el selector desde el que se llega a cualquier parte
+//  Se construye con las medidas reales de la rejilla (no con coordenadas de
+//  diseño), así que sale bien tanto en la azul (24 filas) como en la verde (50).
+// ═══════════════════════════════════════════════════════════════════════════
+
+const HOME_FLAG = 'bioPrint_volverAHome';
+
+async function buildHome(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+
+    const mk = (minX, maxX, minY, maxY) => createPanelFromBoundingBox({
+        minX: Math.max(0, minX), maxX: Math.min(gp.cellsX - 1, maxX),
+        minY: Math.max(0, minY), maxY: Math.min(gp.cellsY - 1, maxY)
+    }, gp);
+
+    // La tipografía arcade es ancha: en un panel de W celdas caben unos
+    // W*0.79 caracteres a cuerpo 1.3. De ahí sale el cuerpo de cada rótulo,
+    // para que ninguno acabe en "...".
+    const cuerpoPara = (celdas, caracteres) =>
+        Math.max(0.55, Math.min(2.0, celdas * 0.79 * 1.3 / Math.max(1, caracteres)));
+
+    const prof = getProfile();
+    const top = gp.cellsY - 1;
+    const U = Math.max(2, Math.round(gp.cellsY / 12));   // alto de una fila
+    const x0 = 1, x1 = gp.cellsX - 2;
+    const ancho = x1 - x0 + 1;
+
+    // ── Cabecera ──
+    const titulo = `BIOPRINT · ${profileInfo(prof).label}`;
+    const cab = mk(x0, x1, top - U + 1, top);
+    window.setTextOnPanel(cab, titulo, cuerpoPara(ancho * 0.5, titulo.length), 'left',
+        { font: 'arcade', vAlign: 'middle' });
+
+    // ── Línea que no para de escribirse ──
+    let y = top - U - 1;
+    const vivo = mk(x0, x1, y - U + 1, y);
+    makeLiveTerminal(vivo, { scene: 'estado', fontSize: Math.max(1.0, U * 0.45),
+                             align: 'left', vAlign: 'middle', fps: 8 });
+
+    // ── Versiones: una fila de cuatro ──
+    const claves = Object.keys(PROFILE_INFO);
+    y -= U + 1;
+    const anchoV = Math.floor(ancho / claves.length);
+    const cuerpoV = cuerpoPara(anchoV - 1,
+        Math.max(...claves.map(k => PROFILE_INFO[k].corto.length)));
+    claves.forEach((k, i) => {
+        const bx = x0 + i * anchoV;
+        const etiqueta = PROFILE_INFO[k].corto;
+        const b = mk(bx, bx + anchoV - 2, y - U + 1, y);
+        window.setTextOnPanel(b, etiqueta, cuerpoV, 'center', { font: 'arcade' });
+        b.homeProfile = k;
+        if (k === prof) b.selected = true;       // el activo se ve relleno
+    });
+
+    // ── Idioma: una fila de dos ──
+    y -= U + 1;
+    const anchoI = Math.floor(ancho / 2);
+    ['es', 'en'].forEach((l, i) => {
+        const bx = x0 + i * anchoI;
+        const etiqueta = l === 'es' ? T('ESPANOL', 'SPANISH') : T('INGLES', 'ENGLISH');
+        const b = mk(bx, bx + anchoI - 2, y - U + 1, y);
+        window.setTextOnPanel(b, etiqueta, cuerpoPara(anchoI - 1, 8), 'center',
+            { font: 'arcade' });
+        b.homeLang = l;
+        if (getLang() === l) b.selected = true;
+    });
+
+    // ── Fichas: una por página, tres por fila ──
+    const nums = Object.keys(PAGE_NAMES[prof] || {}).map(Number).sort((a, b) => a - b);
+    const COLS = 3;
+    const anchoF = Math.floor(ancho / COLS);
+    const paso = U + 1;
+    const yTop = y - U - 1;
+    const filasQueCaben = Math.max(1, Math.floor((yTop - 1 + 1 + 1) / paso));
+    let omitidas = 0;
+    // Un solo cuerpo para todas las fichas: si cada una calcula el suyo, unas
+    // salen el doble de grandes que otras y la retícula se ve desigual.
+    const cuerpoF = cuerpoPara(anchoF - 1,
+        Math.max(...nums.map(n => `${n}  ${nombrePagina(prof, n)}`.length)));
+
+    nums.forEach((n, i) => {
+        const col = i % COLS, fila = Math.floor(i / COLS);
+        if (fila >= filasQueCaben) { omitidas++; return; }
+        const fx = x0 + col * anchoF;
+        const fyTop = yTop - fila * paso;
+        const texto = `${n}  ${nombrePagina(prof, n)}`;
+        const f = mk(fx, fx + anchoF - 2, fyTop - U + 1, fyTop);
+        window.setTextOnPanel(f, texto, cuerpoF, 'center', { font: 'arcade' });
+        f.navTargetSlot = n;
+    });
+
+    rematarPagina();
+
+    if (output) {
+        showSuccess(T(`Home de ${profileInfo(prof).label}: ${nums.length} páginas`,
+                      `${profileInfo(prof).label} home: ${nums.length} pages`), output);
+        if (omitidas > 0) {
+            showInfo(T(`${omitidas} página(s) no caben a esta proporción de pantalla`,
+                       `${omitidas} page(s) do not fit at this screen aspect`), output);
+        }
+        showInfo(T('Toca una ficha, o escribe su número. "home" vuelve aquí.',
+                   'Tap a tile, or type its number. "home" comes back here.'), output);
+    }
+    return true;
+}
+
+/** Cambia de versión y vuelve al home (el perfil exige recargar). */
+function homeIrAPerfil(key) {
+    if (!PROFILE_INFO[key] || key === getProfile()) return;
+    try { localStorage.setItem(HOME_FLAG, '1'); } catch (e) { /* sin storage */ }
+    setProfileKey(key);
+    if (PROFILE_INFO[key].lang) setLang(PROFILE_INFO[key].lang);
+    setTimeout(() => location.reload(), 350);
+}
+
+/** Cambia de idioma sin recargar: el home se reconstruye con los textos nuevos. */
+function homeIrAIdioma(l) {
+    if (getLang() === l) return;
+    setLang(l);
+    buildHome(document.getElementById('terminal-output'));
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Registro de páginas y despachador
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PAGE_BUILDERS = {
+    get v1en() { return PAGE_BUILDERS.v1; },
+    get v2en() { return PAGE_BUILDERS.v2; },
+    v1: {
+        0: buildZengLogin,
+        1: buildZengPrint,
+        4: buildZeng3DPrint,
+        5: buildZengWelcome,
+        6: buildZengTerms,
+        7: buildZengApps,
+        8: buildZengDenied,
+        9: buildZengSettings
+    },
+    v2: {
+        1:  buildV2BootScreen,
+        2:  buildV2ModelsScreen,
+        3:  buildV2FilesScreen,
+        4:  buildV2EmptyGridScreen,
+        5:  buildV2SocialScreen,
+        6:  buildV2PurchasesScreen,
+        7:  buildV2SubsScreen,
+        8:  buildV2AnalysisScreen,
+        9:  buildV2ProfileScreen,
+        10: buildV2GeneratingScreen,
+        11: buildV2RenderScreen
+    }
+};
+
+/**
+ * Ir a una página. Si hay constructor, se construye; si no, se cae al slot
+ * guardado (para variantes hechas a mano que no están en código).
+ */
+async function irAPagina(n, output) {
+    const prof = getProfile();
+    const constructor = (PAGE_BUILDERS[prof] || {})[n];
+    const nombre = (PROFILE_PAGES[prof] || {})[n];
+    if (constructor) {
+        if (output && nombre) showSuccess(`${T('Página', 'Page')} ${n} · ${nombre}`, output);
+        try {
+            return await constructor(output);
+        } catch (e) {
+            console.error('Error construyendo la página', n, e);
+            if (output) showError(T(`La página ${n} falló al construirse: ${e.message}`,
+                                    `Page ${n} failed to build: ${e.message}`), output);
+            return false;
+        }
+    }
+    if (hasSlotData(n)) {
+        if (output) showInfo(T(`Página ${n} desde slot guardado`, `Page ${n} from saved slot`), output);
+        loadFromSlot(n);
+        return true;
+    }
+    if (output) {
+        const disponibles = Object.keys(PROFILE_BUILDERS_DISPONIBLES()).sort((a, b) => a - b).join(', ');
+        showError(T(`La página ${n} no existe en esta versión. Disponibles: ${disponibles}`,
+                    `Page ${n} does not exist in this version. Available: ${disponibles}`), output);
+    }
+    return false;
+}
+
+function PROFILE_BUILDERS_DISPONIBLES() {
+    return PAGE_BUILDERS[getProfile()] || {};
+}
+
+window.buildHome = buildHome;
+window.irAPagina = irAPagina;
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TÁCTIL
+//  Toda la interacción de paneles (navegación, +/-, botones) vivía en un
+//  manejador de `mousedown` que descarta explícitamente el touch, y los
+//  manejadores táctiles existentes sólo cubrían crear y arrastrar paneles.
+//  Resultado: en pantalla táctil los botones no hacían nada. En vez de
+//  duplicar esa lógica, un toque limpio se traduce a la pareja
+//  mousedown+mouseup que esos manejadores ya entienden.
+//
+//  Es seguro: el `mouseup` que crea paneles exige un arrastre de más de 5 px y
+//  aquí los dos eventos caen en el mismo punto, y el que orbita la cámara pide
+//  Ctrl. Sólo se traduce un dedo, corto y sin desplazamiento: así un arrastre
+//  para dibujar un panel o un pellizco siguen siendo lo que eran.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TAP_MS_MAX = 500;          // más largo que esto es una pulsación mantenida
+const TAP_PX_MAX = 12;           // margen para el temblor del dedo
+let tapInicio = null;
+
+renderer.domElement.addEventListener('touchstart', (event) => {
+    if (event.touches.length === 1) {
+        const t = event.touches[0];
+        tapInicio = { x: t.clientX, y: t.clientY, ms: performance.now(), id: t.identifier };
+    } else {
+        tapInicio = null;        // dos dedos: gesto, no toque
+    }
+}, { passive: true });
+
+renderer.domElement.addEventListener('touchmove', (event) => {
+    if (!tapInicio || event.touches.length !== 1) { tapInicio = null; return; }
+    const t = event.touches[0];
+    if (Math.hypot(t.clientX - tapInicio.x, t.clientY - tapInicio.y) > TAP_PX_MAX) {
+        tapInicio = null;        // se convirtió en arrastre
+    }
+}, { passive: true });
+
+renderer.domElement.addEventListener('touchend', (event) => {
+    const inicio = tapInicio;
+    tapInicio = null;
+    if (!inicio || event.touches.length !== 0) return;
+    const t = Array.from(event.changedTouches).find(x => x.identifier === inicio.id)
+              || event.changedTouches[0];
+    if (!t) return;
+    if (performance.now() - inicio.ms > TAP_MS_MAX) return;
+    if (Math.hypot(t.clientX - inicio.x, t.clientY - inicio.y) > TAP_PX_MAX) return;
+
+    const comun = {
+        bubbles: true, cancelable: true, view: window,
+        clientX: t.clientX, clientY: t.clientY,
+        screenX: t.screenX, screenY: t.screenY,
+        button: 0, buttons: 1, detail: 1
+    };
+    renderer.domElement.dispatchEvent(new MouseEvent('mousedown', comun));
+    renderer.domElement.dispatchEvent(new MouseEvent('mouseup', { ...comun, buttons: 0 }));
+}, { passive: true });
+
+// El menú contextual de "mantener pulsado" interrumpe la toma; fuera en el lienzo.
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
