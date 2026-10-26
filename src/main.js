@@ -8446,7 +8446,12 @@ async function applyConfigurationFromData(configData) {
             if(panel.group) {
                 scene.add(panel.group);
                 panels.push(panel); // Añadir a la lista global de paneles
-                
+
+                // ▩ El fondo que atenúa la cuadrícula: lo pone createPanelFromBoundingBox
+                // al crear un panel, pero al restaurar desde slot los paneles nacen aquí.
+                // Sin esto la rejilla volvía a colarse bajo los textos tras recargar.
+                addPanelBacking(panel, currentGridParams);
+
                 // 📹 Al mismo nivel que los modelos, por lo mismo
                 if (panelInfo.behavior && panelInfo.behavior.video) {
                     makeVideoPanel(panel, panelInfo.behavior.video);
@@ -20318,40 +20323,34 @@ const V2_SCENES = {
         // Bloques que van apareciendo uno a uno: el volcado se lee como algo
         // que la máquina está sacando del cuerpo, no como una ficha ya hecha.
         const bloques = [
-            [T('IDENTIDAD','IDENTITY'), [
-                [T('sujeto','subject'), '@ZENG'],
+            [T('SUJETO','SUBJECT'), [
+                [T('especimen','specimen'), '@ZENG'],
+                [T('sexo biologico','biological sex'), 'F'],
                 [T('edad estimada','estimated age'), T('27 anos','27 yrs')],
-                [T('complexion','build'), T('media','average')],
-                [T('huella biometrica','biometric print'), T('CONFIRMADA','CONFIRMED')]]],
-            [T('HABITOS DE CONSUMO','CONSUMPTION HABITS'), [
-                [T('compra nocturna','night purchases'), '78%'],
-                [T('impulso vs plan','impulse vs plan'), '4 : 1'],
-                [T('ventana critica','critical window'), '23:00-03:00'],
-                [T('reincidencia','repeat rate'), T('alta','high')],
-                [T('gasto restringido','restricted spend'), '27%']]],
-            [T('PREFERENCIAS','PREFERENCES'), [
-                [T('formato','format'), T('inmersivo','immersive')],
-                [T('sesion media','avg session'), '4.7 hrs'],
-                [T('genero','genre'), T('accion','action')],
-                [T('tolerancia espera','wait tolerance'), T('baja','low')],
-                [T('sensibilidad precio','price sensitivity'), T('nula','none')]]],
-            [T('GUSTOS','TASTES'), [
-                [T('paleta','palette'), T('saturada','saturated')],
-                [T('ritmo','pacing'), T('rapido','fast')],
-                [T('narrativa','narrative'), T('opcional','optional')],
-                [T('compania','company'), T('evitada','avoided')],
-                [T('repeticion','repetition'), T('buscada','sought')]]],
-            [T('SENALES BIOMETRICAS','BIOMETRIC SIGNALS'), [
-                [T('pulso reposo','resting pulse'), '74 bpm'],
-                [T('sueno','sleep'), '5.2 hrs'],
-                ['cortisol', T('elevado','elevated')],
-                [T('sedentarismo','sedentary'), T('severo','severe')]]],
-            [T('PERFIL DE USUARIO','USER PROFILE'), [
-                [T('segmento','segment'), 'EARLY-ADOPTER'],
-                [T('fidelidad','loyalty'), '0.82'],
-                [T('influencia','influence'), '0.34'],
-                [T('prediccion','prediction'), T('ALTA','HIGH')],
-                [T('clasificacion','classification'), T('EXPLOTABLE','EXPLOITABLE')]]]
+                [T('fenotipo','phenotype'), T('MESOMORFO','MESOMORPH')]]],
+            [T('MORFOMETRIA','MORPHOMETRY'), [
+                [T('estatura','height'), '1.68 m'],
+                [T('masa corporal','body mass'), '58.4 kg'],
+                [T('superficie','body surface'), '1.65 m2'],
+                [T('perimetro craneal','head circ.'), '55.2 cm']]],
+            [T('COMPOSICION TISULAR','TISSUE COMPOSITION'), [
+                [T('agua','water'), '58.1%'],
+                [T('musculo esqueletico','skeletal muscle'), '34.2%'],
+                [T('tejido adiposo','adipose tissue'), '24.7%'],
+                [T('hueso / 206 piezas','bone / 206 pieces'), '1.21 g/cm3']]],
+            [T('SISTEMA VASCULAR','VASCULAR SYSTEM'), [
+                [T('volumen sanguineo','blood volume'), '4.3 L'],
+                [T('red vascular','vessel network'), '96 000 km'],
+                [T('calibre minimo','min caliber'), '7 um']]],
+            [T('CARGA CELULAR','CELL LOAD'), [
+                [T('celulas totales','total cells'), '3.0e13'],
+                [T('lineas celulares','cell lines'), '214'],
+                [T('neuronas','neurons'), '8.6e10']]],
+            [T('PARAMETROS DE IMPRESION','PRINT PARAMETERS'), [
+                [T('resolucion','resolution'), T('12 um/voxel','12 um/voxel')],
+                [T('capas','layers'), '140 112'],
+                [T('biotinta','bioink'), '47.2 L'],
+                [T('andamiaje','scaffold'), T('COLAGENO-IV','COLLAGEN-IV')]]]
         ];
         const l = [];
         // Una línea nueva cada ~0.55 s; al llegar al final se queda quieto
@@ -20369,8 +20368,8 @@ const V2_SCENES = {
         }
         const p = Math.min(100, quedan > 0 ? 100 : (3 + Math.floor(t * 1.8)) / total * 100);
         l.push(`  [${bar(p, 30)}] ${padL(p.toFixed(0), 3)}%`);
-        l.push(p >= 99.5 ? T('  volcado completo - 41 882 registros','  dump complete - 41 882 records')
-                         : `  ${spin(t)} ${T('extrayendo del sujeto','extracting from subject')}`);
+        l.push(p >= 99.5 ? T('  modelo listo - 140 112 capas','  model ready - 140 112 layers')
+                         : `  ${spin(t)} ${T('midiendo al sujeto','measuring subject')}`);
         return l.join('\n');
     },
 
@@ -20585,10 +20584,10 @@ async function buildV2ProfileScreen(output) {
     const head = mk(2, 86, 46, 49);
 
     const cuerpo = mk(3, 33, 3, 44);
-    const ok = await loadModelToPanel(cuerpo, './models/her.obj', gp.cellSize);
+    const ok = await loadModelToPanel(cuerpo, './models/maniqui.obj', gp.cellSize);
     if (ok) {
         cuerpo.modelData = {
-            name: 'her', url: './models/her.obj',
+            name: 'maniqui', url: './models/maniqui.obj',
             isRotating: true, rotationSpeed: 0.003,
             isModelDisplay: true, isFromModelCommand: true, isViewer: true
         };
@@ -20600,7 +20599,7 @@ async function buildV2ProfileScreen(output) {
     makeLiveTerminal(datos, { scene: 'perfil', fontSize: 2.3 });
 
     // La cabecera al final: antes de esperar el modelo, el texto se pierde
-    window.setTextOnPanel(head, `${PROMPT} download --profile @ZENG`, 2.0, 'left',
+    window.setTextOnPanel(head, `${PROMPT} bioscan --specimen @ZENG`, 2.0, 'left',
         { font: 'terminal', vAlign: 'middle' });
 
     if (output) showSuccess('Página de perfil construida', output);
