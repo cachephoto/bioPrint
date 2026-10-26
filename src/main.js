@@ -20275,15 +20275,18 @@ const V2_SCENES = {
         const FILAS = 13;                    // ventana visible
         const paso = Math.floor(t * 1.3);    // un renglón nuevo cada ~0.8 s
         const l = [];
-        l.push(T('  FECHA        CONCEPTO                  IMPORTE','  DATE         ITEM                      AMOUNT'));
-        l.push(`  ${'-'.repeat(46)}`);
+        // 28 columnas: el concepto mas largo mide 27. Antes iban 22 y la lista
+        // cortaba a media palabra ("suscripcion adultos me") con el panel medio
+        // vacio a la derecha.
+        l.push(T('  FECHA        CONCEPTO                        IMPORTE','  DATE         ITEM                            AMOUNT'));
+        l.push(`  ${'-'.repeat(52)}`);
         let marcados = 0;
         for (let k = 0; k < FILAS; k++) {
             const [f, c, p, flag] = V2_PURCHASES[(paso + k) % N];
             if (flag) marcados++;
-            l.push(`  ${f}  ${flag ? '[R]' : '   '} ${pad(c, 22)} ${padL('$ ' + num(p), 9)}`);
+            l.push(`  ${f}  ${flag ? '[R]' : '   '} ${pad(c, 28)} ${padL('$ ' + num(p), 9)}`);
         }
-        l.push(`  ${'-'.repeat(46)}`);
+        l.push(`  ${'-'.repeat(52)}`);
         l.push(`  ${spin(t)} ${T('leyendo registro','reading ledger')}   ${T('linea','line')} ${num(paso + FILAS)} / ${num(4128)}`);
         l.push('');
         l.push(`  ${pad(T('operaciones','transactions'), 18)} ${padL(num(147 + paso), 9)}`);
@@ -20558,8 +20561,12 @@ async function buildV2SubsScreen(output) {
     const mk = makeMk(gp);
     v2TermHeader(mk, 'subscriptions --active');
 
-    // Fila de iconos arriba, terminal debajo
-    const ICON = 9, GAP = 2, x0 = 3;
+    // Fila de iconos arriba, terminal debajo. Con hueco de 2 celdas los ocho
+    // llegaban hasta la columna 88 — dos mas alla del margen del resto de la
+    // pagina — y el ultimo quedaba pegado al borde de cuadro. Se centran.
+    const ICON = 9, GAP = 1;
+    const anchoFila = V2_SUBS.length * ICON + (V2_SUBS.length - 1) * GAP;
+    const x0 = 3 + Math.floor((84 - anchoFila) / 2);
     V2_SUBS.forEach((s, i) => {
         const ax = x0 + i * (ICON + GAP);
         const ic = mk(ax, ax + ICON - 1, 34, 42);
