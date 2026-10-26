@@ -20784,18 +20784,34 @@ function makeVideoPanel(panel, cfg) {
     panel.textureType = 'video';
     panel.texturePath = conf.src;
     panel.textureMaterials = { normal: material, hover: material, selected: material };
+    panel.keepFillMaterial = true;
 
     // Encajar el video en el panel sin deformarlo (mismo criterio que el logo)
     const ajustarUV = () => {
         if (!video.videoWidth) return;
         const geo = panel.fillMesh.geometry;
         const uv = geo.attributes.uv;
+        const pos = geo.attributes.position;
+        if (!pos) return;
+
+        // Partir SIEMPRE de las UV canónicas, recalculadas desde los vértices.
+        // Al restaurar la página, la geometría ya trae las UV ajustadas de la
+        // sesión anterior; aplicar el encaje encima las expandía por segunda vez
+        // y el shader acababa descartando el recuadro entero (salía vacío).
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (let i = 0; i < pos.count; i++) {
+            minX = Math.min(minX, pos.getX(i)); maxX = Math.max(maxX, pos.getX(i));
+            minY = Math.min(minY, pos.getY(i)); maxY = Math.max(maxY, pos.getY(i));
+        }
+        const anchoGeo = (maxX - minX) || 1;
+        const altoGeo  = (maxY - minY) || 1;
+
         const aspectVideo = video.videoWidth / video.videoHeight;
-        const w = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
-        const h = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
-        const ratio = (w / h) / aspectVideo;
+        const ratio = (anchoGeo / altoGeo) / aspectVideo;
+
         for (let i = 0; i < uv.count; i++) {
-            const u = uv.getX(i), v = uv.getY(i);
+            const u = (pos.getX(i) - minX) / anchoGeo;   // canónica 0..1
+            const v = (pos.getY(i) - minY) / altoGeo;
             let nu = u, nv = v;
             if (ratio < 1) nv = 0.5 + (v - 0.5) / ratio;
             else           nu = 0.5 + (u - 0.5) * ratio;
