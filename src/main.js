@@ -22305,10 +22305,12 @@ function v2PrintPantallaCompleta() {
     const gp = getCurrentGridParams();
     if (!gp) return;
     const mk = makeMk(gp);
-    const ov = mk(10, 78, 10, 42);
+    // Sobre el panel de avance, que se vacía: la mujer y los materiales
+    // (parpadeando "cargar tanque") siguen a la vista, en rojo.
+    const ov = mk(29, 86, 27, 44);
     ov.group.renderOrder = 900;
     ov.group.traverse(o => { if (o.renderOrder !== undefined) o.renderOrder = Math.max(o.renderOrder, 900); });
-    makeLiveTerminal(ov, { scene: 'printCompleto', fontSize: 2.6, align: 'left', vAlign: 'top', fps: 4 });
+    makeLiveTerminal(ov, { scene: 'printCompleto', fontSize: 2.2, align: 'left', vAlign: 'top', fps: 4 });
     v2PrintState.overlay = ov;
 }
 
@@ -22328,6 +22330,7 @@ function v2PrintPeso() {
 V2_SCENES.impresion = t => {
     v2PrintTick();
     const st = v2PrintState;
+    if (st.fase === 2) return '';          // la pantalla final cae encima
     const pct = st.pct;
     const capas = Math.floor(140112 * pct / 100);
     const l = [];
@@ -22419,35 +22422,30 @@ async function buildV2PrintingScreen(output) {
     const mk = makeMk(gp);
     v2TermHeader(mk, 'print --subject HSAP-0417 --bed A');
 
-    // La mujer, acostada en la cama de impresión
-    const visor = mk(3, 55, 8, 44);
+    // La mujer, de pie y aparte, a la izquierda: como en la página 9. Las
+    // barras van a la derecha, y la pantalla final cae sobre ellas, no sobre
+    // ella — se pidió no acostarla y mantenerla separada.
+    const visor = mk(3, 26, 8, 44);
     v2PrintState.visor = visor;
     const ok = await loadModelToPanel(visor, './models/maniqui.obj', gp.cellSize);
     if (ok) {
         visor.modelData = {
             name: 'maniqui', url: './models/maniqui.obj',
-            isRotating: false, rotationSpeed: 0,
+            isRotating: true, rotationSpeed: 0.003,
             isModelDisplay: true, isFromModelCommand: true, isViewer: true
         };
         visor.isViewer = true;
-        // Quieta: el giro lo lleva panelModel por su cuenta, no modelData.
-        toggleModelRotation(visor);
-        // Acostarla: el modelo viene de pie (Y arriba). El giro va en el grupo
-        // exterior; el interior ya trae la inclinación isométrica y, girado
-        // ahí, el cuerpo salía en diagonal.
-        const modelGroup = visor.group.children.find(c => c.userData && c.userData.isModel);
-        if (modelGroup) modelGroup.rotation.z = Math.PI / 2;
-        fitModelInsidePanel(visor, 0.92);
+        fitModelInsidePanel(visor);
     }
 
     // Derecha: avance arriba, materiales abajo
-    const avance = mk(58, 86, 27, 44);
+    const avance = mk(29, 86, 27, 44);
     makeLiveTerminal(avance, { scene: 'impresion', fontSize: 2.0, fps: 6 });
-    const materiales = mk(58, 86, 8, 25);
+    const materiales = mk(29, 86, 8, 25);
     makeLiveTerminal(materiales, { scene: 'materiales', fontSize: 2.0, fps: 6 });
 
     // Pie: el cebado eléctrico, que es lo que se dispara al final
-    const pie = mk(3, 55, 2, 6);
+    const pie = mk(3, 86, 2, 6);
     makeLiveTerminal(pie, { scene: 'printEstado', fontSize: 1.9, vAlign: 'middle', fps: 6 });
 
     rematarPagina();
