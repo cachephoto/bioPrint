@@ -3886,6 +3886,15 @@ document.addEventListener('keydown', (event) => {
         // 🔥 NUEVO: Cargar slots con números del teclado (0-9)
         // 🔤 Fila QWERTY: las páginas 10 y 11 no caben en un dígito, y H es
         // la vuelta al home. Sólo cuando no se está escribiendo en ningún lado.
+        // 🖨️ R en la página de impresión: salto al 98 %
+        case 'r': case 'R': {
+            if (activelyWritingText || terminalIsEffectivelyActive ||
+                event.ctrlKey || event.altKey || event.metaKey) break;
+            if (!v2PrintEnPantalla()) break;
+            v2PrintFinal();
+            event.preventDefault();
+            return;
+        }
         case 'q': case 'Q':
         case 'w': case 'W':
         case 'e': case 'E':
@@ -9059,12 +9068,24 @@ function processTerminalCommand(command) {
             showSuccess(`Fondo de panel a ${PANEL_BACKING_OPACITY} (${n} paneles)`, output);
             break;
         }
+        // 🖨️ Página 12: salto al 98 % para llegar enseguida al 100 y al rojo
+        case 'final':
+            if (!v2PrintEnPantalla()) { showError(T('Primero abre la página 12 (tecla E)', 'Open page 12 first (key E)'), output); break; }
+            v2PrintFinal();
+            showSuccess(T('Impresión al 98 % — en un momento llega al 100', 'Printing at 98 % — reaching 100 in a moment'), output);
+            break;
         // 🖨️ Página 12: "impresion 60" lleva la barra al 60 %; "impresion reset"
         case 'impresion':
         case 'impresión':
         case 'printing': {
             const a = (args[0] || '').toLowerCase();
             if (a === 'reset') { v2PrintReset(); showSuccess(T('Impresión reiniciada', 'Printing reset'), output); break; }
+            if (a === 'final' || a === 'fin') {
+                if (!v2PrintEnPantalla()) { showError(T('Primero abre la página 12 (tecla E)', 'Open page 12 first (key E)'), output); break; }
+                v2PrintFinal();
+                showSuccess(T('Impresión al 98 % — en un momento llega al 100', 'Printing at 98 % — reaching 100 in a moment'), output);
+                break;
+            }
             const pctArg = parseFloat(a);
             if (isNaN(pctArg)) {
                 showInfo(T(`Uso: impresion <0-100> | impresion reset. Ahora: ${v2PrintState.pct.toFixed(1)}% → ${v2PrintState.objetivo}%`,
@@ -9861,6 +9882,7 @@ window.processTerminalCommand = processTerminalCommand;
 function showHelp(output) {
     const commands = [
         'home - Pantalla de inicio: elegir version, idioma y pagina (tambien: inicio, menu)',
+        'final - En la pagina 12: salta la impresion al 98% (tecla R) y llega sola al 100 y al rojo',
         '<numero> - Va a esa pagina de la version activa (se construye por codigo)',
         'help - Muestra todos los comandos disponibles',
         'zeng - Activa el efecto Zeng (azul)',
@@ -22228,6 +22250,25 @@ function v2PrintReset() {
         liveTerminals.delete(ov);
     }
     v2PrintState = { objetivo: 12, pct: 0, fase: 0, t0: performance.now(), ultimo: performance.now(), overlay: null, visor: v2PrintState.visor };
+}
+
+/**
+ * Salto al final: la barra pasa de golpe al 98 % y sigue sola hasta el 100,
+ * donde dispara la descarga y el rojo. Para no esperar los ~30 s de impresión
+ * en cada toma. Si ya había terminado, se reinicia primero.
+ */
+const PRINT_SALTO = 98;
+function v2PrintFinal() {
+    if (v2PrintState.fase !== 0) v2PrintReset();
+    v2PrintState.pct = PRINT_SALTO;
+    v2PrintState.objetivo = 100;
+    v2PrintState.ultimo = performance.now();
+    return true;
+}
+
+/** ¿Está la página de impresión en pantalla? */
+function v2PrintEnPantalla() {
+    return !!(v2PrintState.visor && panels.includes(v2PrintState.visor));
 }
 
 /** Devuelve la pantalla al color y al bloom del perfil y apaga el glitch. */
