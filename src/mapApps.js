@@ -44,13 +44,13 @@ function mapApps(args, output) {
     
     // Intentar diferentes rutas relativas
     const possiblePaths = [
-        './public/img/apps.png',
-        '../public/img/apps.png',
+        './img/apps.png',
+        '../img/apps.png',
         'img/apps.png',
         './img/apps.png',
         '../img/apps.png',
         '/img/apps.png',
-        'public/img/apps.png'
+        './img/apps.png'
     ];
     
     let textureLoadAttempts = 0;

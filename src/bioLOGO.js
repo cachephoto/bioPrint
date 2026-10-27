@@ -6,7 +6,7 @@ let sourcePanel = null;
 
 export function createLogo(scene) {
     const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load('./public/img/bioprint_logo.png', (loadedTexture) => {
+    const texture = textureLoader.load('./img/bioprint_logo.png', (loadedTexture) => {
         const ratio = loadedTexture.image.width / loadedTexture.image.height;
         const width = 12;
         const height = width / ratio;

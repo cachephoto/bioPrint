@@ -6246,7 +6246,7 @@ function getSerializableConfig() {
                 if (panel.hasTexture && panel.fillMesh && panel.fillMesh.material && panel.fillMesh.material.map) {
                     const texture = panel.fillMesh.material.map;
                     // Intentar determinar el tipo de textura y su ruta
-                    // Para logo: siempre es './public/img/bioprint_logo.png'
+                    // Para logo: siempre es './img/bioprint_logo.png'
                     // Para apps: necesitamos guardar el índice del icono o la ruta completa
                     // Por ahora, guardamos la ruta si está disponible o inferimos del tipo
                     
@@ -6281,7 +6281,7 @@ function getSerializableConfig() {
                     // Si tiene logo activo, marcar como logo
                     if (hasLogoActive) {
                         textureType = 'logo';
-                        texturePath = './public/img/bioprint_logo.png';
+                        texturePath = './img/bioprint_logo.png';
                     } else if (panel.textureType === 'app' || texturePath?.includes('apps.png')) {
                         // Para apps, necesitamos guardar el índice del icono si está disponible
                         textureType = 'app';
@@ -6304,7 +6304,7 @@ function getSerializableConfig() {
                     textureInfo = {
                         hasTexture: true,
                         textureType: 'logo',
-                        texturePath: './public/img/bioprint_logo.png',
+                        texturePath: './img/bioprint_logo.png',
                         customUVs: null,
                         imageAspect: null,
                         hasLogoActive: true
@@ -8950,7 +8950,7 @@ async function applyConfigurationFromData(configData) {
                     // 🔥 CRITICAL FIX: Restaurar texturas (logo, apps)
                     if (panelInfo.behavior.textureInfo && panelInfo.behavior.textureInfo.hasTexture) {
                         const textureInfo = panelInfo.behavior.textureInfo;
-                        const texturePath = textureInfo.texturePath || './public/img/bioprint_logo.png'; // Default a logo
+                        const texturePath = textureInfo.texturePath || './img/bioprint_logo.png'; // Default a logo
                         
                         loadTexture(
                             texturePath,
@@ -10434,7 +10434,7 @@ function applyImageTextureToPanel(panel, path, onSuccess, onError) {
 }
 
 function applyLogoTextureToPanel(panel, onSuccess, onError) {
-    return applyImageTextureToPanel(panel, './public/img/bioprint_logo.png', onSuccess, onError);
+    return applyImageTextureToPanel(panel, './img/bioprint_logo.png', onSuccess, onError);
 }
 
 function mapLogo(args, output) {
@@ -10448,7 +10448,7 @@ function mapLogo(args, output) {
     showInfo('Aplicando logo al panel...', output);
 
     loadTexture(
-        './public/img/bioprint_logo.png',
+        './img/bioprint_logo.png',
         (texture) => {
             if (panel.fillMesh) {
                 // Configurar wrapping para evitar repetición si se sale de 0..1
@@ -10504,7 +10504,7 @@ function mapLogo(args, output) {
                 uvAttribute.needsUpdate = true;
                 panel.hasTexture = true; // Marcar que el panel tiene textura
                 panel.textureType = 'logo'; // 🔥 Guardar tipo de textura para snapshots
-                panel.texturePath = './public/img/bioprint_logo.png'; // 🔥 Guardar ruta para snapshots
+                panel.texturePath = './img/bioprint_logo.png'; // 🔥 Guardar ruta para snapshots
 
                 // 🔥 BRING TO FRONT: el logo siempre se dibuja por encima de cualquier otro panel
                 const fm = panel.fillMesh;
@@ -10638,22 +10638,22 @@ function mapSocial(args, output) {
         
         // Definir iconos de redes sociales con sus rutas de imagen
         const socialIcons = [
-            { name: 'META', path: './public/img/meta.png' },
-            { name: 'GMAIL', path: './public/img/gmail.png' },
-            { name: 'X', path: './public/img/x.png' },
-            { name: 'LINKEDIN', path: './public/img/linkedin.png' },
-            { name: 'GITHUB', path: './public/img/github.png' }
+            { name: 'META', path: './img/meta.png' },
+            { name: 'GMAIL', path: './img/gmail.png' },
+            { name: 'X', path: './img/x.png' },
+            { name: 'LINKEDIN', path: './img/linkedin.png' },
+            { name: 'GITHUB', path: './img/github.png' }
         ];
         
         // Rutas alternativas para intentar cargar
         const alternativePaths = [
-            './public/img/',
-            '../public/img/',
+            './img/',
+            '../img/',
             'img/',
             './img/',
             '../img/',
             '/img/',
-            'public/img/'
+            './img/'
         ];
         
         // Calcular tamaño de cada icono
@@ -15746,7 +15746,7 @@ function getSelectedPanelsConfig() {
                     
                     if (hasLogoActive) {
                         textureType = 'logo';
-                        texturePath = './public/img/bioprint_logo.png';
+                        texturePath = './img/bioprint_logo.png';
                     } else if (panel.textureType === 'app' || texturePath?.includes('apps.png')) {
                         textureType = 'app';
                         texturePath = texturePath || './img/apps.png';
@@ -15764,7 +15764,7 @@ function getSelectedPanelsConfig() {
                     textureInfo = {
                         hasTexture: true,
                         textureType: 'logo',
-                        texturePath: './public/img/bioprint_logo.png',
+                        texturePath: './img/bioprint_logo.png',
                         customUVs: null,
                         imageAspect: null,
                         hasLogoActive: true
@@ -16035,7 +16035,7 @@ async function restorePanelBehaviorFromData(panel, behaviorData, currentGridPara
     // Restaurar texturas
     if (behaviorData.textureInfo && behaviorData.textureInfo.hasTexture) {
         const textureInfo = behaviorData.textureInfo;
-        const texturePath = textureInfo.texturePath || './public/img/bioprint_logo.png';
+        const texturePath = textureInfo.texturePath || './img/bioprint_logo.png';
         loadTexture(texturePath, (texture) => {
             if (panel.fillMesh) {
                 texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -20924,7 +20924,7 @@ async function buildV2SocialScreen(output) {
     V2_ACCOUNTS.forEach((a, i) => {
         const ax = x0 + i * (ICON + GAP);
         const ic = mk(ax, ax + ICON - 1, 35, 44);
-        applyImageTextureToPanel(ic, './public/img/' + a.icon);
+        applyImageTextureToPanel(ic, './img/' + a.icon);
         const nm = mk(ax, ax + ICON - 1, 32, 34);
         window.setTextOnPanel(nm, a.red, 1.5, 'center', { font: 'terminal' });
     });
@@ -20973,7 +20973,7 @@ async function buildV2SubsScreen(output) {
     V2_SUBS.forEach((s, i) => {
         const ax = x0 + i * (ICON + GAP);
         const ic = mk(ax, ax + ICON - 1, 34, 42);
-        applyImageTextureToPanel(ic, './public/img/' + s.icon);
+        applyImageTextureToPanel(ic, './img/' + s.icon);
     });
 
     const term = mk(3, 86, 3, 31);

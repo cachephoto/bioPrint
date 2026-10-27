@@ -9,32 +9,32 @@ const GRID_CONFIG = {
 // Lista de iconos individuales con sus rutas (usando los nombres de archivo existentes)
 const APP_ICONS = [
     // Primera fila
-    { name: 'app_1', path: 'public/img/app_1.png' },
-    { name: 'app_2', path: 'public/img/app_2.png' },
-    { name: 'app_3', path: 'public/img/app_3.png' },
-    { name: 'app_4', path: 'public/img/app_4.png' },
-    { name: 'app_5', path: 'public/img/app_5.png' },
+    { name: 'app_1', path: './img/app_1.png' },
+    { name: 'app_2', path: './img/app_2.png' },
+    { name: 'app_3', path: './img/app_3.png' },
+    { name: 'app_4', path: './img/app_4.png' },
+    { name: 'app_5', path: './img/app_5.png' },
     
     // Segunda fila
-    { name: 'app_6', path: 'public/img/app_6.png' },
-    { name: 'app_7', path: 'public/img/app_7.png' },
-    { name: 'app_8', path: 'public/img/app_8.png' },
-    { name: 'app_9', path: 'public/img/app_9.png' },
-    { name: 'app_10', path: 'public/img/app_10.png' },
+    { name: 'app_6', path: './img/app_6.png' },
+    { name: 'app_7', path: './img/app_7.png' },
+    { name: 'app_8', path: './img/app_8.png' },
+    { name: 'app_9', path: './img/app_9.png' },
+    { name: 'app_10', path: './img/app_10.png' },
     
     // Tercera fila
-    { name: 'app_11', path: 'public/img/app_11.png' },
-    { name: 'app_12', path: 'public/img/app_12.png' },
-    { name: 'app_13', path: 'public/img/app_13.png' },
-    { name: 'app_14', path: 'public/img/app_14.png' },
-    { name: 'app_15', path: 'public/img/app_15.png' },
+    { name: 'app_11', path: './img/app_11.png' },
+    { name: 'app_12', path: './img/app_12.png' },
+    { name: 'app_13', path: './img/app_13.png' },
+    { name: 'app_14', path: './img/app_14.png' },
+    { name: 'app_15', path: './img/app_15.png' },
     
     // Cuarta fila
-    { name: 'app_16', path: 'public/img/app_16.png' },
-    { name: 'app_17', path: 'public/img/app_17.png' },
-    { name: 'app_18', path: 'public/img/app_18.png' },
-    { name: 'app_19', path: 'public/img/app_19.png' },
-    { name: 'app_20', path: 'public/img/app_20.png' }
+    { name: 'app_16', path: './img/app_16.png' },
+    { name: 'app_17', path: './img/app_17.png' },
+    { name: 'app_18', path: './img/app_18.png' },
+    { name: 'app_19', path: './img/app_19.png' },
+    { name: 'app_20', path: './img/app_20.png' }
 ];
 
 // TextureLoader compartido para cargar las texturas
