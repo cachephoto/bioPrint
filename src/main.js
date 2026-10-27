@@ -1339,6 +1339,16 @@ const panelFillMaterialSelected = new THREE.MeshBasicMaterial({
     depthTest: false,
     depthWrite: false
 });
+// Entre el normal y el seleccionado: marca el espécimen que está cargado en
+// el visor sin que parezca una selección de edición.
+const panelFillMaterialDestacado = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.48,
+    side: THREE.DoubleSide,
+    depthTest: false,
+    depthWrite: false
+});
 
 let pendingBoundingBox = null; // Para almacenar el bbox al cambiar resolución
 let currentlyHoveredPanel = null;
@@ -3873,6 +3883,20 @@ document.addEventListener('keydown', (event) => {
             }
             return;
         // 🔥 NUEVO: Cargar slots con números del teclado (0-9)
+        // 🔤 Fila QWERTY: las páginas 10 y 11 no caben en un dígito, y H es
+        // la vuelta al home. Sólo cuando no se está escribiendo en ningún lado.
+        case 'q': case 'Q':
+        case 'w': case 'W':
+        case 'h': case 'H': {
+            if (activelyWritingText || terminalIsEffectivelyActive ||
+                event.ctrlKey || event.altKey || event.metaKey) break;
+            const letra = key.toLowerCase();
+            const outL = document.getElementById('terminal-output');
+            if (letra === 'h') buildHome(outL);
+            else irAPagina(letra === 'q' ? 10 : 11, outL);
+            event.preventDefault();
+            return;
+        }
         case '0':
         case '1':
         case '2':
@@ -5005,8 +5029,10 @@ function updatePanelColor(panelData) {
                     console.log(`Tecla: ${panelData.behavior.character}`);
                 }
             } else {
-                targetLineMaterial = panelLineMaterialNormal;
-                targetFillMaterial = panelFillMaterialNormal;
+                targetLineMaterial = panelData.destacado ? panelLineMaterialHover
+                                                         : panelLineMaterialNormal;
+                targetFillMaterial = panelData.destacado ? panelFillMaterialDestacado
+                                                         : panelFillMaterialNormal;
             }
         }
     }
@@ -5256,6 +5282,10 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                                 scientificName: modelScientificNames[sourceModelData.name] || 'MODELO DESCONOCIDO'
                             };
                             console.log(`📋 Último modelo para print actualizado: ${lastClickedModelFromGrid.name} (${lastClickedModelFromGrid.scientificName})`);
+
+                            // 🟢 Página 2 de la verde: el espécimen cargado queda un
+                            // punto más claro y su ficha corre en la barra lateral.
+                            v2MarcarEspecimen(clickedPanelData);
                             
                             // 🔥 BUSCAR Y ACTUALIZAR PANELES DE ESTADÍSTICAS GENÓMICAS (STATG)
                             const statgPanels = panels.filter(p => p.isStatgPanel && !p.isKeyboardKey);
@@ -19562,6 +19592,77 @@ const V2_SPECIMENS = [
     ['burg',   'hueso',   'axolotl' ]   // abajo
 ];
 const V2_VIEWER_MODEL = 'axolotl';   // el que aparece cargado en el visor grande
+
+// ── Ficha del espécimen (barra lateral de la página 2) ──────────────────────
+let v2Especimen = null;      // modelo cargado en el visor
+let v2EspecimenT0 = 0;       // cuándo se cargó: la ficha se escribe desde ahí
+
+const V2_FICHAS = {
+    axolotl: { es: 'AXOLOTE',     en: 'AXOLOTL',     masa: '118 g',  cel: '2.1e10', tej: ['anfibio', 'amphibian'],   capas: 38210 },
+    acot:    { es: 'ACOCIL',      en: 'CRAYFISH',    masa: '42 g',   cel: '6.4e9',  tej: ['crustaceo', 'crustacean'], capas: 21480 },
+    tlaloc:  { es: 'IDOLO TLALOC', en: 'TLALOC IDOL', masa: '1.9 kg', cel: 'n/a',    tej: ['mineral', 'mineral'],      capas: 64020 },
+    tort:    { es: 'TORTUGA',     en: 'TURTLE',      masa: '2.4 kg', cel: '4.0e11', tej: ['reptil', 'reptile'],       capas: 96300 },
+    discus:  { es: 'PEZ DISCO',   en: 'DISK FISH',   masa: '210 g',  cel: '3.3e10', tej: ['teleosteo', 'teleost'],    capas: 44120 },
+    pollo:   { es: 'POLLO',       en: 'CHICKEN',     masa: '1.6 kg', cel: '2.8e11', tej: ['ave', 'bird'],             capas: 81700 },
+    corazon: { es: 'CORAZON',     en: 'HEART',       masa: '310 g',  cel: '4.6e10', tej: ['miocardio', 'myocardium'], capas: 52900 },
+    burg:    { es: 'CARNE',       en: 'BURGER MEAT', masa: '150 g',  cel: '1.9e10', tej: ['musculo', 'muscle'],       capas: 30500 },
+    hueso:   { es: 'HUESO',       en: 'BONE',        masa: '380 g',  cel: '1.2e10', tej: ['oseo', 'osseous'],         capas: 36800 }
+};
+
+/** Marca el espécimen cargado en el visor y reinicia su ficha. */
+function v2MarcarEspecimen(panel) {
+    panels.forEach(p => {
+        if (!p.destacado) return;
+        p.destacado = false;
+        if (p.backingMesh && p.backingMaterialBase) p.backingMesh.material = p.backingMaterialBase;
+        updatePanelColor(p);
+    });
+    panel.destacado = true;
+    // En la verde el relleno del panel queda bajo su plano de fondo
+    // (renderOrder 50), así que aclarar el relleno no se ve — medido en
+    // captura: ninguna diferencia. Se aclara el fondo, que sí está encima.
+    if (panel.backingMesh) {
+        if (!panel.backingMaterialBase) panel.backingMaterialBase = panel.backingMesh.material;
+        const m = panel.backingMaterialBase.clone();
+        m.color.setHex(0x245c24);
+        panel.backingMesh.material = m;
+    }
+    updatePanelColor(panel);
+    v2Especimen = panel.modelData ? panel.modelData.name : null;
+    v2EspecimenT0 = performance.now();
+}
+
+/**
+ * Línea i de la ficha. Cada barra entra con un pequeño retraso y se escribe
+ * letra a letra; las que llevan número siguen moviéndose después.
+ */
+function v2FichaLinea(i) {
+    const f = v2Especimen && V2_FICHAS[v2Especimen];
+    if (!f) return '';
+    const t = (performance.now() - v2EspecimenT0) / 1000;
+    const sci = (typeof modelScientificNames === 'object' && modelScientificNames[v2Especimen]) || '-';
+    const capas = Math.min(f.capas, Math.floor(t * 1400));
+    const horas = f.capas / 3.1 / 3600;
+    const lineas = [
+        `> ${T(f.es, f.en)}`,
+        `  ${sci}`,
+        `${pad(T('masa', 'mass'), 11)}${f.masa}`,
+        `${pad(T('celulas', 'cells'), 11)}${f.cel}`,
+        `${pad(T('tejido', 'tissue'), 11)}${T(f.tej[0], f.tej[1])}`,
+        `${pad(T('capas', 'layers'), 11)}${num(capas)}`,
+        `${pad(T('biotinta', 'bioink'), 11)}${(f.capas * 0.00012).toFixed(1)} L`,
+        `${pad(T('viabilidad', 'viability'), 11)}${(97.8 + Math.sin(t * 0.9) * 0.6).toFixed(1)}%`,
+        `${pad(T('tiempo', 'time'), 11)}${Math.floor(horas)}h ${Math.floor((horas % 1) * 60)}m`,
+        capas >= f.capas ? T('  modelo listo', '  model ready')
+                         : `${spin(t)} ${T('escaneando', 'scanning')}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`
+    ];
+    const txt = lineas[i] || '';
+    // Entrada escalonada y escritura letra a letra
+    const local = t - i * 0.35;
+    if (local <= 0) return '';
+    const visibles = Math.min(txt.length, Math.floor(local / 0.04));
+    return txt.slice(0, visibles);
+}
 const V2_STATUS_TEXT_ES = 'Escaneo de optica interrumpido.';
 const V2_STATUS_TEXT_EN = 'Optical scan interrupted.';
 
@@ -19677,8 +19778,18 @@ async function buildV2ModelsScreen(output, opts = {}) {
     // ── Franjas de cabecera ──
     [[MID_X0, 33], [35, 48], [VIEW_X0, VIEW_X1]].forEach(([a, b]) => mk(a, b, 46, 49));
 
-    // ── Barra lateral: registros del sistema (10 barras de 2 celdas) ──
-    for (let y = 44; y >= 17; y -= 3) mk(SIDE_X0, SIDE_X1, y, y + 1);
+    // ── Barra lateral: la ficha del espécimen cargado, una línea por barra.
+    //    Arranca con el que trae el visor y cambia al tocar otro; el texto se
+    //    escribe solo y los contadores no paran, para que nunca quede quieta ──
+    v2Especimen = V2_VIEWER_MODEL;
+    v2EspecimenT0 = performance.now();
+    let barra = 0;
+    for (let y = 44; y >= 17; y -= 3) {
+        const b = mk(SIDE_X0, SIDE_X1, y, y + 1);
+        const i = barra++;
+        makeLiveTerminal(b, { scene: () => v2FichaLinea(i), fontSize: 1.5,
+                              align: 'left', vAlign: 'middle', fps: 6 });
+    }
 
     // Estado al pie. Con 18 celdas de ancho el texto ya cabe sin partirse.
     const statusPanel = mk(SIDE_X0, SIDE_X1, 4, 12);
@@ -19740,6 +19851,8 @@ async function buildV2ModelsScreen(output, opts = {}) {
         // El auto-fit los deja chicos; en la referencia llenan su recuadro.
         scalePanelModel(panel, 1.2);
         fitModelInsidePanel(panel);
+        // La celda del espécimen que ya está en el visor arranca marcada
+        if (name === V2_VIEWER_MODEL) v2MarcarEspecimen(panel);
     }
 
     if (output) showSuccess(withModels
@@ -20139,7 +20252,7 @@ function makeLiveTerminal(panel, cfg) {
 function renderLiveTerminal(panel) {
     const c = panel.liveTermData, st = panel.liveTermState;
     if (!c || !st) return;
-    const fn = V2_SCENES[c.scene];
+    const fn = typeof c.scene === 'function' ? c.scene : V2_SCENES[c.scene];
     if (!fn) return;
     const t = (performance.now() - st.t0) / 1000;
     const texto = fn(t);
@@ -20169,7 +20282,8 @@ const V2_ACCOUNTS = [
     { icon: 'app_12.png', red: 'ORBITA',   id: '@zeng_____',   base: 2314,  rate: 0.7 },
     { icon: 'app_10.png', red: 'SUPER FANS', id: '@zeng_fan', base: 41208, rate: 3.1 },
     { icon: 'app_3.png',  red: 'PULSO',    id: '@zeng__',      base: 9876,  rate: 1.9 },
-    { icon: 'app_20.png', red: 'NEXO',     id: 'nx/zeng__',    base: 312,   rate: 0.2 }
+    { icon: 'app_20.png', red: 'NEXO',     id: 'nx/zeng__',    base: 312,   rate: 0.2 },
+    { icon: 'app_7.png',  red: 'BLUE FANS', id: '@zeng_blue',  base: 32000000, rate: 41 }
 ];
 
 const V2_SUBS = [
@@ -20224,6 +20338,32 @@ const V2_SCENES = {
     estado: t => escenaEstado(t),
     pulso:  t => escenaPulso(t),
 
+    // Página 5 de la verde: el algoritmo aprendiendo del sujeto, sin parar.
+    aprendizaje: t => {
+        const TOTAL = 70e9;
+        const n = Math.min(TOTAL, ramp(t, TOTAL, 150));   // sube rápido y se frena
+        const pct = n / TOTAL * 100;
+        const frases = [
+            T('prefiere sesiones nocturnas', 'prefers late-night sessions'),
+            T('ignora el contenido largo', 'skips long-form content'),
+            T('compra por impulso tras las 23:00', 'impulse-buys after 23:00'),
+            T('responde a ediciones limitadas', 'responds to limited editions'),
+            T('evita la interaccion directa', 'avoids direct interaction'),
+            T('repite lo que ya conoce', 'repeats what it already knows'),
+            T('tolerancia a la espera: baja', 'wait tolerance: low'),
+            T('sensibilidad al precio: nula', 'price sensitivity: none')
+        ];
+        const f = frases[Math.floor(t / 3.2) % frases.length];
+        const l = [];
+        l.push(`> learn --subject @ZENG --sources ${V2_ACCOUNTS.length} apps  cookies  telemetry`);
+        l.push(`  ${pad(T('gustos','tastes'), 10)} [${bar(Math.min(99, ramp(t, 99, 45)), 14)}]   ${pad(T('habitos','habits'), 10)} [${bar(Math.min(99, ramp(t, 99, 70)), 14)}]`);
+        l.push(`  ${pad('cookies', 10)} ${padL(num(1284991 + t * 213), 12)}      ${pad(T('param/app','param/app'), 10)} ${padL(num(212 + t * 0.4), 6)}`);
+        l.push(`  [${bar(pct, 44)}] ${padL(pct.toFixed(1), 5)}%`);
+        l.push(`  ${padL(num(n), 16)} / 70 000 000 000 ${T('parametros','parameters')}`);
+        l.push(`  ${spin(t)} @ZENG: ${f}`);
+        return l.join('\n');
+    },
+
     // Página de impresión de ZENG: la máquina trabajando, capa a capa.
     zengPrint: t => {
         const CAPAS = 412;
@@ -20253,14 +20393,16 @@ const V2_SCENES = {
         const l = [];
         l.push(`${spin(t)} ${T('sincronizando','syncing')} ${V2_ACCOUNTS.length} ${T('cuentas vinculadas','linked accounts')}`);
         l.push('');
+        let totalSubs = 0;
         V2_ACCOUNTS.forEach((a, i) => {
             const rama = i === V2_ACCOUNTS.length - 1 ? '`-' : '|-';
             const n = a.base + t * a.rate;
-            l.push(`  ${rama} ${pad(a.red, 10)} ${pad(a.id, 13)} ${padL(num(n), 8)} reg   OK`);
+            totalSubs += n;
+            l.push(`  ${rama} ${pad(a.red, 10)} ${pad(a.id, 12)} ${padL(num(n), 11)} ${T('seg','fol')}  OK`);
         });
         l.push('');
         l.push(`  ${pad(T('registros leidos','records read'), 20)} ${padL(num(1284991 + t * 137), 11)}`);
-        l.push(`  ${pad(T('suscriptores','subscribers'), 20)} ${padL(num(84771 + t * 6), 11)}`);
+        l.push(`  ${pad(T('seguidores totales','total followers'), 20)} ${padL(num(totalSubs), 11)}`);
         l.push(`  ${pad(T('contactos mapeados','mapped contacts'), 20)} ${padL(num(4102 + t * 0.9), 11)}`);
         l.push('');
         l.push(`  [${bar(Math.min(99.9, ramp(t, 99.9, 26)), 34)}] ${padL(Math.min(99.9, ramp(t, 99.9, 26)).toFixed(1), 5)}%`);
@@ -20375,11 +20517,11 @@ const V2_SCENES = {
         // Bloques que van apareciendo uno a uno: el volcado se lee como algo
         // que la máquina está sacando del cuerpo, no como una ficha ya hecha.
         const bloques = [
-            [T('SUJETO','SUBJECT'), [
-                [T('especimen','specimen'), '@ZENG'],
+            [T('ESPECIMEN','SPECIMEN'), [
+                [T('registro','record'), 'HSAP-0417'],
+                [T('especie','species'), 'Homo sapiens'],
                 [T('sexo biologico','biological sex'), 'F'],
-                [T('edad estimada','estimated age'), T('27 anos','27 yrs')],
-                [T('fenotipo','phenotype'), T('MESOMORFO','MESOMORPH')]]],
+                [T('edad estimada','estimated age'), T('27 anos','27 yrs')]]],
             [T('MORFOMETRIA','MORPHOMETRY'), [
                 [T('estatura','height'), '1.68 m'],
                 [T('masa corporal','body mass'), '58.4 kg'],
@@ -20520,18 +20662,23 @@ async function buildV2SocialScreen(output) {
     const mk = makeMk(gp);
     v2TermHeader(mk, 'scan --linked-accounts @ZENG');
 
-    // Iconos del proyecto, en fila
+    // Iconos del proyecto, en fila, pegados a la cabecera para dejar sitio
+    // abajo a las dos terminales.
     const ICON = 10, GAP = 3, x0 = 4;
     V2_ACCOUNTS.forEach((a, i) => {
         const ax = x0 + i * (ICON + GAP);
-        const ic = mk(ax, ax + ICON - 1, 31, 40);
+        const ic = mk(ax, ax + ICON - 1, 35, 44);
         applyImageTextureToPanel(ic, './public/img/' + a.icon);
-        const nm = mk(ax, ax + ICON - 1, 27, 29);
+        const nm = mk(ax, ax + ICON - 1, 32, 34);
         window.setTextOnPanel(nm, a.red, 1.5, 'center', { font: 'terminal' });
     });
 
-    const term = mk(4, 86, 3, 25);
-    makeLiveTerminal(term, { scene: 'redes', fontSize: 2.4 });
+    // Arriba la sincronización de cuentas; abajo el algoritmo que aprende
+    // del sujeto y no para de juntar parámetros.
+    const term = mk(4, 86, 12, 30);
+    makeLiveTerminal(term, { scene: 'redes', fontSize: 2.1 });
+    const aprende = mk(4, 86, 3, 10);
+    makeLiveTerminal(aprende, { scene: 'aprendizaje', fontSize: 2.0, fps: 4 });
 
     if (output) showSuccess('Página de cuentas vinculadas construida', output);
     return true;
@@ -20623,7 +20770,7 @@ async function buildV2ProfileScreen(output) {
     const mk = makeMk(gp);
     const head = mk(2, 86, 46, 49);
 
-    const cuerpo = mk(3, 33, 3, 44);
+    const cuerpo = mk(3, 21, 3, 44);
     const ok = await loadModelToPanel(cuerpo, './models/maniqui.obj', gp.cellSize);
     if (ok) {
         cuerpo.modelData = {
@@ -20635,11 +20782,19 @@ async function buildV2ProfileScreen(output) {
         fitModelInsidePanel(cuerpo);
     }
 
+    // Hélice de ADN, alta y girando, pegada al bloque de texto
+    const helice = mk(23, 33, 3, 44);
+    helice.genomData = { tipo: 'helice' };
+    await loadGenomToPanel(helice, gp.cellSize);
+    helice.group.children.forEach(ch => {
+        if (ch.isGroup) { ch.scale.x *= 3.2; ch.scale.z *= 3.2; }
+    });
+
     const datos = mk(36, 86, 3, 44);
     makeLiveTerminal(datos, { scene: 'perfil', fontSize: 2.3 });
 
     // La cabecera al final: antes de esperar el modelo, el texto se pierde
-    window.setTextOnPanel(head, `${PROMPT} bioscan --specimen @ZENG`, 2.0, 'left',
+    window.setTextOnPanel(head, `${PROMPT} bioscan --specimen HSAP-0417`, 2.0, 'left',
         { font: 'terminal', vAlign: 'middle' });
 
     if (output) showSuccess('Página de perfil construida', output);
