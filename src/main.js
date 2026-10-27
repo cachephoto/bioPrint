@@ -390,7 +390,7 @@ function startGridAnimation24Frames() {
                         
                         // 🔥 Cargar estilo visual de bioFX (incluyendo resolución del grid)
                         loadBioFXVisualStyle();
-                        aplicarBrilloPerfil();
+                        aplicarAjustesDeArranque();
                         
                         // Al volver de un cambio de versión se vuelve al home;
                         // si no, a la primera página de la versión activa.
@@ -1535,113 +1535,262 @@ function createCalibrationPanel() {
     if (calibPanelEl) return;
     calibPanelEl = document.createElement('div');
     calibPanelEl.id = 'calib-panel';
-    const swatches = Object.entries(GRADE_COLORS)
-        .map(([name, hex]) => `<div class="calib-swatch" data-c="${hex}" title="${name}" style="background:${hex}"></div>`)
-        .join('');
     calibPanelEl.innerHTML = `
-        <div class="calib-header"><span>CALIBRACIÓN</span><span class="calib-close">✕</span></div>
-        <div class="calib-row">
-            <label>BRILLO <span id="calib-bright-val">${masterBrightness}</span>/10</label>
-            <input type="range" id="calib-bright" min="0" max="10" step="1" value="${masterBrightness}">
+        <div class="calib-header"><span id="calib-titulo"></span><span class="calib-close">✕</span></div>
+        <div id="calib-cuerpo"></div>
+        <div class="calib-botones">
+            <button id="calib-reset"></button>
+            <button id="calib-cerrar"></button>
         </div>
-        <div class="calib-row">
-            <label>SATURACIÓN <span id="calib-sat-val">${colorSaturation}</span>/10</label>
-            <input type="range" id="calib-sat" min="0" max="10" step="1" value="${colorSaturation}">
-        </div>
-        <div class="calib-row">
-            <label>OPACIDAD <span id="calib-op-val">1.00</span></label>
-            <input type="range" id="calib-op" min="0.1" max="1" step="0.05" value="1">
-        </div>
-        <div class="calib-row">
-            <label>COLOR</label>
-            <div class="calib-swatches">${swatches}<input type="color" id="calib-color" value="${colorPicker.value}" title="color libre"></div>
-        </div>
-    `;
+        <div class="calib-nota" id="calib-nota"></div>`;
     const style = document.createElement('style');
     style.id = 'calib-styles';
+    // El acento sale del color de la versión (azul o verde), vía --acc.
     style.textContent = `
         #calib-panel {
+            --acc: #4488ff;
             position: fixed; top: 14px; right: 14px; z-index: 10005;
-            width: 240px; background: rgba(5, 12, 30, 0.94);
-            border: 1px solid #4488ff; border-radius: 6px;
-            font-family: 'VT323', monospace; color: #cfe4ff;
-            padding: 10px 14px 14px; display: none;
-            box-shadow: 0 0 24px rgba(60,130,255,.35);
+            width: 300px; max-height: calc(100vh - 28px); overflow-y: auto;
+            background: rgba(4, 10, 8, 0.95);
+            border: 1px solid var(--acc); border-radius: 6px;
+            font-family: 'VT323', monospace; color: #e6f2e6;
+            padding: 10px 16px 14px; display: none;
+            box-shadow: 0 0 24px color-mix(in srgb, var(--acc) 35%, transparent);
             backdrop-filter: blur(8px);
         }
         #calib-panel.visible { display: block; }
         .calib-header { display: flex; justify-content: space-between;
-            font-size: 18px; letter-spacing: 3px; color: #7fb4ff;
-            border-bottom: 1px solid rgba(90,150,255,.3); padding-bottom: 6px; margin-bottom: 10px; }
-        .calib-close { cursor: pointer; color: #f66; }
-        .calib-row { margin-bottom: 10px; }
-        .calib-row label { display: block; font-size: 16px; letter-spacing: 2px; margin-bottom: 3px; color: #9ec7ff; }
+            font-size: 20px; letter-spacing: 3px; color: var(--acc);
+            border-bottom: 1px solid color-mix(in srgb, var(--acc) 40%, transparent);
+            padding-bottom: 6px; margin-bottom: 8px; }
+        .calib-close { cursor: pointer; color: #f66; padding: 0 4px; }
+        .calib-seccion { font-size: 15px; letter-spacing: 3px; color: var(--acc);
+            opacity: .75; margin: 12px 0 6px; }
+        .calib-row { margin-bottom: 9px; }
+        .calib-row label { display: flex; justify-content: space-between;
+            font-size: 17px; letter-spacing: 1px; margin-bottom: 2px; }
+        .calib-row label span { color: var(--acc); }
         .calib-row input[type=range] {
-            width: 100%; -webkit-appearance: none; height: 5px; border-radius: 3px;
-            background: #16305e; outline: none;
+            width: 100%; -webkit-appearance: none; height: 6px; border-radius: 3px;
+            background: color-mix(in srgb, var(--acc) 22%, #000); outline: none;
         }
+        /* Pulgar grande: se usa con el dedo en el set */
         .calib-row input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
-            background: #9ec7ff; box-shadow: 0 0 8px rgba(150,200,255,.8); cursor: pointer;
+            -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+            background: var(--acc); box-shadow: 0 0 8px var(--acc); cursor: pointer;
         }
-        .calib-swatches { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-        .calib-swatch { width: 22px; height: 22px; border-radius: 4px; cursor: pointer;
+        .calib-swatches { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+        .calib-swatch { width: 26px; height: 26px; border-radius: 4px; cursor: pointer;
             border: 1px solid rgba(255,255,255,.35); }
-        .calib-swatch:hover { transform: scale(1.15); }
-        #calib-color { width: 30px; height: 26px; border: none; background: transparent; cursor: pointer; padding: 0; }
+        .calib-swatch:hover { transform: scale(1.12); }
+        #calib-color { width: 34px; height: 30px; border: none; background: transparent; cursor: pointer; padding: 0; }
+        .calib-botones { display: flex; gap: 8px; margin-top: 14px; }
+        .calib-botones button { flex: 1; font-family: 'VT323', monospace; font-size: 18px;
+            letter-spacing: 2px; padding: 8px 0; cursor: pointer; border-radius: 4px;
+            background: transparent; color: var(--acc); border: 1px solid var(--acc); }
+        .calib-botones button:hover { background: color-mix(in srgb, var(--acc) 18%, transparent); }
+        .calib-nota { font-size: 14px; opacity: .6; margin-top: 8px; line-height: 1.2; }
     `;
     document.head.appendChild(style);
     document.body.appendChild(calibPanelEl);
 
-    // Cerrar
     calibPanelEl.querySelector('.calib-close').addEventListener('click', () => toggleCalibrationPanel(false));
-    // Evitar que las teclas globales se disparen mientras se usa el panel
+    calibPanelEl.querySelector('#calib-cerrar').addEventListener('click', () => toggleCalibrationPanel(false));
+    calibPanelEl.querySelector('#calib-reset').addEventListener('click', () => {
+        restablecerAjustes();
+        pintarAjustes();
+    });
+    // Que las teclas globales (números, letras de página) no se disparen aquí
     calibPanelEl.addEventListener('keydown', e => e.stopPropagation());
+}
 
-    // Brillo
-    calibPanelEl.querySelector('#calib-bright').addEventListener('input', e => {
-        const v = setMasterBrightness(parseInt(e.target.value));
-        calibPanelEl.querySelector('#calib-bright-val').textContent = v;
-    });
-    // Saturación
-    calibPanelEl.querySelector('#calib-sat').addEventListener('input', e => {
-        const v = setColorSaturation(parseInt(e.target.value));
-        calibPanelEl.querySelector('#calib-sat-val').textContent = v;
-    });
-    // Opacidad global
-    calibPanelEl.querySelector('#calib-op').addEventListener('input', e => {
-        const v = Math.max(0.1, Math.min(1, parseFloat(e.target.value)));
-        if (renderer && renderer.domElement) renderer.domElement.style.opacity = String(v);
-        calibPanelEl.querySelector('#calib-op-val').textContent = v.toFixed(2);
-    });
-    // Swatches de color
-    calibPanelEl.querySelectorAll('.calib-swatch').forEach(sw => {
-        sw.addEventListener('click', () => {
-            setGradeColor(sw.dataset.c);
-            calibPanelEl.querySelector('#calib-color').value = sw.dataset.c;
+/**
+ * Controles del panel. Cada uno lee el valor vivo y lo aplica; al moverlo se
+ * guarda para la versión activa. 'soloVerde' oculta lo que en ZENG no existe.
+ */
+function controlesAjustes() {
+    return [
+        { sec: T('IMAGEN', 'IMAGE') },
+        { id: 'brillo', es: 'BRILLO GENERAL', en: 'MASTER BRIGHTNESS', min: 0, max: 10, step: 1,
+          get: () => masterBrightness, fmt: v => `${v}/10`,
+          set: v => {
+              setMasterBrightness(v);
+              // El maestro mueve el bloom por su cuenta: el slider lo sigue,
+              // si no, el siguiente updateBioFXEffect lo devolvería atrás.
+              if (glowSlider) glowSlider.value = Math.max(0, Math.min(3, 0.71 * masterBrightness / 5));
+              guardarAjustes();
+              setTimeout(pintarAjustes, 0);       // refleja texto/rejilla/paneles/glow
+          } },
+        { id: 'texto',   es: 'TEXTO',   en: 'TEXT',   min: 0.05, max: 1,   step: 0.01,
+          get: () => getTextBrightness(), set: v => setTextBrightness(v) },
+        { id: 'rejilla', es: 'REJILLA', en: 'GRID',   min: 0.05, max: 1.5, step: 0.01,
+          get: () => gridBrightness, set: v => setGridBrightness(v) },
+        { id: 'paneles', es: 'PANELES', en: 'PANELS', min: 0.05, max: 2,   step: 0.01,
+          get: () => panelsBrightness, set: v => setPanelsBrightness(v) },
+        { id: 'fondo',   es: 'FONDO BAJO PANELES', en: 'PANEL BACKING', min: 0, max: 1, step: 0.01, soloVerde: true,
+          get: () => PANEL_BACKING_OPACITY, set: v => setPanelBackingOpacity(v) },
+        { id: 'opacidad', es: 'OPACIDAD', en: 'OPACITY', min: 0.1, max: 1, step: 0.01,
+          get: () => parseFloat((renderer && renderer.domElement.style.opacity) || 1) || 1,
+          set: v => { if (renderer) renderer.domElement.style.opacity = String(v); } },
+
+        { sec: T('RESPLANDOR', 'GLOW') },
+        { id: 'glow',   es: 'INTENSIDAD', en: 'INTENSITY', min: 0, max: 3, step: 0.01,
+          get: () => parseFloat(glowSlider.value), set: v => { glowSlider.value = v; updateBioFXEffect(); } },
+        { id: 'radio',  es: 'RADIO',      en: 'RADIUS',    min: 0, max: 1, step: 0.01,
+          get: () => parseFloat(glowRadiusSlider.value), set: v => { glowRadiusSlider.value = v; updateBioFXEffect(); } },
+        { id: 'umbral', es: 'UMBRAL',     en: 'THRESHOLD', min: 0, max: 1, step: 0.01,
+          get: () => parseFloat(glowThresholdSlider.value), set: v => { glowThresholdSlider.value = v; updateBioFXEffect(); } },
+
+        { sec: T('COLOR', 'COLOR') },
+        { id: 'saturacion', es: 'SATURACION', en: 'SATURATION', min: 0, max: 10, step: 1,
+          get: () => Math.round(parseFloat(intensitySlider.value) * 10), fmt: v => `${v}/10`,
+          set: v => setColorSaturation(v), sinGuardar: true },   // ya se guarda solo
+        { id: 'color', tipo: 'color' },
+
+        { sec: T('VIDEO (PAGINA 1)', 'VIDEO (PAGE 1)') },
+        { id: 'videoGain',  es: 'BRILLO',    en: 'BRIGHTNESS', min: 0.1, max: 2, step: 0.01,
+          get: () => AJ_VIDEO.gain,  set: v => { AJ_VIDEO.gain = v;  setVideoBrightness(v, undefined); } },
+        { id: 'videoGamma', es: 'CONTRASTE', en: 'CONTRAST',   min: 0.5, max: 2, step: 0.01,
+          get: () => AJ_VIDEO.gamma, set: v => { AJ_VIDEO.gamma = v; setVideoBrightness(undefined, v); } },
+
+        { sec: T('LETRA', 'TYPE') },
+        { id: 'letra', es: 'TAMAÑO DE LETRA CHICA', en: 'SMALL TYPE SIZE', min: 1, max: 1.4, step: 0.02,
+          get: () => escalaLetra(), fmt: v => `+${Math.round((v - 1) * 100)}%`,
+          set: v => { ESCALA_LETRA_AJ[getProfile()] = v; reconstruirPaginaActual(); } }
+    ];
+}
+
+/** Dibuja (o redibuja) los controles con los valores vivos. */
+function pintarAjustes() {
+    if (!calibPanelEl) return;
+    const verde = getProfile().startsWith('v2');
+    calibPanelEl.style.setProperty('--acc', PROFILE_BASE_COLOR[getProfile()] || '#4488ff');
+    calibPanelEl.querySelector('#calib-titulo').textContent = T('AJUSTES', 'SETTINGS');
+    calibPanelEl.querySelector('#calib-reset').textContent = T('RESTABLECER', 'RESET');
+    calibPanelEl.querySelector('#calib-cerrar').textContent = T('CERRAR', 'CLOSE');
+    calibPanelEl.querySelector('#calib-nota').textContent =
+        T(`Se guarda solo, por versión (${profileInfo(getProfile()).label}). Tecla C abre y cierra.`,
+          `Saved automatically per version (${profileInfo(getProfile()).label}). Key C toggles.`);
+    const cuerpo = calibPanelEl.querySelector('#calib-cuerpo');
+    cuerpo.innerHTML = '';
+    for (const c of controlesAjustes()) {
+        if (c.soloVerde && !verde) continue;
+        if (c.sec) {
+            const d = document.createElement('div'); d.className = 'calib-seccion'; d.textContent = c.sec;
+            cuerpo.appendChild(d); continue;
+        }
+        const fila = document.createElement('div'); fila.className = 'calib-row';
+        if (c.tipo === 'color') {
+            const sw = Object.entries(GRADE_COLORS)
+                .map(([n, hex]) => `<div class="calib-swatch" data-c="${hex}" title="${n}" style="background:${hex}"></div>`).join('');
+            fila.innerHTML = `<div class="calib-swatches">${sw}<input type="color" id="calib-color" value="${colorPicker.value}"></div>`;
+            fila.querySelectorAll('.calib-swatch').forEach(s => s.addEventListener('click', () => {
+                setGradeColor(s.dataset.c); fila.querySelector('#calib-color').value = s.dataset.c;
+            }));
+            fila.querySelector('#calib-color').addEventListener('input', e => setGradeColor(e.target.value));
+            cuerpo.appendChild(fila); continue;
+        }
+        const fmt = c.fmt || (v => Number(v).toFixed(2));
+        const v0 = c.get();
+        fila.innerHTML = `<label>${T(c.es, c.en)} <span>${fmt(v0)}</span></label>
+            <input type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${v0}">`;
+        const lec = fila.querySelector('span');
+        fila.querySelector('input').addEventListener('input', e => {
+            const v = parseFloat(e.target.value);
+            c.set(v);
+            lec.textContent = fmt(c.get());
+            if (!c.sinGuardar && c.id !== 'brillo') guardarAjustes();
         });
-    });
-    // Color libre
-    calibPanelEl.querySelector('#calib-color').addEventListener('input', e => {
-        setGradeColor(e.target.value);
-    });
+        cuerpo.appendChild(fila);
+    }
 }
 
 function toggleCalibrationPanel(show) {
     if (!calibPanelEl) createCalibrationPanel();
     const visible = show !== undefined ? show : !calibPanelEl.classList.contains('visible');
     calibPanelEl.classList.toggle('visible', visible);
-    if (visible) {
-        // Sincronizar valores actuales al abrir
-        calibPanelEl.querySelector('#calib-bright').value = String(masterBrightness);
-        calibPanelEl.querySelector('#calib-bright-val').textContent = String(masterBrightness);
-        calibPanelEl.querySelector('#calib-sat').value = String(colorSaturation);
-        calibPanelEl.querySelector('#calib-sat-val').textContent = String(colorSaturation);
-        calibPanelEl.querySelector('#calib-color').value = colorPicker.value;
-        const op = (renderer && renderer.domElement && renderer.domElement.style.opacity) || '1';
-        calibPanelEl.querySelector('#calib-op').value = String(parseFloat(op) || 1);
-        calibPanelEl.querySelector('#calib-op-val').textContent = (parseFloat(op) || 1).toFixed(2);
-    }
+    if (visible) pintarAjustes();
+}
+
+// ── Ajustes guardados por versión ───────────────────────────────────────────
+// El panel guarda lo que mueves en bioPrint_ajustes__<versión>. Al arrancar se
+// aplican encima del brillo de arranque, y también al volver del rojo de la
+// página 12. RESTABLECER vuelve a lo que había al arrancar, antes de aplicarlos.
+const AJ_VIDEO = { gain: 0.72, gamma: 1.15 };
+const ESCALA_LETRA_AJ = {};
+let ajustesBase = null;
+let paginaActual = null;
+
+function claveAjustes() { return 'bioPrint_ajustes__' + getProfile(); }
+
+function escalaLetra() {
+    const p = getProfile();
+    if (typeof ESCALA_LETRA_AJ[p] === 'number') return ESCALA_LETRA_AJ[p];
+    return FONT_BOOST[p] || 1;
+}
+
+function leerAjustes() {
+    return {
+        texto: getTextBrightness(), rejilla: gridBrightness, paneles: panelsBrightness,
+        fondo: PANEL_BACKING_OPACITY,
+        opacidad: parseFloat((renderer && renderer.domElement.style.opacity) || 1) || 1,
+        glow: parseFloat(glowSlider.value), radio: parseFloat(glowRadiusSlider.value),
+        umbral: parseFloat(glowThresholdSlider.value),
+        videoGain: AJ_VIDEO.gain, videoGamma: AJ_VIDEO.gamma, letra: escalaLetra()
+    };
+}
+
+function aplicarAjustes(a) {
+    if (!a) return;
+    const n = k => typeof a[k] === 'number' && isFinite(a[k]);
+    if (n('texto'))   setTextBrightness(a.texto);
+    if (n('rejilla')) setGridBrightness(a.rejilla);
+    if (n('paneles')) setPanelsBrightness(a.paneles);
+    if (n('fondo'))   setPanelBackingOpacity(a.fondo);
+    if (n('opacidad') && renderer) renderer.domElement.style.opacity = String(a.opacidad);
+    if (n('glow'))   glowSlider.value = a.glow;
+    if (n('radio'))  glowRadiusSlider.value = a.radio;
+    if (n('umbral')) glowThresholdSlider.value = a.umbral;
+    updateBioFXEffect();
+    if (n('videoGain'))  AJ_VIDEO.gain = a.videoGain;
+    if (n('videoGamma')) AJ_VIDEO.gamma = a.videoGamma;
+    setVideoBrightness(AJ_VIDEO.gain, AJ_VIDEO.gamma);
+    if (n('letra')) ESCALA_LETRA_AJ[getProfile()] = a.letra;
+}
+
+function guardarAjustes() {
+    try { localStorage.setItem(claveAjustes(), JSON.stringify(leerAjustes())); } catch (e) { /* sin storage */ }
+}
+
+function ajustesGuardados() {
+    try { return JSON.parse(localStorage.getItem(claveAjustes()) || 'null'); } catch (e) { return null; }
+}
+
+/** Arranque: brillo de la versión, foto de la base, y lo guardado encima. */
+function aplicarAjustesDeArranque() {
+    aplicarBrilloPerfil();
+    if (!ajustesBase) ajustesBase = leerAjustes();
+    aplicarAjustes(ajustesGuardados());
+}
+
+function restablecerAjustes() {
+    try { localStorage.removeItem(claveAjustes()); } catch (e) { /* sin storage */ }
+    delete ESCALA_LETRA_AJ[getProfile()];
+    setMasterBrightness(5);
+    if (ajustesBase) aplicarAjustes(ajustesBase);
+    else aplicarBrilloPerfil();
+    reconstruirPaginaActual();
+}
+
+/** El tamaño de letra se fija al construir: la página se rehace sola. */
+let __rehacerT = null;
+function reconstruirPaginaActual() {
+    clearTimeout(__rehacerT);
+    __rehacerT = setTimeout(() => {
+        const out = document.getElementById('terminal-output');
+        if (paginaActual === 'home') buildHome(out);
+        else if (typeof paginaActual === 'number') irAPagina(paginaActual, out);
+    }, 700);
 }
 
 // =====================================================
@@ -5480,6 +5629,11 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                     if (clickedPanelData.homeLang) {
                         startFlash(clickedPanelData);
                         homeIrAIdioma(clickedPanelData.homeLang);
+                        return;
+                    }
+                    if (clickedPanelData.homeAjustes) {
+                        startFlash(clickedPanelData);
+                        toggleCalibrationPanel(true);
                         return;
                     }
                     if (typeof clickedPanelData.navTargetSlot === 'number') {
@@ -19152,8 +19306,8 @@ window.makeLoginButton = makeLoginButton;
 // ningún texto chico acaba más grande que uno que era mayor.
 const FONT_BOOST = { v2: 1.12, v2en: 1.12 };
 function cuerpoLegible(fs) {
-    const k = FONT_BOOST[getProfile()];
-    if (!k || !fs) return fs;
+    const k = escalaLetra();
+    if (!k || k === 1 || !fs) return fs;
     if (fs <= 2.0) return fs * k;
     if (fs >= 2.4) return fs;
     return fs * (k + (1 - k) * (fs - 2.0) / 0.4);
@@ -21020,8 +21174,8 @@ function makeVideoPanel(panel, cfg) {
         // gain baja el nivel general y gamma > 1 hunde los medios: así el video
         // se queda por debajo del umbral de bloom (0.55) salvo en los altos, y
         // el glow deja de tragarse el detalle.
-        gain:  typeof cfg.gain === 'number' ? cfg.gain : 0.72,
-        gamma: typeof cfg.gamma === 'number' ? cfg.gamma : 1.15,
+        gain:  typeof cfg.gain === 'number' ? cfg.gain : AJ_VIDEO.gain,
+        gamma: typeof cfg.gamma === 'number' ? cfg.gamma : AJ_VIDEO.gamma,
         loop:  cfg.loop !== false
     };
 
@@ -22037,6 +22191,7 @@ async function buildZengSettings(output) {
 const HOME_FLAG = 'bioPrint_volverAHome';
 
 async function buildHome(output) {
+    paginaActual = 'home';
     const gp = await prepararPagina();
     if (!gp) { showError('Grid no disponible', output); return false; }
 
@@ -22084,9 +22239,9 @@ async function buildHome(output) {
         if (k === prof) b.selected = true;       // el activo se ve relleno
     });
 
-    // ── Idioma: una fila de dos ──
+    // ── Idioma y ajustes: una fila de tres ──
     y -= U + 1;
-    const anchoI = Math.floor(ancho / 2);
+    const anchoI = Math.floor(ancho / 3);
     ['es', 'en'].forEach((l, i) => {
         const bx = x0 + i * anchoI;
         const etiqueta = l === 'es' ? T('ESPANOL', 'SPANISH') : T('INGLES', 'ENGLISH');
@@ -22096,6 +22251,13 @@ async function buildHome(output) {
         b.homeLang = l;
         if (getLang() === l) b.selected = true;
     });
+    {
+        const bx = x0 + 2 * anchoI;
+        const b = mk(bx, bx + anchoI - 2, y - U + 1, y);
+        window.setTextOnPanel(b, T('AJUSTES', 'SETTINGS'), cuerpoPara(anchoI - 1, 8), 'center',
+            { font: 'arcade', exacto: true });
+        b.homeAjustes = true;
+    }
 
     // ── Fichas: una por página, tres por fila ──
     const nums = Object.keys(PAGE_NAMES[prof] || {}).map(Number).sort((a, b) => a - b);
@@ -22192,6 +22354,7 @@ const PAGE_BUILDERS = {
  * guardado (para variantes hechas a mano que no están en código).
  */
 async function irAPagina(n, output) {
+    paginaActual = n;
     const prof = getProfile();
     const constructor = (PAGE_BUILDERS[prof] || {})[n];
     const nombre = (PROFILE_PAGES[prof] || {})[n];
@@ -22356,6 +22519,7 @@ function v2PrintRestaurarColor() {
         if (glowThresholdSlider) glowThresholdSlider.value = fx.glowThreshold;
         v2PrintFXCambiado = false; cambio = true;
         aplicarBrilloPerfil();          // el bloom base del perfil, más el brillo de arranque
+        aplicarAjustes(ajustesGuardados());   // y encima lo que se haya ajustado a mano
     }
     if (cambio) updateBioFXEffect();
 }
