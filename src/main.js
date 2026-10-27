@@ -390,6 +390,7 @@ function startGridAnimation24Frames() {
                         
                         // 🔥 Cargar estilo visual de bioFX (incluyendo resolución del grid)
                         loadBioFXVisualStyle();
+                        aplicarBrilloPerfil();
                         
                         // Al volver de un cambio de versión se vuelve al home;
                         // si no, a la primera página de la versión activa.
@@ -1398,6 +1399,27 @@ function setPanelsBrightness(f) {
     // Re-asignar materiales (los clones heredan la opacidad escalada)
     if (typeof refreshAllPanelColors === 'function') refreshAllPanelColors();
     return panelsBrightness;
+}
+
+// ── Brillo de arranque por versión ──────────────────────────────────────────
+// Afinado en captura sobre la página 9: el brillo maestro a 7 daba el brillo
+// pedido pero empastaba las letras (subía el bloom a 0.99). Esta receta sube
+// la cuadrícula, los paneles y el resplandor y no toca el texto: mismo brillo
+// medio (+69 % sobre el anterior) con un 30 % menos de píxeles quemados.
+// Se aplica al arrancar y al volver del rojo, no en cada página: así un
+// ajuste a mano con [ y ] sobrevive a los cambios de página.
+const PROFILE_BRILLO = {
+    v2:   { grid: 1.25, paneles: 1.5, glow: 0.80 },
+    v2en: { grid: 1.25, paneles: 1.5, glow: 0.80 }
+};
+function aplicarBrilloPerfil() {
+    const b = PROFILE_BRILLO[getProfile()];
+    if (!b) return false;
+    setGridBrightness(b.grid);
+    setPanelsBrightness(b.paneles);
+    if (glowSlider) glowSlider.value = b.glow;   // el slider manda: lo releen otros
+    updateBioFXEffect();
+    return true;
 }
 
 // 🔆 BRILLO MAESTRO SIMPLE: un solo nivel 0-10 (5 = normal) que ajusta
@@ -4856,7 +4878,9 @@ var PANEL_BACKING_OPACITY = 0.72;
 function addPanelBacking(panel, gridParams) {
     if (!panel || !panel.group || panel.backingMesh) return null;
     // Sólo la versión verde: ZENG ya está aprobada con su cuadrícula a la vista.
-    if (getProfile() !== 'v2') return null;
+    // Las dos verdes: comparaba con 'v2' a secas y en inglés (v2en) los paneles
+    // nacían sin fondo, con la rejilla atravesando el texto.
+    if (!getProfile().startsWith('v2')) return null;
     const w = (panel.maxCellIndex.x - panel.minCellIndex.x + 1) * gridParams.cellSize;
     const h = (panel.maxCellIndex.y - panel.minCellIndex.y + 1) * gridParams.cellSize;
     const mesh = new THREE.Mesh(
@@ -19113,10 +19137,30 @@ window.pastePanels = pastePanels;
 window.bypassLogin = bypassLogin;
 window.makeLoginButton = makeLoginButton;
 // Fija texto en un panel directamente (sin modo edición) — útil para componer pantallas
+// ── Legibilidad: los cuerpos chicos de la verde, un punto más grandes ───────
+// Hasta 2.0 se agranda un 12 %; de 2.0 a 2.4 el aumento se desvanece; de ahí
+// para arriba (titulares, cifras) no se toca. La curva es creciente, así que
+// ningún texto chico acaba más grande que uno que era mayor.
+const FONT_BOOST = { v2: 1.12, v2en: 1.12 };
+function cuerpoLegible(fs) {
+    const k = FONT_BOOST[getProfile()];
+    if (!k || !fs) return fs;
+    if (fs <= 2.0) return fs * k;
+    if (fs >= 2.4) return fs;
+    return fs * (k + (1 - k) * (fs - 2.0) / 0.4);
+}
+
 window.setTextOnPanel = function(panel, text, fontSize, align, opts) {
     const gp = getCurrentGridParams();
     if (!panel || !gp) return false;
     opts = opts || {};
+    // Hay quien relee el cuerpo guardado y lo vuelve a pasar (los +/-): ese
+    // ya va ajustado, no se agranda dos veces. Y el home calcula sus cuerpos
+    // al milímetro para que quepan: pide 'exacto'.
+    const guardado = panelTextState.get(panel);
+    if (fontSize && !opts.exacto && !(guardado && guardado.customFontSize === fontSize)) {
+        fontSize = cuerpoLegible(fontSize);
+    }
     panel.hasText = true;
     createPanelText(panel, gp.cellSize);
     // El salto de línea se calcula con el cuerpo y la fuente que el panel tenga
@@ -21999,7 +22043,7 @@ async function buildHome(output) {
     const titulo = `BIOPRINT · ${profileInfo(prof).label}`;
     const cab = mk(x0, x1, top - U + 1, top);
     window.setTextOnPanel(cab, titulo, cuerpoPara(ancho * 0.5, titulo.length), 'left',
-        { font: 'arcade', vAlign: 'middle' });
+        { font: 'arcade', vAlign: 'middle', exacto: true });
 
     // ── Línea que no para de escribirse ──
     let y = top - U - 1;
@@ -22017,7 +22061,7 @@ async function buildHome(output) {
         const bx = x0 + i * anchoV;
         const etiqueta = PROFILE_INFO[k].corto;
         const b = mk(bx, bx + anchoV - 2, y - U + 1, y);
-        window.setTextOnPanel(b, etiqueta, cuerpoV, 'center', { font: 'arcade' });
+        window.setTextOnPanel(b, etiqueta, cuerpoV, 'center', { font: 'arcade', exacto: true });
         b.homeProfile = k;
         if (k === prof) b.selected = true;       // el activo se ve relleno
     });
@@ -22030,7 +22074,7 @@ async function buildHome(output) {
         const etiqueta = l === 'es' ? T('ESPANOL', 'SPANISH') : T('INGLES', 'ENGLISH');
         const b = mk(bx, bx + anchoI - 2, y - U + 1, y);
         window.setTextOnPanel(b, etiqueta, cuerpoPara(anchoI - 1, 8), 'center',
-            { font: 'arcade' });
+            { font: 'arcade', exacto: true });
         b.homeLang = l;
         if (getLang() === l) b.selected = true;
     });
@@ -22055,7 +22099,7 @@ async function buildHome(output) {
         const fyTop = yTop - fila * paso;
         const texto = `${n}  ${nombrePagina(prof, n)}`;
         const f = mk(fx, fx + anchoF - 2, fyTop - U + 1, fyTop);
-        window.setTextOnPanel(f, texto, cuerpoF, 'center', { font: 'arcade' });
+        window.setTextOnPanel(f, texto, cuerpoF, 'center', { font: 'arcade', exacto: true });
         f.navTargetSlot = n;
     });
 
@@ -22288,6 +22332,7 @@ function v2PrintRestaurarColor() {
         if (glowRadiusSlider)    glowRadiusSlider.value    = fx.glowRadius;
         if (glowThresholdSlider) glowThresholdSlider.value = fx.glowThreshold;
         v2PrintFXCambiado = false; cambio = true;
+        aplicarBrilloPerfil();          // el bloom base del perfil, más el brillo de arranque
     }
     if (cambio) updateBioFXEffect();
 }
