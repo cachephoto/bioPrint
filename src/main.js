@@ -908,7 +908,8 @@ const PAGE_NAMES = {
         8:  ['ANALISIS', 'ANALYSIS'],
         9:  ['PERFIL', 'PROFILE'],
         10: ['GENERANDO', 'GENERATING'],
-        11: ['RENDER', 'RENDER']
+        11: ['RENDER', 'RENDER'],
+        12: ['IMPRESION', 'PRINTING']
     }
 };
 
@@ -3887,13 +3888,14 @@ document.addEventListener('keydown', (event) => {
         // la vuelta al home. Sólo cuando no se está escribiendo en ningún lado.
         case 'q': case 'Q':
         case 'w': case 'W':
+        case 'e': case 'E':
         case 'h': case 'H': {
             if (activelyWritingText || terminalIsEffectivelyActive ||
                 event.ctrlKey || event.altKey || event.metaKey) break;
             const letra = key.toLowerCase();
             const outL = document.getElementById('terminal-output');
             if (letra === 'h') buildHome(outL);
-            else irAPagina(letra === 'q' ? 10 : 11, outL);
+            else irAPagina({ q: 10, w: 11, e: 12 }[letra], outL);
             event.preventDefault();
             return;
         }
@@ -9055,6 +9057,22 @@ function processTerminalCommand(command) {
             }
             const n = setPanelBackingOpacity(v);
             showSuccess(`Fondo de panel a ${PANEL_BACKING_OPACITY} (${n} paneles)`, output);
+            break;
+        }
+        // 🖨️ Página 12: "impresion 60" lleva la barra al 60 %; "impresion reset"
+        case 'impresion':
+        case 'impresión':
+        case 'printing': {
+            const a = (args[0] || '').toLowerCase();
+            if (a === 'reset') { v2PrintReset(); showSuccess(T('Impresión reiniciada', 'Printing reset'), output); break; }
+            const pctArg = parseFloat(a);
+            if (isNaN(pctArg)) {
+                showInfo(T(`Uso: impresion <0-100> | impresion reset. Ahora: ${v2PrintState.pct.toFixed(1)}% → ${v2PrintState.objetivo}%`,
+                           `Usage: printing <0-100> | printing reset. Now: ${v2PrintState.pct.toFixed(1)}% → ${v2PrintState.objetivo}%`), output);
+                break;
+            }
+            v2PrintState.objetivo = Math.max(0, Math.min(100, pctArg));
+            showSuccess(T(`Impresión avanzando hacia ${v2PrintState.objetivo}%`, `Printing heading to ${v2PrintState.objetivo}%`), output);
             break;
         }
         // 🏠 Pantalla de inicio: elegir versión, idioma y página
@@ -21289,6 +21307,9 @@ async function prepararPagina() {
     const gp = await useProfileGrid();
     if (!gp) return null;
     if (bioKeybVisible) clearBioKeybOnly();
+    // La página de impresión deja la pantalla en rojo y con glitch al
+    // terminar; cualquier otra página vuelve al color del perfil.
+    v2PrintRestaurarColor();
     const limpiar = () => {
         clearAllPanels(true, true);
         terminalStreams.clear(); blinkingLists.clear();
@@ -22076,7 +22097,8 @@ const PAGE_BUILDERS = {
         8:  buildV2AnalysisScreen,
         9:  buildV2ProfileScreen,
         10: buildV2GeneratingScreen,
-        11: buildV2RenderScreen
+        11: buildV2RenderScreen,
+        12: buildV2PrintingScreen
     }
 };
 
@@ -22178,3 +22200,259 @@ renderer.domElement.addEventListener('touchend', (event) => {
 
 // El menú contextual de "mantener pulsado" interrumpe la toma; fuera en el lienzo.
 renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Página 12 de la verde: la mujer imprimiéndose
+//  Fase 0: imprime; la barra va hacia el objetivo que se fija con "impresion N"
+//          y los materiales orgánicos bajan a la par (son el filamento).
+//  Fase 1: al 100 %, descarga eléctrica: el peso salta de 140.00 a 140.21 kg,
+//          la pantalla parpadea en rojo y se corrompe.
+//  Fase 2: PRINT COMPLETE en rojo fijo, con los biométricos del sujeto vivo.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PRINT_VEL = 3.0;            // % por segundo: el 0→100 tarda ~33 s en cámara
+const PRINT_PESO_FINAL = 140.00;
+const PRINT_PESO_CHISPA = 140.21;
+const PRINT_DESCARGA_MS = 3400;   // lo que dura el chispazo antes del rojo fijo
+
+let v2PrintState = { objetivo: 12, pct: 0, fase: 0, t0: performance.now(), ultimo: performance.now(), overlay: null, visor: null };
+
+function v2PrintReset() {
+    v2PrintRestaurarColor();
+    if (v2PrintState.overlay) {
+        const ov = v2PrintState.overlay;
+        const i = panels.indexOf(ov);
+        if (i >= 0) { panels.splice(i, 1); }
+        if (ov.group && ov.group.parent) ov.group.parent.remove(ov.group);
+        liveTerminals.delete(ov);
+    }
+    v2PrintState = { objetivo: 12, pct: 0, fase: 0, t0: performance.now(), ultimo: performance.now(), overlay: null, visor: v2PrintState.visor };
+}
+
+/** Devuelve la pantalla al color y al bloom del perfil y apaga el glitch. */
+function v2PrintRestaurarColor() {
+    if (typeof stopRedAlert === 'function') stopRedAlert(false);
+    if (glitchActive) stopGlitchEffect();
+    const prof = getProfile();
+    const base = PROFILE_BASE_COLOR[prof];
+    const fx = PROFILE_BASE_FX[prof];
+    let cambio = false;
+    if (base && colorPicker && colorPicker.value.toLowerCase() !== base.toLowerCase()) {
+        colorPicker.value = base; cambio = true;
+    }
+    if (fx && v2PrintFXCambiado) {
+        if (intensitySlider)     intensitySlider.value     = fx.intensity;
+        if (glowSlider)          glowSlider.value          = fx.glowIntensity;
+        if (glowRadiusSlider)    glowRadiusSlider.value    = fx.glowRadius;
+        if (glowThresholdSlider) glowThresholdSlider.value = fx.glowThreshold;
+        v2PrintFXCambiado = false; cambio = true;
+    }
+    if (cambio) updateBioFXEffect();
+}
+
+// El bloom de la verde (umbral 0.55) está afinado para el verde; el rojo tiene
+// menos luminancia, cae por debajo y sale apagado, casi ilegible. Al entrar el
+// rojo se baja el umbral y se sube el glow; al salir se restaura el perfil.
+let v2PrintFXCambiado = false;
+function v2PrintFXRojo() {
+    if (intensitySlider)     intensitySlider.value     = 1;
+    if (glowSlider)          glowSlider.value          = 0.95;
+    if (glowRadiusSlider)    glowRadiusSlider.value    = 0.5;
+    if (glowThresholdSlider) glowThresholdSlider.value = 0.18;
+    v2PrintFXCambiado = true;
+    updateBioFXEffect();
+}
+
+/** Avanza la barra hacia su objetivo y dispara las fases. Lo llama la escena. */
+function v2PrintTick() {
+    const st = v2PrintState;
+    const ahora = performance.now();
+    const dt = (ahora - st.ultimo) / 1000;
+    st.ultimo = ahora;
+    if (st.fase === 0) {
+        if (st.pct < st.objetivo) st.pct = Math.min(st.objetivo, st.pct + PRINT_VEL * dt);
+        else if (st.pct > st.objetivo) st.pct = Math.max(st.objetivo, st.pct - PRINT_VEL * dt);
+        if (st.pct >= 100) v2PrintDescarga();
+    }
+}
+
+/** Fase 1: el chispazo. */
+function v2PrintDescarga() {
+    const st = v2PrintState;
+    if (st.fase !== 0) return;
+    st.fase = 1;
+    st.t0 = performance.now();
+    hapticFeedbackAll(0);
+    v2PrintFXRojo();
+    startRedAlert();                                  // parpadeo rojo
+    if (st.visor) startGlitchEffect(st.visor);        // corrupción de imagen
+    setTimeout(() => {
+        if (v2PrintState.fase !== 1) return;
+        if (glitchActive) stopGlitchEffect();
+        stopRedAlert(false);
+        colorPicker.value = GRADE_COLORS.rojo;        // rojo fijo
+        updateBioFXEffect();
+        v2PrintState.fase = 2;
+        v2PrintState.t0 = performance.now();
+        hapticFeedbackAll(0);
+        v2PrintPantallaCompleta();
+    }, PRINT_DESCARGA_MS);
+}
+
+/** Fase 2: la pantalla PRINT COMPLETE, encima de todo. */
+function v2PrintPantallaCompleta() {
+    const gp = getCurrentGridParams();
+    if (!gp) return;
+    const mk = makeMk(gp);
+    const ov = mk(10, 78, 10, 42);
+    ov.group.renderOrder = 900;
+    ov.group.traverse(o => { if (o.renderOrder !== undefined) o.renderOrder = Math.max(o.renderOrder, 900); });
+    makeLiveTerminal(ov, { scene: 'printCompleto', fontSize: 2.6, align: 'left', vAlign: 'top', fps: 4 });
+    v2PrintState.overlay = ov;
+}
+
+// Peso que marca la báscula en cada fase
+function v2PrintPeso() {
+    const st = v2PrintState;
+    if (st.fase === 0) return PRINT_PESO_FINAL * st.pct / 100;
+    const dt = (performance.now() - st.t0) / 1000;
+    if (st.fase === 1) {
+        // Sube a saltos durante el chispazo
+        const k = Math.min(1, dt / 1.2);
+        return PRINT_PESO_FINAL + (PRINT_PESO_CHISPA - PRINT_PESO_FINAL) * k + (Math.random() - 0.5) * 0.02;
+    }
+    return PRINT_PESO_CHISPA;
+}
+
+V2_SCENES.impresion = t => {
+    v2PrintTick();
+    const st = v2PrintState;
+    const pct = st.pct;
+    const capas = Math.floor(140112 * pct / 100);
+    const l = [];
+    l.push(`${T('IMPRESION','PRINT PROGRESS')}   HSAP-0417   ${T('cama','bed')} A`);
+    l.push('');
+    l.push(`[${bar(pct, 40)}] ${padL(pct.toFixed(1), 5)}%`);
+    l.push('');
+    l.push(`${pad(T('capa','layer'), 14)}${padL(num(capas) + ' / 140 112', 20)}`);
+    l.push(`${pad(T('peso','weight'), 14)}${padL(v2PrintPeso().toFixed(2) + ' kg', 20)}`);
+    l.push(`${pad(T('cama','bed temp'), 14)}${padL((37.0 + Math.sin(t * 0.7) * 0.2).toFixed(1) + ' C', 20)}`);
+    l.push(`${pad(T('boquillas','nozzles'), 14)}${padL((st.fase === 0 ? '8 / 8 ' : '0 / 8 ') + T('activas','active'), 20)}`);
+    l.push(`${pad(T('caudal','flow'), 14)}${padL((st.fase === 0 && pct < 100 ? 2.4 + Math.sin(t * 2.1) * 0.3 : 0).toFixed(2) + ' ml/s', 20)}`);
+    l.push('');
+    const zona = pct < 20 ? T('esqueleto','skeleton') : pct < 45 ? T('organos','organs') : pct < 70 ? T('musculo','muscle') : pct < 92 ? T('dermis','dermis') : T('epidermis','epidermis');
+    if (st.fase === 0) {
+        l.push(pct >= 100 ? `  ${T('capa final depositada','final layer deposited')}`
+                          : `  ${spin(t)} ${T('depositando','depositing')} ${zona}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
+    } else if (st.fase === 1) {
+        l.push(`  !! ${T('DESCARGA ELECTRICA','ELECTRICAL DISCHARGE')} 4.2 kV !!`);
+        l.push(`  ${T('peso','weight')} 140.00 -> 140.21 kg`);
+    } else {
+        l.push('  !! SIGNAL DETECTED !!');
+        l.push('  subject responsive');
+    }
+    return l.join('\n');
+};
+
+V2_SCENES.materiales = t => {
+    const st = v2PrintState;
+    const mat = Math.max(0.4, 100 - st.pct * 0.996);    // termina en 0.4 %
+    const bajo = mat < 6;
+    const parpadeo = Math.floor(t * 2.5) % 2 === 0;
+    const l = [];
+    l.push(T('MATERIALES ORGANICOS','ORGANIC MATERIALS'));
+    l.push('');
+    l.push(`[${bar(mat, 40)}] ${padL(mat.toFixed(1), 5)}%`);
+    l.push('');
+    [[T('proteina','protein'), 1.0], [T('colageno','collagen'), 0.93], [T('lipidos','lipids'), 0.81], [T('ligante','binder'), 1.0]].forEach(([n, k]) => {
+        const v = Math.max(0.4, mat * k);
+        l.push(`${pad(n, 12)}[${bar(v, 16)}] ${padL(v.toFixed(1), 5)}%`);
+    });
+    l.push('');
+    l.push(`${pad(T('tanque','tank'), 12)}${mat > 50 ? 'A + B' : mat > 6 ? 'B' : '--'}`);
+    l.push('');
+    if (bajo) {
+        l.push(parpadeo ? T('  !! MATERIALES ORGANICOS BAJOS !!', '  !! ORGANIC MATERIALS LOW !!') : '');
+        l.push(parpadeo ? T('     CARGAR TANQUE', '     LOAD TANK') : '');
+    } else {
+        l.push(`  ${spin(t)} ${T('consumo','consumption')} ${(st.fase === 0 && st.pct < 100 ? 11.4 + Math.sin(t * 1.3) * 0.6 : 0).toFixed(1)} g/s`);
+    }
+    return l.join('\n');
+};
+
+V2_SCENES.printEstado = t => {
+    const st = v2PrintState;
+    if (st.fase === 0) {
+        return `${PROMPT} print --subject HSAP-0417   ${T('cebado bioelectrico','bio-electric priming')}: ${st.pct < 90 ? 'standby' : T('ARMADO','ARMED')}  ${st.pct >= 90 ? spin(t) : ''}`;
+    }
+    if (st.fase === 1) return `${PROMPT} !!!! ${T('DESCARGA','DISCHARGE')} !!!! ${Math.random() < 0.5 ? '####' : '    '} ${T('peso','weight')} ${v2PrintPeso().toFixed(2)} kg`;
+    return `${PROMPT} print complete   weight 140.21 kg   status: ALIVE`;
+};
+
+// En inglés en los dos idiomas: así lo pidió el guion.
+V2_SCENES.printCompleto = t => {
+    const hr = Math.min(72, Math.floor(ramp(t, 72, 6)));
+    const spo2 = Math.min(91, Math.floor(ramp(t, 91, 5)));
+    const l = [];
+    l.push('PRINT COMPLETE' + '.'.repeat(1 + Math.floor(t * 2) % 3));
+    l.push('');
+    l.push(`${pad('subject', 18)}HSAP-0417   Homo sapiens`);
+    l.push(`${pad('weight', 18)}140.21 kg`);
+    l.push('');
+    l.push('BIOMETRICS');
+    l.push(`${pad('  heart rate', 18)}${padL(hr + ' bpm', 10)}  ${hr > 0 ? (Math.floor(t * 1.2) % 2 ? '<3' : '  ') : '--'}`);
+    l.push(`${pad('  temperature', 18)}${padL('35.0 C', 10)}`);
+    l.push(`${pad('  oxygen SpO2', 18)}${padL(spo2 + ' %', 10)}`);
+    l.push(`${pad('  blood pressure', 18)}${padL('104/68', 10)}`);
+    l.push(`${pad('  respiration', 18)}${padL(Math.min(12, Math.floor(ramp(t, 12, 7))) + ' /min', 10)}`);
+    l.push(`${pad('  neural activity', 18)}${padL(t > 4 ? 'DETECTED' : 'scanning', 10)}`);
+    l.push('');
+    l.push(`> status: ${t > 6 ? 'ALIVE' : 'verifying' + '.'.repeat(1 + Math.floor(t * 2) % 3)}`);
+    return l.join('\n');
+};
+
+async function buildV2PrintingScreen(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    v2PrintReset();
+    const mk = makeMk(gp);
+    v2TermHeader(mk, 'print --subject HSAP-0417 --bed A');
+
+    // La mujer, acostada en la cama de impresión
+    const visor = mk(3, 55, 8, 44);
+    v2PrintState.visor = visor;
+    const ok = await loadModelToPanel(visor, './models/maniqui.obj', gp.cellSize);
+    if (ok) {
+        visor.modelData = {
+            name: 'maniqui', url: './models/maniqui.obj',
+            isRotating: false, rotationSpeed: 0,
+            isModelDisplay: true, isFromModelCommand: true, isViewer: true
+        };
+        visor.isViewer = true;
+        // Quieta: el giro lo lleva panelModel por su cuenta, no modelData.
+        toggleModelRotation(visor);
+        // Acostarla: el modelo viene de pie (Y arriba). El giro va en el grupo
+        // exterior; el interior ya trae la inclinación isométrica y, girado
+        // ahí, el cuerpo salía en diagonal.
+        const modelGroup = visor.group.children.find(c => c.userData && c.userData.isModel);
+        if (modelGroup) modelGroup.rotation.z = Math.PI / 2;
+        fitModelInsidePanel(visor, 0.92);
+    }
+
+    // Derecha: avance arriba, materiales abajo
+    const avance = mk(58, 86, 27, 44);
+    makeLiveTerminal(avance, { scene: 'impresion', fontSize: 2.0, fps: 6 });
+    const materiales = mk(58, 86, 8, 25);
+    makeLiveTerminal(materiales, { scene: 'materiales', fontSize: 2.0, fps: 6 });
+
+    // Pie: el cebado eléctrico, que es lo que se dispara al final
+    const pie = mk(3, 55, 2, 6);
+    makeLiveTerminal(pie, { scene: 'printEstado', fontSize: 1.9, vAlign: 'middle', fps: 6 });
+
+    rematarPagina();
+    if (output) showSuccess(T('Página de impresión construida. "impresion 100" la lleva al final.',
+                              'Printing page built. "printing 100" runs it to the end.'), output);
+    return true;
+}
+window.buildV2PrintingScreen = buildV2PrintingScreen;
