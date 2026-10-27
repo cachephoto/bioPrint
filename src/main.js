@@ -9125,6 +9125,7 @@ function processTerminalCommand(command) {
                 break;
             }
             v2PrintState.objetivo = Math.max(0, Math.min(100, pctArg));
+            v2PrintState.vel = 0;          // velocidad normal: el tramo lento es sólo del salto
             showSuccess(T(`Impresión avanzando hacia ${v2PrintState.objetivo}%`, `Printing heading to ${v2PrintState.objetivo}%`), output);
             break;
         }
@@ -22320,10 +22321,14 @@ function v2PrintReset() {
  * en cada toma. Si ya había terminado, se reinicia primero.
  */
 const PRINT_SALTO = 98;
+const PRINT_FINAL_SEG = 10;       // lo que tarda el último tramo, del 98 al 100
 function v2PrintFinal() {
     if (v2PrintState.fase !== 0) v2PrintReset();
     v2PrintState.pct = PRINT_SALTO;
     v2PrintState.objetivo = 100;
+    // Velocidad propia para el tramo final: a la normal (3 %/s) el 98→100
+    // se iba en dos tercios de segundo y el momento no daba para la toma.
+    v2PrintState.vel = (100 - PRINT_SALTO) / PRINT_FINAL_SEG;
     v2PrintState.ultimo = performance.now();
     return true;
 }
@@ -22375,8 +22380,9 @@ function v2PrintTick() {
     const dt = (ahora - st.ultimo) / 1000;
     st.ultimo = ahora;
     if (st.fase === 0) {
-        if (st.pct < st.objetivo) st.pct = Math.min(st.objetivo, st.pct + PRINT_VEL * dt);
-        else if (st.pct > st.objetivo) st.pct = Math.max(st.objetivo, st.pct - PRINT_VEL * dt);
+        const vel = st.vel || PRINT_VEL;
+        if (st.pct < st.objetivo) st.pct = Math.min(st.objetivo, st.pct + vel * dt);
+        else if (st.pct > st.objetivo) st.pct = Math.max(st.objetivo, st.pct - vel * dt);
         if (st.pct >= 100) v2PrintDescarga();
     }
 }
