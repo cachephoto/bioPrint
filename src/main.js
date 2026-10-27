@@ -910,7 +910,8 @@ const PAGE_NAMES = {
         9:  ['PERFIL', 'PROFILE'],
         10: ['GENERANDO', 'GENERATING'],
         11: ['RENDER', 'RENDER'],
-        12: ['IMPRESION', 'PRINTING']
+        12: ['IMPRESION', 'PRINTING'],
+        13: ['CORAZON', 'HEART']
     }
 };
 
@@ -3738,10 +3739,16 @@ document.addEventListener('keydown', (event) => {
     let moveDelta = { dx: 0, dy: 0 };
     let deleteTriggered = false;
 
-    // 📁 ENTER abre Human.exe en la página de archivos
+    // 📁 ENTER abre Human.exe en la página de archivos; con el corazón ya
+    // cargado, ENTER otra vez entra al submenú de órganos (página 13).
     if (key === 'Enter' && !activelyWritingText && !terminalIsEffectivelyActive
         && panels.some(p => p.isHumanViewer)) {
-        runHumanSequence(document.getElementById('terminal-output'));
+        const visorH = panels.find(p => p.isHumanViewer);
+        if (visorH && visorH.modelData && visorH.modelData.name === 'corazon') {
+            irAPagina(13, document.getElementById('terminal-output'));
+        } else {
+            runHumanSequence(document.getElementById('terminal-output'));
+        }
         return;
     }
 
@@ -3920,13 +3927,14 @@ document.addEventListener('keydown', (event) => {
         case 'q': case 'Q':
         case 'w': case 'W':
         case 'e': case 'E':
+        case 'y': case 'Y':
         case 'h': case 'H': {
             if (activelyWritingText || terminalIsEffectivelyActive ||
                 event.ctrlKey || event.altKey || event.metaKey) break;
             const letra = key.toLowerCase();
             const outL = document.getElementById('terminal-output');
             if (letra === 'h') buildHome(outL);
-            else irAPagina({ q: 10, w: 11, e: 12 }[letra], outL);
+            else irAPagina({ q: 10, w: 11, e: 12, y: 13 }[letra], outL);
             event.preventDefault();
             return;
         }
@@ -19693,8 +19701,13 @@ const V2_FICHAS = {
     hueso:   { es: 'HUESO',       en: 'BONE',        masa: '380 g',  cel: '1.2e10', tej: ['oseo', 'osseous'],         capas: 36800 }
 };
 
-/** Marca el espécimen cargado en el visor y reinicia su ficha. */
-function v2MarcarEspecimen(panel) {
+/**
+ * Destaca un panel (y sólo ése): un punto más claro, sin parecer selección.
+ * En la verde el relleno queda bajo el plano de fondo (renderOrder 50), así
+ * que aclarar el relleno no se ve — medido en captura: ninguna diferencia.
+ * Se aclara el fondo, que sí está encima.
+ */
+function destacarPanel(panel) {
     panels.forEach(p => {
         if (!p.destacado) return;
         p.destacado = false;
@@ -19702,9 +19715,6 @@ function v2MarcarEspecimen(panel) {
         updatePanelColor(p);
     });
     panel.destacado = true;
-    // En la verde el relleno del panel queda bajo su plano de fondo
-    // (renderOrder 50), así que aclarar el relleno no se ve — medido en
-    // captura: ninguna diferencia. Se aclara el fondo, que sí está encima.
     if (panel.backingMesh) {
         if (!panel.backingMaterialBase) panel.backingMaterialBase = panel.backingMesh.material;
         const m = panel.backingMaterialBase.clone();
@@ -19712,6 +19722,11 @@ function v2MarcarEspecimen(panel) {
         panel.backingMesh.material = m;
     }
     updatePanelColor(panel);
+}
+
+/** Marca el espécimen cargado en el visor y reinicia su ficha. */
+function v2MarcarEspecimen(panel) {
+    destacarPanel(panel);
     v2Especimen = panel.modelData ? panel.modelData.name : null;
     v2EspecimenT0 = performance.now();
 }
@@ -20194,8 +20209,10 @@ async function runHumanSequence(output) {
         };
         viewer.isViewer = true;
         fitModelInsidePanel(viewer);
+        viewer.navTargetSlot = 13;          // tocar el corazón abre el submenú de órganos
         hapticFeedbackAll(0);
-        if (output) showSuccess('Human.exe abierto: HOMO SAPIENS SAPIENS', output);
+        if (output) showSuccess(T('Human.exe abierto: HOMO SAPIENS SAPIENS — ENTER o toca el corazón: órganos',
+                                  'Human.exe open: HOMO SAPIENS SAPIENS — ENTER or tap the heart: organs'), output);
     }
     humanSequenceRunning = false;
     return true;
@@ -22164,7 +22181,8 @@ const PAGE_BUILDERS = {
         9:  buildV2ProfileScreen,
         10: buildV2GeneratingScreen,
         11: buildV2RenderScreen,
-        12: buildV2PrintingScreen
+        12: buildV2PrintingScreen,
+        13: buildV2HeartScreen
     }
 };
 
@@ -22540,3 +22558,115 @@ async function buildV2PrintingScreen(output) {
     return true;
 }
 window.buildV2PrintingScreen = buildV2PrintingScreen;
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Página 13 de la verde: Human.exe › órganos › corazón
+//  El submenú de Human.exe. A la izquierda la lista de órganos con el corazón
+//  seleccionado; al centro el corazón girando; a la derecha su impresión.
+//  Se llega desde la página 3 (ENTER otra vez o tocando el corazón), con el
+//  número 13 o con la tecla Y.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const V2_ORGANOS = [
+    { es: 'CORAZON',   en: 'HEART',    activo: true },
+    { es: 'PULMONES',  en: 'LUNGS' },
+    { es: 'HIGADO',    en: 'LIVER' },
+    { es: 'RIÑONES',   en: 'KIDNEYS' },
+    { es: 'CEREBRO',   en: 'BRAIN' },
+    { es: 'PANCREAS',  en: 'PANCREAS' },
+    { es: 'ESTOMAGO',  en: 'STOMACH' },
+    { es: 'PIEL',      en: 'SKIN' },
+    { es: 'CORNEAS',   en: 'CORNEAS' }
+];
+
+let v2CorazonT0 = performance.now();
+const CORAZON_SEG = 60;             // lo que tarda la impresión del 0 al 100
+
+V2_SCENES.corazon = () => {
+    const t = (performance.now() - v2CorazonT0) / 1000;
+    const pct = Math.min(100, t / CORAZON_SEG * 100);
+    const CAPAS = 48200;
+    const capas = Math.floor(CAPAS * pct / 100);
+    const etapa = pct < 15 ? T('andamiaje de colageno', 'collagen scaffold')
+                : pct < 40 ? T('miocardio', 'myocardium')
+                : pct < 60 ? T('red coronaria', 'coronary network')
+                : pct < 78 ? T('valvulas', 'valves')
+                : pct < 95 ? T('tejido de conduccion', 'conduction tissue')
+                :            T('pericardio', 'pericardium');
+    const l = [];
+    l.push(`${T('IMPRESION DE ORGANO', 'ORGAN PRINT')}   HUMAN.EXE`);
+    l.push('');
+    l.push(`${pad(T('organo', 'organ'), 16)}${T('CORAZON HUMANO', 'HUMAN HEART')}`);
+    l.push(`${pad(T('donante', 'donor'), 16)}HSAP-0417`);
+    l.push(`${pad(T('masa', 'mass'), 16)}${(310 * pct / 100).toFixed(1)} / 310 g`);
+    l.push(`${pad(T('camaras', 'chambers'), 16)}${Math.min(4, Math.floor(pct / 22))} / 4`);
+    l.push(`${pad(T('valvulas', 'valves'), 16)}${pct < 60 ? 0 : Math.min(4, 1 + Math.floor((pct - 60) / 6))} / 4`);
+    l.push('');
+    l.push(`[${bar(pct, 30)}] ${padL(pct.toFixed(1), 5)}%`);
+    l.push('');
+    l.push(`${pad(T('capa', 'layer'), 16)}${num(capas)} / ${num(CAPAS)}`);
+    l.push(`${pad(T('cardiomiocitos', 'cardiomyocytes'), 16)}${(2.0 * pct / 100).toFixed(2)}e9`);
+    l.push(`${pad(T('lineas cel.', 'cell lines'), 16)}12`);
+    l.push(`${pad(T('biotinta', 'bioink'), 16)}${(0.62 * (1 - pct / 100) + 0.04).toFixed(2)} L`);
+    l.push(`${pad(T('cama', 'bed'), 16)}${(36.9 + Math.sin(t * 0.8) * 0.2).toFixed(1)} C`);
+    l.push('');
+    if (pct >= 100) {
+        const bpm = Math.min(72, Math.floor(ramp(t - CORAZON_SEG, 72, 4)));
+        l.push(T('  ORGANO LISTO', '  ORGAN READY'));
+        l.push(`  ${T('latido detectado', 'heartbeat detected')}  ${bpm} bpm  ${Math.floor(t * 1.2) % 2 ? '<3' : '  '}`);
+    } else {
+        l.push(`  ${spin(t)} ${T('depositando', 'depositing')} ${etapa}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
+    }
+    return l.join('\n');
+};
+
+async function buildV2HeartScreen(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+    v2CorazonT0 = performance.now();
+    v2TermHeader(mk, 'human.exe --organs --print heart');
+
+    // ── Submenú de órganos: una fila por órgano, el corazón seleccionado ──
+    const titulo = mk(2, 22, 41, 43);
+    window.setTextOnPanel(titulo, T('ORGANOS', 'ORGANS'), 1.9, 'left',
+        { font: 'terminal', vAlign: 'middle' });
+    let seleccionado = null;
+    V2_ORGANOS.forEach((o, i) => {
+        const y = 37 - i * 4;
+        const fila = mk(2, 22, y, y + 2);
+        const nombre = T(o.es, o.en);
+        window.setTextOnPanel(fila, o.activo ? `> ${nombre}` : `  ${nombre}`, 1.8, 'left',
+            { font: 'terminal', vAlign: 'middle' });
+        if (o.activo) seleccionado = fila;
+    });
+    if (seleccionado) destacarPanel(seleccionado);
+
+    // ── El corazón, grande y girando ──
+    const visor = mk(25, 56, 3, 39);
+    const ok = await loadModelToPanel(visor, './models/corazon.obj', gp.cellSize);
+    if (ok) {
+        visor.modelData = {
+            name: 'corazon', url: './models/corazon.obj',
+            isRotating: true, rotationSpeed: 0.004,
+            isModelDisplay: true, isFromModelCommand: true, isViewer: true
+        };
+        visor.isViewer = true;
+        // El auto-fit lo deja chico; se agranda y el fit lo recorta si se pasa.
+        scalePanelModel(visor, 1.35);
+        fitModelInsidePanel(visor);
+    }
+    const etiqueta = mk(25, 56, 41, 43);
+    window.setTextOnPanel(etiqueta, T('CORAZON HUMANO', 'HUMAN HEART'), 1.9, 'center',
+        { font: 'terminal', vAlign: 'middle' });
+
+    // ── Su impresión ──
+    const impresion = mk(59, 86, 3, 43);
+    makeLiveTerminal(impresion, { scene: 'corazon', fontSize: 1.9, fps: 6 });
+
+    rematarPagina();
+    if (output) showSuccess(T('Human.exe › órganos › corazón', 'Human.exe › organs › heart'), output);
+    return true;
+}
+window.buildV2HeartScreen = buildV2HeartScreen;
