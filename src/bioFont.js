@@ -3,7 +3,8 @@
 // Renders all UI text using bitmap sprite fonts
 // ============================================================
 
-const FONT_BASE_PATH = '/fonts/bitmap/';
+// Relativa a la página: bajo una subcarpeta (cachepost.com/<ruta>/) la absoluta daba 404.
+const FONT_BASE_PATH = './fonts/bitmap/';
 const DEFAULT_FONT = 'tecno';
 const FALLBACK_FONTS = ['tecno', 'habit', 'armada'];
 
