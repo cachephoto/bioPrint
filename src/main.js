@@ -1657,7 +1657,10 @@ function controlesAjustes() {
         { sec: T('LETRA', 'TYPE') },
         { id: 'letra', es: 'TAMAÑO DE LETRA CHICA', en: 'SMALL TYPE SIZE', min: 1, max: 1.4, step: 0.02,
           get: () => escalaLetra(), fmt: v => `+${Math.round((v - 1) * 100)}%`,
-          set: v => { ESCALA_LETRA_AJ[getProfile()] = v; reconstruirPaginaActual(); } }
+          set: v => { ESCALA_LETRA_AJ[getProfile()] = v; reconstruirPaginaActual(); } },
+        { id: 'titulos', es: 'TITULOS Y CIFRAS', en: 'HEADLINES & FIGURES', min: 1, max: 1.7, step: 0.02,
+          get: () => escalaTitulos(), fmt: v => `+${Math.round((v - 1) * 100)}%`,
+          set: v => { ESCALA_TITULOS_AJ[getProfile()] = v; reconstruirPaginaActual(); } }
     ];
 }
 
@@ -1724,6 +1727,12 @@ let paginaActual = null;
 
 function claveAjustes() { return 'bioPrint_ajustes__' + getProfile(); }
 
+const ESCALA_TITULOS_AJ = {};
+function escalaTitulos() {
+    const v = ESCALA_TITULOS_AJ[getProfile()];
+    return typeof v === 'number' ? v : 1;
+}
+
 function escalaLetra() {
     const p = getProfile();
     if (typeof ESCALA_LETRA_AJ[p] === 'number') return ESCALA_LETRA_AJ[p];
@@ -1737,7 +1746,8 @@ function leerAjustes() {
         opacidad: parseFloat((renderer && renderer.domElement.style.opacity) || 1) || 1,
         glow: parseFloat(glowSlider.value), radio: parseFloat(glowRadiusSlider.value),
         umbral: parseFloat(glowThresholdSlider.value),
-        videoGain: AJ_VIDEO.gain, videoGamma: AJ_VIDEO.gamma, letra: escalaLetra()
+        videoGain: AJ_VIDEO.gain, videoGamma: AJ_VIDEO.gamma, letra: escalaLetra(),
+        titulos: escalaTitulos()
     };
 }
 
@@ -1757,6 +1767,7 @@ function aplicarAjustes(a) {
     if (n('videoGamma')) AJ_VIDEO.gamma = a.videoGamma;
     setVideoBrightness(AJ_VIDEO.gain, AJ_VIDEO.gamma);
     if (n('letra')) ESCALA_LETRA_AJ[getProfile()] = a.letra;
+    if (n('titulos')) ESCALA_TITULOS_AJ[getProfile()] = a.titulos;
 }
 
 function guardarAjustes() {
@@ -1777,6 +1788,7 @@ function aplicarAjustesDeArranque() {
 function restablecerAjustes() {
     try { localStorage.removeItem(claveAjustes()); } catch (e) { /* sin storage */ }
     delete ESCALA_LETRA_AJ[getProfile()];
+    delete ESCALA_TITULOS_AJ[getProfile()];
     setMasterBrightness(5);
     if (ajustesBase) aplicarAjustes(ajustesBase);
     else aplicarBrilloPerfil();
@@ -19391,12 +19403,14 @@ window.makeLoginButton = makeLoginButton;
 // para arriba (titulares, cifras) no se toca. La curva es creciente, así que
 // ningún texto chico acaba más grande que uno que era mayor.
 const FONT_BOOST = { v2: 1.12, v2en: 1.12 };
+// Los títulos y cifras (cuerpo 2.4 o más) tienen su propia escala, que se
+// mueve desde el panel de ajustes. Entre 2.0 y 2.4 se mezclan las dos.
 function cuerpoLegible(fs) {
-    const k = escalaLetra();
-    if (!k || k === 1 || !fs) return fs;
-    if (fs <= 2.0) return fs * k;
-    if (fs >= 2.4) return fs;
-    return fs * (k + (1 - k) * (fs - 2.0) / 0.4);
+    if (!fs) return fs;
+    const k = escalaLetra();      // letra chica
+    const g = escalaTitulos();    // títulos y cifras
+    const w = fs <= 2.0 ? 0 : fs >= 2.4 ? 1 : (fs - 2.0) / 0.4;
+    return fs * ((1 - w) * k + w * g);
 }
 
 window.setTextOnPanel = function(panel, text, fontSize, align, opts) {
@@ -22920,7 +22934,9 @@ V2_SCENES.matDatos = t => {
 // La alerta va en inglés en las dos versiones, como se pidió.
 V2_SCENES.matAlerta = t => {
     const m = v2Materiales(v2PrintState.pct);
-    if (m < MATERIAL_ALERTA) return Math.floor(t * 2.5) % 2 === 0 ? '!! ORGANIC MATERIAL NEAR EMPTY !!' : '';
+    // Dos renglones parejos: con los títulos agrandados un renglón no cabe y
+    // el salto automático lo partía mal ("NEAR / EMPTY !!").
+    if (m < MATERIAL_ALERTA) return Math.floor(t * 2.5) % 2 === 0 ? '!! ORGANIC MATERIAL !!\n!! NEAR EMPTY !!' : '';
     return `${spin(t)} ${T('suministro', 'supply')} · nominal`;
 };
 
