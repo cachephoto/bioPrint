@@ -22781,7 +22781,7 @@ function v2PrintTick() {
 
 /** Fase 1: el chispazo. */
 const PRINT_PESO_SEG = 4;         // en verde, con 140.00 kg, antes del glitch
-const PRINT_SALTO_PESO_SEG = 1;   // ya en rojo, lo que tarda el salto a 140.21
+const PRINT_SALTO_PESO_SEG = 6;   // ya en rojo, lo que tarda el salto a 140.21
 
 function v2PrintDescarga() {
     const st = v2PrintState;
@@ -22835,7 +22835,7 @@ function v2PrintPeso() {
     const st = v2PrintState;
     if (st.fase === 0) return PRINT_PESO_FINAL * st.pct / 100;
     if (st.fase === 1) return PRINT_PESO_FINAL;           // verde y glitch: 140.00
-    // En rojo: 140.00 un segundo y luego, de golpe, 140.21
+    // En rojo: 140.00 unos segundos y luego, de golpe, 140.21
     const dt = (performance.now() - st.t0) / 1000;
     return dt < PRINT_SALTO_PESO_SEG ? PRINT_PESO_FINAL : PRINT_PESO_CHISPA;
 }
