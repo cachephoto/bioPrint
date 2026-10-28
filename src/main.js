@@ -168,26 +168,36 @@ let bioKeybVisible = false; // Controla si el teclado está visible o no
 let bioKeybModuleInitialized = false; // NUEVA variable para rastrear la inicialización del módulo
 
 // Mapeo de nombres científicos para los modelos
-const modelScientificNames = {
+// Nombre que se muestra de cada espécimen, [español, inglés]. Los latinos
+// valen igual en los dos idiomas.
+const NOMBRES_CIENTIFICOS = {
     // 🍖 Catálogo versión ZENG (comida / consumo)
-    burg: "BURGUER MEAT",
-    hueso: "T-BONE",
-    ham: "HAM",
-    pollo: "FRIED CHICKEN",
-    boot: "LEATHER BOOT",
-    petri: "PETRI CULTURE",
-    bioP: "BIOPRINT UNIT",
-    tlaloc: "TLALOC IDOL",
-    her: "HERITAGE PIECE",
-    megazord: "MEGAZORD",
+    burg: ['CARNE DE HAMBURGUESA', 'BURGUER MEAT'],
+    hueso: ['CHULETON', 'T-BONE'],
+    ham: ['JAMON', 'HAM'],
+    pollo: ['POLLO FRITO', 'FRIED CHICKEN'],
+    boot: ['BOTA DE PIEL', 'LEATHER BOOT'],
+    petri: ['CULTIVO PETRI', 'PETRI CULTURE'],
+    bioP: ['UNIDAD BIOPRINT', 'BIOPRINT UNIT'],
+    tlaloc: ['IDOLO TLALOC', 'TLALOC IDOL'],
+    her: ['PIEZA HEREDADA', 'HERITAGE PIECE'],
+    megazord: 'MEGAZORD',
     // Legacy (siguen disponibles por comando, fuera del grid de Zeng)
-    corazon: "HOMO SAPIENS SAPIENS",
-    axolotl: "AMBYSTOMA MEXICANUM",
-    discus: "DISK FISH",
-    dog: "CANIS LUPUS FAMILIARIS",
-    acot: "CRAY FISH",
-    tort: "TRACHEMYS SCRIPTA ELEGANS"
+    corazon: 'HOMO SAPIENS SAPIENS',
+    axolotl: 'AMBYSTOMA MEXICANUM',
+    discus: ['PEZ DISCO', 'DISK FISH'],
+    dog: 'CANIS LUPUS FAMILIARIS',
+    acot: ['ACOCIL', 'CRAY FISH'],
+    tort: 'TRACHEMYS SCRIPTA ELEGANS'
 };
+const modelScientificNames = new Proxy({}, {
+    get(_, k) {
+        const v = NOMBRES_CIENTIFICOS[k];
+        if (v === undefined) return undefined;
+        return Array.isArray(v) ? T(v[0], v[1]) : v;
+    },
+    has(_, k) { return k in NOMBRES_CIENTIFICOS; }
+});
 
 // Variable global para controlar el estado de impresión
 let isPrintingActive = false; // Controla si el proceso de impresión está activo
@@ -891,6 +901,7 @@ const PAGE_NAMES = {
     v1: {
         0: ['ACCESO', 'LOGIN'],
         1: ['IMPRIMIR', 'PRINT'],
+        2: ['HUESO', 'BONE'],
         4: ['CATALOGO', 'CATALOG'],
         5: ['BIENVENIDA', 'WELCOME'],
         6: ['TERMINOS', 'TERMS'],
@@ -911,7 +922,7 @@ const PAGE_NAMES = {
         10: ['GENERANDO', 'GENERATING'],
         11: ['RENDER', 'RENDER'],
         12: ['IMPRESION', 'PRINTING'],
-        13: ['HEART', 'HEART'],
+        13: ['CORAZON', 'HEART'],
         14: ['TANQUE', 'TANK']
     }
 };
@@ -3916,6 +3927,14 @@ document.addEventListener('keydown', (event) => {
     let moveDelta = { dx: 0, dy: 0 };
     let deleteTriggered = false;
 
+    // 🦴 ENTER o espacio en el hueso de ZENG: repetir la impresión
+    if ((key === 'Enter' || key === ' ') && !activelyWritingText && !terminalIsEffectivelyActive
+        && zengHuesoEnPantalla()) {
+        zengHuesoT0 = performance.now();
+        event.preventDefault();
+        return;
+    }
+
     // 🛢️ ENTER o espacio en la página del tanque: cargar materiales
     if ((key === 'Enter' || key === ' ') && !activelyWritingText && !terminalIsEffectivelyActive
         && v2TanqueEnPantalla()) {
@@ -4140,20 +4159,21 @@ document.addEventListener('keydown', (event) => {
         case 'w': case 'W':
         case 'e': case 'E':
         case 'y': case 'Y':
+        case 's': case 'S':
         case 'o': case 'O':
         case 'h': case 'H': {
             if (activelyWritingText || terminalIsEffectivelyActive ||
                 event.ctrlKey || event.altKey || event.metaKey) break;
             const letra = key.toLowerCase();
             // Con ARE YOU SURE? en pantalla, Y es "sí", no la página 13
-            if (letra === 'y' && v2RenderState.envio === 2 && v2RenderEnPantalla()) {
+            if ((letra === 'y' || letra === 's') && v2RenderState.envio === 2 && v2RenderEnPantalla()) {
                 v2RenderAccion('si');
                 event.preventDefault();
                 return;
             }
             const outL = document.getElementById('terminal-output');
             if (letra === 'h') buildHome(outL);
-            else irAPagina({ q: 10, w: 11, e: 12, y: 13, o: 14 }[letra], outL);
+            else if (letra !== 's') irAPagina({ q: 10, w: 11, e: 12, y: 13, o: 14 }[letra], outL);
             event.preventDefault();
             return;
         }
@@ -12843,7 +12863,8 @@ async function executePrintCommand(containerPanel, args = [], output) {
             scientificName = modelScientificNames[modelKey];
         } else {
             // Try to find a matching model name
-            for (const [key, value] of Object.entries(modelScientificNames)) {
+            for (const key of Object.keys(NOMBRES_CIENTIFICOS)) {
+                const value = modelScientificNames[key];
                 if (key.toLowerCase() === modelKey || value.toLowerCase() === modelKey) {
                     modelName = key;
                     scientificName = value;
@@ -19741,7 +19762,7 @@ async function buildV2BootScreen(output) {
 
     // Título en arcade — el contraste con la terminal es lo que da el look.
     // Se queda oculto hasta que los dos bloques del megazord terminan de unirse.
-    window.setTextOnPanel(readyPanel, 'ALL SYSTEMS READY', 4.4, 'center',
+    window.setTextOnPanel(readyPanel, T('SISTEMAS LISTOS', 'ALL SYSTEMS READY'), 4.4, 'center',
         { font: 'arcade' });
     armAssemblyReveal(readyPanel);
 
@@ -20633,6 +20654,7 @@ function makeLiveTerminal(panel, cfg) {
         fontSize: typeof cfg.fontSize === 'number' ? cfg.fontSize : 1.6,
         align:    cfg.align || 'left',
         vAlign:   cfg.vAlign || 'top',
+        font:     cfg.font || 'terminal',      // ZENG usa 'arcade'
         // 3 fps basta para que giren los spinners y suban los contadores.
         // Más alto ahoga al navegador: cada repintado reconstruye los glifos.
         fps:      cfg.fps || 3
@@ -20654,7 +20676,7 @@ function renderLiveTerminal(panel) {
     if (texto === st.ultimo) return;   // nada cambió: no rehacer los glifos
     st.ultimo = texto;
     window.setTextOnPanel(panel, texto, c.fontSize, c.align,
-        { font: 'terminal', vAlign: c.vAlign });
+        { font: c.font, vAlign: c.vAlign });
 }
 
 function updateLiveTerminals() {
@@ -20882,10 +20904,10 @@ const V2_SCENES = {
 
     analisisCifra: t => {
         const n = ramp(t, 70.0, 14);
-        return `${num(Math.floor(n))}.${Math.floor((n % 1) * 10)}B\nDATA POINTS`;
+        return `${num(Math.floor(n))}.${Math.floor((n % 1) * 10)}B\n${T('PUNTOS DE DATOS', 'DATA POINTS')}`;
     },
 
-    analisisSujeto: t => `Analizing @ZENG${'.'.repeat(1 + Math.floor(t * 2) % 3)}`,
+    analisisSujeto: t => `${T('Analizando', 'Analyzing')} @ZENG${'.'.repeat(1 + Math.floor(t * 2) % 3)}`,
 
     analisisBarras: t => {
         const fuentes = [
@@ -20981,7 +21003,7 @@ const V2_SCENES = {
             l.push(T('  el render local tardara','  local render will take'));
             l.push(T('  875 horas.','  875 hours.'));
             l.push('');
-            l.push(T('  pulse CONNECT GPU CLUSTER','  press CONNECT GPU CLUSTER'));
+            l.push(T('  pulse CONECTAR CLUSTER GPU','  press CONNECT GPU CLUSTER'));
         } else {
             // El handshake va apareciendo línea a línea
             const pasos = [
@@ -21020,14 +21042,14 @@ const V2_SCENES = {
         // 875 h restantes: la barra apenas se mueve, esa es la gracia
         const pct = 0.2 + t * 0.0009;
         const l = [];
-        l.push('  GENERATING MODEL');
-        l.push('  MODELING IN PROGRESS');
+        l.push(T('  GENERANDO MODELO', '  GENERATING MODEL'));
+        l.push(T('  MODELADO EN CURSO', '  MODELING IN PROGRESS'));
         l.push('');
         l.push(`  [${bar(pct, 46)}]`);
         l.push(`  ${pct.toFixed(3)}%`);
         l.push('');
         const seg = Math.floor(t) % 60;
-        l.push(`  TIME REMAINING   875 h ${padL(59 - Math.floor(t / 60) % 60, 2)} m ${padL(59 - seg, 2)} s`);
+        l.push(`  ${T('TIEMPO RESTANTE', 'TIME REMAINING')}   875 h ${padL(59 - Math.floor(t / 60) % 60, 2)} m ${padL(59 - seg, 2)} s`);
         l.push('');
         l.push(`  ${spin(t)} ${T('depositando capa','depositing layer')} ${num(1 + t * 0.4)} / 412 900`);
         l.push(T('  sustrato 37.0C   ph 7.38   viscosidad 1.04','  substrate 37.0C   ph 7.38   viscosity 1.04'));
@@ -21529,8 +21551,8 @@ function connectGpuCluster() {
 // ── Envío a impresión (página 11) ───────────────────────────────────────────
 // Al terminar el render, el hueco del botón de GPU (que se apaga al usarse)
 // pasa a ser RENDER COMPLETE - SEND TO PRINT; al tocarlo pregunta ARE YOU
-// SURE? con Y y N. Y lleva a la impresión (página 12); N vuelve atrás. En
-// inglés en las dos versiones, como el resto de mensajes de estado del render.
+// SURE? con Y y N (S y N en español). Sí lleva a la impresión (página 12);
+// N vuelve atrás.
 function quitarPanel(p) {
     if (!p) return;
     const i = panels.indexOf(p);
@@ -21560,7 +21582,7 @@ function v2RenderMostrarEnvio() {
     const mk = makeMk(gp);
     v2RenderLimpiarBoton();
     const b = mk(3, 55, 2, 6);
-    window.setTextOnPanel(b, '>> RENDER COMPLETE  -  SEND TO PRINT <<', 2.4, 'center', { font: 'terminal' });
+    window.setTextOnPanel(b, T('>> RENDER COMPLETO  -  ENVIAR A IMPRESION <<', '>> RENDER COMPLETE  -  SEND TO PRINT <<'), 2.4, 'center', { font: 'terminal' });
     b.renderEnvio = 'enviar';
     v2RenderState.envio = 1;
     startFlash(b);
@@ -21573,10 +21595,10 @@ function v2RenderPreguntar() {
     const mk = makeMk(gp);
     v2RenderLimpiarBoton();
     const pregunta = mk(3, 31, 2, 6);
-    window.setTextOnPanel(pregunta, 'ARE YOU SURE?', 2.4, 'center', { font: 'terminal' });
+    window.setTextOnPanel(pregunta, T('¿ESTA SEGURO?', 'ARE YOU SURE?'), 2.4, 'center', { font: 'terminal' });
     pregunta.renderEnvio = 'pregunta';            // se toca y no hace nada
     const si = mk(33, 43, 2, 6);
-    window.setTextOnPanel(si, 'Y', 2.6, 'center', { font: 'terminal' });
+    window.setTextOnPanel(si, T('S', 'Y'), 2.6, 'center', { font: 'terminal' });
     si.renderEnvio = 'si';
     const no = mk(45, 55, 2, 6);
     window.setTextOnPanel(no, 'N', 2.6, 'center', { font: 'terminal' });
@@ -21620,7 +21642,7 @@ const V2_RENDER_SCENE = t => {
         l.push(`  [${bar(pct, 44)}]`);
         l.push(`  ${pct.toFixed(3)} %`);
         l.push('');
-        l.push('  TIME REMAINING   875 h 12 m');
+        l.push(`  ${T('TIEMPO RESTANTE', 'TIME REMAINING')}   875 h 12 m`);
         l.push('');
         l.push(`  ${spin(t)} ${T('depositando capa','depositing layer')} ${num(1 + dt * 0.4)} / ${num(V2_RENDER_TOTAL)}`);
         l.push('');
@@ -21637,7 +21659,7 @@ const V2_RENDER_SCENE = t => {
         l.push(`  [${bar(pct, 44)}]`);
         l.push(`  ${pct.toFixed(1)} %`);
         l.push('');
-        l.push(`  TIME REMAINING   ${Math.floor(mins)} m ${padL(Math.floor((mins % 1) * 60), 2)} s`);
+        l.push(`  ${T('TIEMPO RESTANTE', 'TIME REMAINING')}   ${Math.floor(mins)} m ${padL(Math.floor((mins % 1) * 60), 2)} s`);
         l.push('');
         l.push(`  ${spin(t)} ${T('depositando capa','depositing layer')} ${num(Math.min(V2_RENDER_TOTAL, 12000 + dt * 41000))} / ${num(V2_RENDER_TOTAL)}`);
         l.push('');
@@ -21656,15 +21678,15 @@ const V2_RENDER_SCENE = t => {
         l.push(`  [${bar(pct, 44)}]`);
         l.push(`  ${pct.toFixed(1)} %`);
         l.push('');
-        l.push(secs > 0.5 ? `  TIME REMAINING   ${secs.toFixed(1)} s`
-                          : '  TIME REMAINING   00.0 s');
+        l.push(secs > 0.5 ? `  ${T('TIEMPO RESTANTE', 'TIME REMAINING')}   ${secs.toFixed(1)} s`
+                          : `  ${T('TIEMPO RESTANTE', 'TIME REMAINING')}   00.0 s`);
         l.push('');
         l.push(pct >= 99.9
             ? `  ${T('capa','layer')} ${num(V2_RENDER_TOTAL)} / ${num(V2_RENDER_TOTAL)}`
             : `  ${spin(t)} ${T('depositando capa','depositing layer')} ${num(Math.min(V2_RENDER_TOTAL, 260000 + dt * 38000))} / ${num(V2_RENDER_TOTAL)}`);
         l.push('');
         if (pct >= 99.9) v2RenderListo();
-        l.push(pct >= 99.9 ? '  RENDER COMPLETE' : T('  volcando geometria a sustrato','  writing geometry to substrate'));
+        l.push(pct >= 99.9 ? T('  RENDER COMPLETO', '  RENDER COMPLETE') : T('  volcando geometria a sustrato','  writing geometry to substrate'));
         l.push(pct >= 99.9 ? T('  modelo listo para impresion','  model ready to print') : T('  sin cuello de botella','  no bottleneck'));
     }
     return l.join('\n');
@@ -21689,7 +21711,7 @@ async function buildV2RenderScreen(output) {
     // El botón: grande y claro, para pulsarlo en cámara
     const btn = mk(3, 55, 2, 6);
     btn.gpuButton = true;
-    window.setTextOnPanel(btn, '>> CONNECT GPU CLUSTER  80 Gbps <<', 2.4, 'center',
+    window.setTextOnPanel(btn, T('>> CONECTAR CLUSTER GPU  80 Gbps <<', '>> CONNECT GPU CLUSTER  80 Gbps <<'), 2.4, 'center',
         { font: 'terminal' });
 
     if (output) showSuccess('Página de render construida. Pulsa el botón o escribe "gpu".', output);
@@ -22162,7 +22184,7 @@ async function buildZengLogin(output) {
     applyImageTextureToPanel(mk(7, 36, 18, 22), ZENG_LOGO);
 
     const id = mk(7, 36, 14, 16);
-    window.setTextOnPanel(id, 'BIOCORP_ID:', undefined, 'left', { font: 'arcade' });
+    window.setTextOnPanel(id, T('ID BIOCORP:', 'BIOCORP_ID:'), undefined, 'left', { font: 'arcade' });
 
     const pw = mk(7, 36, 10, 12);
     window.setTextOnPanel(pw, T('CLAVE:', 'PASSWORD:'), undefined, 'left', { font: 'arcade' });
@@ -22201,8 +22223,7 @@ const ZENG_MODELOS = [
     { x: 8,  y: 17, nombre: 'ham',    sci: 'HAM',           vel: 0.0089 },
     { x: 14, y: 17, nombre: 'hueso',  sci: 'T-BONE',        vel: 0.0139 }
 ];
-// Los nombres comerciales se mantienen en inglés en los dos idiomas: son marca
-// del producto dentro de la ficción, no etiquetas de interfaz.
+// Los nombres que se ven salen de modelScientificNames, en el idioma activo.
 
 async function buildZeng3DPrint(output) {
     const gp = await prepararPagina();
@@ -22217,7 +22238,7 @@ async function buildZeng3DPrint(output) {
                 name: m.nombre, url: `./models/${m.nombre}.obj`,
                 isRotating: true, rotationSpeed: m.vel,
                 isModelButton: true, isFromModelsGrid: true,
-                scientificName: m.sci
+                scientificName: modelScientificNames[m.nombre]
             };
             fitModelInsidePanel(p);
         }
@@ -22231,9 +22252,9 @@ async function buildZeng3DPrint(output) {
     applyImageTextureToPanel(mk(23, 41, 20, 22), ZENG_LOGO);
 
     const etiqueta = mk(23, 41, 17, 18);
-    window.setTextOnPanel(etiqueta, 'DISK FISH', 1.5, 'center', { font: 'arcade' });
+    window.setTextOnPanel(etiqueta, modelScientificNames.discus, 1.5, 'center', { font: 'arcade' });
     etiqueta.isSpeciesPanel = true;
-    etiqueta.speciesName = 'DISK FISH';
+    etiqueta.speciesName = modelScientificNames.discus;
 
     const visor = mk(23, 41, 4, 15);
     const okV = await loadModelToPanel(visor, './models/discus.obj', gp.cellSize);
@@ -22241,7 +22262,7 @@ async function buildZeng3DPrint(output) {
         visor.modelData = {
             name: 'discus', url: './models/discus.obj',
             isRotating: true, rotationSpeed: 0.01,
-            isModelDisplay: true, isViewer: true, scientificName: 'DISK FISH'
+            isModelDisplay: true, isViewer: true, scientificName: modelScientificNames.discus
         };
         visor.isViewer = true;
         fitModelInsidePanel(visor);
@@ -22334,7 +22355,7 @@ async function buildZengDenied(output) {
         undefined, 'center', { font: 'arcade' });
 
     const id = mk(8, 34, 11, 13);
-    window.setTextOnPanel(id, 'BIOCORP_ID:', undefined, 'left', { font: 'arcade' });
+    window.setTextOnPanel(id, T('ID BIOCORP:', 'BIOCORP_ID:'), undefined, 'left', { font: 'arcade' });
     const pw = mk(8, 34, 6, 8);
     window.setTextOnPanel(pw, T('CLAVE:', 'PASSWORD:'), undefined, 'left', { font: 'arcade' });
 
@@ -22537,6 +22558,7 @@ const PAGE_BUILDERS = {
     v1: {
         0: buildZengLogin,
         1: buildZengPrint,
+        2: buildZengBone,
         4: buildZeng3DPrint,
         5: buildZengWelcome,
         6: buildZengTerms,
@@ -22970,12 +22992,11 @@ V2_SCENES.matDatos = t => {
     return l.join('\n');
 };
 
-// La alerta va en inglés en las dos versiones, como se pidió.
 V2_SCENES.matAlerta = t => {
     const m = v2Materiales(v2PrintState.pct);
     // Dos renglones parejos: con los títulos agrandados un renglón no cabe y
     // el salto automático lo partía mal ("NEAR / EMPTY !!").
-    if (m < MATERIAL_ALERTA) return Math.floor(t * 2.5) % 2 === 0 ? '!! ORGANIC MATERIAL !!\n!! NEAR EMPTY !!' : '';
+    if (m < MATERIAL_ALERTA) return Math.floor(t * 2.5) % 2 === 0 ? T('!! MATERIAL ORGANICO !!\n!! CASI VACIO !!', '!! ORGANIC MATERIAL !!\n!! NEAR EMPTY !!') : '';
     return `${spin(t)} ${T('suministro', 'supply')} · nominal`;
 };
 
@@ -22985,30 +23006,30 @@ V2_SCENES.printEstado = t => {
     if (st.fase === 1) return st.glitch
         ? `!!!! ${T('DESCARGA', 'DISCHARGE')} !!!!\n${Math.random() < 0.5 ? '########' : '        '}`
         : `${T('DESCARGA', 'DISCHARGE')} 4.2 kV\n${T('peso', 'weight')} ${v2PrintPeso().toFixed(2)} kg`;
-    return 'PRINT COMPLETE\nstatus: ALIVE';
+    return T('IMPRESION COMPLETA\nestado: VIVO', 'PRINT COMPLETE\nstatus: ALIVE');
 };
 
-// En inglés en los dos idiomas: así lo pidió el guion.
 V2_SCENES.printCompleto = t => {
     const hr = Math.min(72, Math.floor(ramp(t, 72, 6)));
     const spo2 = Math.min(91, Math.floor(ramp(t, 91, 5)));
     const l = [];
-    l.push('PRINT COMPLETE' + '.'.repeat(1 + Math.floor(t * 2) % 3));
+    l.push(T('IMPRESION COMPLETA', 'PRINT COMPLETE') + '.'.repeat(1 + Math.floor(t * 2) % 3));
     l.push('');
-    l.push(`${pad('subject', 18)}HSAP-0417   Homo sapiens`);
-    l.push(`${pad('weight', 18)}140.21 kg`);
+    l.push(`${pad(T('sujeto', 'subject'), 18)}HSAP-0417   Homo sapiens`);
+    l.push(`${pad(T('peso', 'weight'), 18)}140.21 kg`);
     l.push('');
-    l.push('BIOMETRICS');
-    l.push(`${pad('  heart rate', 18)}${padL(hr + ' bpm', 10)}  ${hr > 0 ? (Math.floor(t * 1.2) % 2 ? '<3' : '  ') : '--'}`);
-    l.push(`${pad('  temperature', 18)}${padL('35.0 C', 10)}`);
-    l.push(`${pad('  oxygen SpO2', 18)}${padL(spo2 + ' %', 10)}`);
-    l.push(`${pad('  blood pressure', 18)}${padL('104/68', 10)}`);
-    l.push(`${pad('  respiration', 18)}${padL(Math.min(12, Math.floor(ramp(t, 12, 7))) + ' /min', 10)}`);
-    l.push(`${pad('  neural activity', 18)}${padL(t > 4 ? 'DETECTED' : 'scanning', 10)}`);
+    l.push(T('BIOMETRICOS', 'BIOMETRICS'));
+    l.push(`${pad(T('  ritmo cardiaco', '  heart rate'), 18)}${padL(hr + ' bpm', 10)}  ${hr > 0 ? (Math.floor(t * 1.2) % 2 ? '<3' : '  ') : '--'}`);
+    l.push(`${pad(T('  temperatura', '  temperature'), 18)}${padL('35.0 C', 10)}`);
+    l.push(`${pad(T('  oxigeno SpO2', '  oxygen SpO2'), 18)}${padL(spo2 + ' %', 10)}`);
+    l.push(`${pad(T('  presion art.', '  blood pressure'), 18)}${padL('104/68', 10)}`);
+    l.push(`${pad(T('  respiracion', '  respiration'), 18)}${padL(Math.min(12, Math.floor(ramp(t, 12, 7))) + ' /min', 10)}`);
+    l.push(`${pad(T('  act. neuronal', '  neural activity'), 18)}${padL(t > 4 ? T('DETECTADA', 'DETECTED') : T('buscando', 'scanning'), 10)}`);
     l.push('');
-    l.push(`> status: ${t > 6 ? 'ALIVE' : 'verifying' + '.'.repeat(1 + Math.floor(t * 2) % 3)}`);
+    l.push(`> ${T('estado', 'status')}: ${t > 6 ? T('VIVO', 'ALIVE') : T('verificando', 'verifying') + '.'.repeat(1 + Math.floor(t * 2) % 3)}`);
     return l.join('\n');
 };
+
 
 async function buildV2PrintingScreen(output) {
     const gp = await prepararPagina();
@@ -23092,35 +23113,35 @@ V2_SCENES.corazon = () => {
     const pct = Math.min(100, t / CORAZON_SEG * 100);
     const CAPAS = 48200;
     const capas = Math.floor(CAPAS * pct / 100);
-    const etapa = pct < 15 ? 'collagen scaffold'
-                : pct < 40 ? 'myocardium'
-                : pct < 60 ? 'coronary network'
-                : pct < 78 ? 'valves'
-                : pct < 95 ? 'conduction tissue'
-                :            'pericardium';
+    const etapa = pct < 15 ? T('andamiaje de colageno', 'collagen scaffold')
+                : pct < 40 ? T('miocardio', 'myocardium')
+                : pct < 60 ? T('red coronaria', 'coronary network')
+                : pct < 78 ? T('valvulas', 'valves')
+                : pct < 95 ? T('tejido de conduccion', 'conduction tissue')
+                :            T('pericardio', 'pericardium');
     const l = [];
-    l.push(`${'ORGAN PRINT'}   HUMAN.EXE`);
+    l.push(`${T('IMPRESION DE ORGANO', 'ORGAN PRINT')}   HUMAN.EXE`);
     l.push('');
-    l.push(`${pad('organ', 16)}${'HUMAN HEART'}`);
-    l.push(`${pad('donor', 16)}HSAP-0417`);
-    l.push(`${pad('mass', 16)}${(310 * pct / 100).toFixed(1)} / 310 g`);
-    l.push(`${pad('chambers', 16)}${Math.min(4, Math.floor(pct / 22))} / 4`);
-    l.push(`${pad('valves', 16)}${pct < 60 ? 0 : Math.min(4, 1 + Math.floor((pct - 60) / 6))} / 4`);
+    l.push(`${pad(T('organo', 'organ'), 16)}${T('CORAZON HUMANO', 'HUMAN HEART')}`);
+    l.push(`${pad(T('donante', 'donor'), 16)}HSAP-0417`);
+    l.push(`${pad(T('masa', 'mass'), 16)}${(310 * pct / 100).toFixed(1)} / 310 g`);
+    l.push(`${pad(T('camaras', 'chambers'), 16)}${Math.min(4, Math.floor(pct / 22))} / 4`);
+    l.push(`${pad(T('valvulas', 'valves'), 16)}${pct < 60 ? 0 : Math.min(4, 1 + Math.floor((pct - 60) / 6))} / 4`);
     l.push('');
     l.push(`[${bar(pct, 30)}] ${padL(pct.toFixed(1), 5)}%`);
     l.push('');
-    l.push(`${pad('layer', 16)}${num(capas)} / ${num(CAPAS)}`);
-    l.push(`${pad('cardiomyocytes', 16)}${(2.0 * pct / 100).toFixed(2)}e9`);
-    l.push(`${pad('cell lines', 16)}12`);
-    l.push(`${pad('bioink', 16)}${(0.62 * (1 - pct / 100) + 0.04).toFixed(2)} L`);
-    l.push(`${pad('bed', 16)}${(36.9 + Math.sin(t * 0.8) * 0.2).toFixed(1)} C`);
+    l.push(`${pad(T('capa', 'layer'), 16)}${num(capas)} / ${num(CAPAS)}`);
+    l.push(`${pad(T('cardiomiocitos', 'cardiomyocytes'), 16)}${(2.0 * pct / 100).toFixed(2)}e9`);
+    l.push(`${pad(T('lineas cel.', 'cell lines'), 16)}12`);
+    l.push(`${pad(T('biotinta', 'bioink'), 16)}${(0.62 * (1 - pct / 100) + 0.04).toFixed(2)} L`);
+    l.push(`${pad(T('cama', 'bed'), 16)}${(36.9 + Math.sin(t * 0.8) * 0.2).toFixed(1)} C`);
     l.push('');
     if (pct >= 100) {
         const bpm = Math.min(72, Math.floor(ramp(t - CORAZON_SEG, 72, 4)));
-        l.push('  ORGAN READY');
-        l.push(`  ${'heartbeat detected'}  ${bpm} bpm  ${Math.floor(t * 1.2) % 2 ? '<3' : '  '}`);
+        l.push(T('  ORGANO LISTO', '  ORGAN READY'));
+        l.push(`  ${T('latido detectado', 'heartbeat detected')}  ${bpm} bpm  ${Math.floor(t * 1.2) % 2 ? '<3' : '  '}`);
     } else {
-        l.push(`  ${spin(t)} ${'depositing'} ${etapa}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
+        l.push(`  ${spin(t)} ${T('depositando', 'depositing')} ${etapa}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
     }
     return l.join('\n');
 };
@@ -23134,13 +23155,13 @@ async function buildV2HeartScreen(output) {
 
     // ── Submenú de órganos: una fila por órgano, el corazón seleccionado ──
     const titulo = mk(2, 22, 41, 43);
-    window.setTextOnPanel(titulo, 'ORGANS', 1.9, 'left',
+    window.setTextOnPanel(titulo, T('ORGANOS', 'ORGANS'), 1.9, 'left',
         { font: 'terminal', vAlign: 'middle' });
     let seleccionado = null;
     V2_ORGANOS.forEach((o, i) => {
         const y = 37 - i * 4;
         const fila = mk(2, 22, y, y + 2);
-        const nombre = o.en;
+        const nombre = T(o.es, o.en);
         window.setTextOnPanel(fila, o.activo ? `> ${nombre}` : `  ${nombre}`, 1.8, 'left',
             { font: 'terminal', vAlign: 'middle' });
         if (o.activo) seleccionado = fila;
@@ -23162,7 +23183,7 @@ async function buildV2HeartScreen(output) {
         fitModelInsidePanel(visor);
     }
     const etiqueta = mk(25, 56, 41, 43);
-    window.setTextOnPanel(etiqueta, 'HUMAN HEART', 1.9, 'center',
+    window.setTextOnPanel(etiqueta, T('CORAZON HUMANO', 'HUMAN HEART'), 1.9, 'center',
         { font: 'terminal', vAlign: 'middle' });
 
     // ── Su impresión ──
@@ -23170,7 +23191,7 @@ async function buildV2HeartScreen(output) {
     makeLiveTerminal(impresion, { scene: 'corazon', fontSize: 1.9, fps: 6 });
 
     rematarPagina();
-    if (output) showSuccess('Human.exe › organs › heart', output);
+    if (output) showSuccess(T('Human.exe › órganos › corazón', 'Human.exe › organs › heart'), output);
     return true;
 }
 window.buildV2HeartScreen = buildV2HeartScreen;
@@ -23292,3 +23313,79 @@ async function buildV2TankScreen(output) {
 }
 window.buildV2TankScreen = buildV2TankScreen;
 window.v2TanqueEstado = () => ({ valor: +v2Tanque.valor.toFixed(1), fase: v2Tanque.fase });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ZENG, página 2: imprimió un hueso
+//  El hueso girando y, al lado, cómo el material orgánico baja de 100 % a
+//  99.6 % mientras termina la impresión. ENTER o espacio la repiten.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ZENG_HUESO_SEG = 5;          // lo que tarda en bajar de 100 a 99.6
+const ZENG_HUESO_GASTO = 0.4;
+let zengHuesoT0 = performance.now();
+let zengHuesoPaneles = [];
+
+function zengHuesoEnPantalla() {
+    return zengHuesoPaneles.length > 0 && panels.includes(zengHuesoPaneles[0]);
+}
+
+function zengHuesoAvance() {
+    return Math.min(1, (performance.now() - zengHuesoT0) / 1000 / ZENG_HUESO_SEG);
+}
+
+V2_SCENES.zengHuesoEstado = t => {
+    if (zengHuesoAvance() < 1) return T('IMPRIMIENDO', 'PRINTING') + '.'.repeat(1 + Math.floor(t * 2) % 3);
+    return T('IMPRESION COMPLETA', 'PRINT COMPLETE');
+};
+
+V2_SCENES.zengHuesoMat = t => {
+    const k = zengHuesoAvance();
+    const v = 100 - ZENG_HUESO_GASTO * (1 - Math.pow(1 - k, 2));
+    const barra = zengHuesoPaneles[1];
+    if (barra && barra.dibujarBarra) barra.dibujarBarra(v, t);
+    return `${v.toFixed(1)}%`;
+};
+
+async function buildZengBone(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+    zengHuesoT0 = performance.now();
+
+    // El hueso, girando
+    const visor = mk(2, 20, 5, 21);
+    const ok = await loadModelToPanel(visor, './models/hueso.obj', gp.cellSize);
+    if (ok) {
+        visor.modelData = {
+            name: 'hueso', url: './models/hueso.obj',
+            isRotating: true, rotationSpeed: 0.01,
+            isModelDisplay: true, isViewer: true, scientificName: modelScientificNames.hueso
+        };
+        visor.isViewer = true;
+        fitModelInsidePanel(visor);
+    }
+    const nombre = mk(2, 20, 2, 3);
+    window.setTextOnPanel(nombre, T('HUESO', 'BONE'), 1.3, 'center', { font: 'arcade' });
+
+    // Al lado: estado, material orgánico con su cifra y su barra
+    applyImageTextureToPanel(mk(23, 41, 19, 22), ZENG_LOGO);
+    const estado = mk(23, 41, 15, 17);
+    makeLiveTerminal(estado, { scene: 'zengHuesoEstado', fontSize: 1.3, align: 'center',
+                               vAlign: 'middle', fps: 4, font: 'arcade' });
+    const etiqueta = mk(23, 41, 12, 13);
+    window.setTextOnPanel(etiqueta, T('MATERIAL ORGANICO', 'ORGANIC MATERIAL'), 1.0, 'center', { font: 'arcade' });
+    const barra = hacerBarra(mk(23, 41, 7, 8), 20);
+    const cifra = mk(23, 41, 9, 11);
+    makeLiveTerminal(cifra, { scene: 'zengHuesoMat', fontSize: 1.8, align: 'center',
+                              vAlign: 'middle', fps: 8, font: 'arcade' });
+
+    zengBoton(mk, 23, 41, 4, 5, T('VOLVER', 'BACK'), 4, { fontSize: 1.3 });
+    zengVivo(mk, 23, 41, 1, 2);
+
+    zengHuesoPaneles = [estado, barra, cifra];
+    rematarPagina();
+    if (output) showSuccess(T('Hueso impreso. ENTER o espacio repite.', 'Bone printed. ENTER or space repeats.'), output);
+    return true;
+}
+window.buildZengBone = buildZengBone;
