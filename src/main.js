@@ -22761,18 +22761,9 @@ function v2PrintRestaurarColor() {
     if (cambio) updateBioFXEffect();
 }
 
-// El bloom de la verde (umbral 0.55) está afinado para el verde; el rojo tiene
-// menos luminancia, cae por debajo y sale apagado, casi ilegible. Al entrar el
-// rojo se baja el umbral y se sube el glow; al salir se restaura el perfil.
+// Lo cambiaba v2PrintFXRojo al entrar el rojo; ya no: el rojo respeta el
+// brillo y el glow que haya puestos. Se conserva por si se vuelve a usar.
 let v2PrintFXCambiado = false;
-function v2PrintFXRojo() {
-    if (intensitySlider)     intensitySlider.value     = 1;
-    if (glowSlider)          glowSlider.value          = 0.95;
-    if (glowRadiusSlider)    glowRadiusSlider.value    = 0.5;
-    if (glowThresholdSlider) glowThresholdSlider.value = 0.18;
-    v2PrintFXCambiado = true;
-    updateBioFXEffect();
-}
 
 /** Avanza la barra hacia su objetivo y dispara las fases. Lo llama la escena. */
 function v2PrintTick() {
@@ -22789,7 +22780,8 @@ function v2PrintTick() {
 }
 
 /** Fase 1: el chispazo. */
-const PRINT_PESO_SEG = 4;         // lo que se ve el peso cambiar antes del glitch
+const PRINT_PESO_SEG = 4;         // en verde, con 140.00 kg, antes del glitch
+const PRINT_SALTO_PESO_SEG = 1;   // ya en rojo, lo que tarda el salto a 140.21
 
 function v2PrintDescarga() {
     const st = v2PrintState;
@@ -22798,12 +22790,12 @@ function v2PrintDescarga() {
     st.glitch = false;
     st.t0 = performance.now();
     hapticFeedbackAll(0);                             // el chispazo
-    // Primero, quieto y en verde: el peso sube de 140.00 a 140.21 y se queda
-    // a la vista. Al terminar el plazo, todo se corrompe y pasa a rojo.
+    // Primero, quieto y en verde con 140.00 kg. Luego el glitch y el rojo,
+    // con el brillo y el glow que estén puestos: no se tocan. El peso salta a
+    // 140.21 ya en rojo, un segundo después (ver v2PrintPeso).
     setTimeout(() => {
         if (v2PrintState.fase !== 1) return;
         v2PrintState.glitch = true;
-        v2PrintFXRojo();
         startRedAlert();                              // parpadeo rojo
         if (v2PrintState.visor) startGlitchEffect(v2PrintState.visor);   // corrupción
         setTimeout(v2PrintFinRojo, PRINT_DESCARGA_MS);
@@ -22842,15 +22834,10 @@ function v2PrintPantallaCompleta() {
 function v2PrintPeso() {
     const st = v2PrintState;
     if (st.fase === 0) return PRINT_PESO_FINAL * st.pct / 100;
+    if (st.fase === 1) return PRINT_PESO_FINAL;           // verde y glitch: 140.00
+    // En rojo: 140.00 un segundo y luego, de golpe, 140.21
     const dt = (performance.now() - st.t0) / 1000;
-    if (st.fase === 1) {
-        // Sube en un segundo tras el chispazo y se queda; sólo tiembla ya
-        // con el glitch encima.
-        const k = Math.min(1, dt / 1.0);
-        const temblor = st.glitch ? (Math.random() - 0.5) * 0.02 : 0;
-        return PRINT_PESO_FINAL + (PRINT_PESO_CHISPA - PRINT_PESO_FINAL) * k + temblor;
-    }
-    return PRINT_PESO_CHISPA;
+    return dt < PRINT_SALTO_PESO_SEG ? PRINT_PESO_FINAL : PRINT_PESO_CHISPA;
 }
 
 // ── Barra gráfica de bloques ────────────────────────────────────────────────
@@ -22964,7 +22951,7 @@ V2_SCENES.printDatos = t => {
              :               `${T('pausa', 'paused')} · ${zona}`);
     } else {
         l.push(`!! ${T('DESCARGA', 'DISCHARGE')} 4.2 kV`);
-        l.push(`140.00 -> ${v2PrintPeso().toFixed(2)} kg`);
+        l.push(`${v2PrintPeso().toFixed(2)} kg`);
     }
     return l.join('\n');
 };
@@ -23006,7 +22993,7 @@ V2_SCENES.printEstado = t => {
     if (st.fase === 1) return st.glitch
         ? `!!!! ${T('DESCARGA', 'DISCHARGE')} !!!!\n${Math.random() < 0.5 ? '########' : '        '}`
         : `${T('DESCARGA', 'DISCHARGE')} 4.2 kV\n${T('peso', 'weight')} ${v2PrintPeso().toFixed(2)} kg`;
-    return T('IMPRESION COMPLETA\nestado: VIVO', 'PRINT COMPLETE\nstatus: ALIVE');
+    return `${T('IMPRESION COMPLETA', 'PRINT COMPLETE')}\n${v2PrintPeso().toFixed(2)} kg`;
 };
 
 V2_SCENES.printCompleto = t => {
@@ -23016,7 +23003,7 @@ V2_SCENES.printCompleto = t => {
     l.push(T('IMPRESION COMPLETA', 'PRINT COMPLETE') + '.'.repeat(1 + Math.floor(t * 2) % 3));
     l.push('');
     l.push(`${pad(T('sujeto', 'subject'), 18)}HSAP-0417   Homo sapiens`);
-    l.push(`${pad(T('peso', 'weight'), 18)}140.21 kg`);
+    l.push(`${pad(T('peso', 'weight'), 18)}${v2PrintPeso().toFixed(2)} kg`);
     l.push('');
     l.push(T('BIOMETRICOS', 'BIOMETRICS'));
     l.push(`${pad(T('  ritmo cardiaco', '  heart rate'), 18)}${padL(hr + ' bpm', 10)}  ${hr > 0 ? (Math.floor(t * 1.2) % 2 ? '<3' : '  ') : '--'}`);
@@ -23083,6 +23070,7 @@ async function buildV2PrintingScreen(output) {
     return true;
 }
 window.buildV2PrintingScreen = buildV2PrintingScreen;
+window.v2PrintEstado = () => ({ pct: +v2PrintState.pct.toFixed(1), fase: v2PrintState.fase, glitch: !!v2PrintState.glitch, peso: +v2PrintPeso().toFixed(2) });
 
 
 // ═══════════════════════════════════════════════════════════════════════════
