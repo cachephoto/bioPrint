@@ -23161,10 +23161,32 @@ function v2TanqueTick() {
     if (k >= 1) { v2Tanque.valor = V2_TANQUE.hasta; v2Tanque.fase = 'lleno'; hapticFeedbackAll(0); }
 }
 
-V2_SCENES.tanqueNum = t => {
+// Nombre y cifra juntos, como los bloques de la página 12
+V2_SCENES.tanqueTitulo = t => {
     v2TanqueTick();
     if (v2Tanque.barra && v2Tanque.barra.dibujarBarra) v2Tanque.barra.dibujarBarra(v2Tanque.valor, t);
-    return `${v2Tanque.valor.toFixed(1)}%`;
+    return `${T('MATERIAL ORGANICO', 'ORGANIC MATERIAL')}   ${v2Tanque.valor.toFixed(1)}%`;
+};
+
+V2_SCENES.tanqueDatos = t => {
+    const v = v2Tanque.valor;
+    const c = k => `${(v * k).toFixed(1)} %`;
+    const l = [];
+    l.push(`${pad(T('tanque', 'tank'), 10)}B`);
+    l.push(`${pad(T('proteina', 'protein'), 10)}${c(1.0)}`);
+    l.push(`${pad(T('colageno', 'collagen'), 10)}${c(0.93)}`);
+    l.push(`${pad(T('lipidos', 'lipids'), 10)}${c(0.81)}`);
+    l.push(`${pad(T('ligante', 'binder'), 10)}${c(1.0)}`);
+    l.push('');
+    l.push(`${pad(T('caudal', 'feed'), 10)}${v2Tanque.fase === 'cargando' ? (3.2 + Math.sin(t * 2.4) * 0.3).toFixed(2) : '0.00'} L/m`);
+    l.push(`${pad(T('temp', 'temp'), 10)}${(4.1 + Math.sin(t * 0.6) * 0.1).toFixed(1)} C`);
+    return l.join('\n');
+};
+
+V2_SCENES.tanquePie = t => {
+    const f = v2Tanque.fase === 'cargando' ? T('CARGANDO', 'LOADING') + ' ' + spin(t)
+            : v2Tanque.fase === 'lleno' ? T('LISTO', 'READY') : 'STANDBY';
+    return `${T('ALIMENTACION ORGANICA', 'ORGANIC FEED')}\n${f}`;
 };
 
 V2_SCENES.tanqueLeyenda = t => {
@@ -23179,18 +23201,34 @@ async function buildV2TankScreen(output) {
     if (!gp) { showError('Grid no disponible', output); return false; }
     const mk = makeMk(gp);
     v2TanqueReset();
-    v2TermHeader(mk, 'tank --status organic');
+    v2TermHeader(mk, 'print --subject HSAP-0417 --bed A --feed');
 
-    const titulo = mk(14, 74, 37, 42);
-    window.setTextOnPanel(titulo, T('MATERIAL ORGANICO', 'ORGANIC MATERIAL'), 3.0, 'center',
-        { font: 'terminal', vAlign: 'middle' });
-    const numero = mk(14, 74, 22, 35);
-    makeLiveTerminal(numero, { scene: 'tanqueNum', fontSize: 9, align: 'center', vAlign: 'middle', fps: 10 });
-    v2Tanque.barra = hacerBarra(mk(14, 74, 16, 19), 30);
-    const leyenda = mk(14, 74, 7, 13);
-    makeLiveTerminal(leyenda, { scene: 'tanqueLeyenda', fontSize: 2.6, align: 'center', vAlign: 'middle', fps: 6 });
+    // Como la página 12: la modelo a la izquierda, de pie y girando…
+    const visor = mk(3, 26, 8, 44);
+    const ok = await loadModelToPanel(visor, './models/maniqui.obj', gp.cellSize);
+    if (ok) {
+        visor.modelData = {
+            name: 'maniqui', url: './models/maniqui.obj',
+            isRotating: true, rotationSpeed: 0.003,
+            isModelDisplay: true, isFromModelCommand: true, isViewer: true
+        };
+        visor.isViewer = true;
+        fitModelInsidePanel(visor);
+    }
+    const pie = mk(3, 26, 2, 6);
+    makeLiveTerminal(pie, { scene: 'tanquePie', fontSize: 1.7, align: 'center', vAlign: 'middle', fps: 6 });
 
-    v2Tanque.paneles = [titulo, numero, v2Tanque.barra, leyenda];
+    // …y el tanque, chico y al lado: nombre y cifra juntos sobre una barra
+    // corta, la leyenda debajo y el detalle en columna a la derecha.
+    const titulo = mk(29, 58, 30, 33);
+    makeLiveTerminal(titulo, { scene: 'tanqueTitulo', fontSize: 2.4, vAlign: 'middle', fps: 10 });
+    v2Tanque.barra = hacerBarra(mk(29, 58, 25, 28), 20);
+    const leyenda = mk(29, 58, 18, 23);
+    makeLiveTerminal(leyenda, { scene: 'tanqueLeyenda', fontSize: 2.0, align: 'center', vAlign: 'middle', fps: 6 });
+    const datos = mk(61, 86, 18, 33);
+    makeLiveTerminal(datos, { scene: 'tanqueDatos', fontSize: 1.9, vAlign: 'middle', fps: 4 });
+
+    v2Tanque.paneles = [titulo, v2Tanque.barra, leyenda, datos];
     v2Tanque.paneles.forEach(p => { p.tanqueAccion = true; });
     rematarPagina();
     if (output) showSuccess(T('Tanque: ENTER, espacio o un toque carga los materiales.',
