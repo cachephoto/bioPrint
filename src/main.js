@@ -22829,7 +22829,7 @@ function v2PrintMedio() {
 function v2PrintUIAvance(visible) {
     const ui = v2PrintState.ui;
     if (!ui) return;
-    [ui.titulo, ui.num, ui.barra, ui.datos].forEach(p => { if (p && p.group) p.group.visible = visible; });
+    [ui.titulo, ui.barra, ui.peso, ui.datos].forEach(p => { if (p && p.group) p.group.visible = visible; });
 }
 
 V2_SCENES.printDatos = t => {
@@ -22843,24 +22843,30 @@ V2_SCENES.printDatos = t => {
     const capas = Math.floor(140112 * pct / 100);
     const imprimiendo = st.fase === 0 && pct < 100 && pct !== st.objetivo;
     const l = [];
-    l.push(`${pad(T('capa', 'layer'), 14)}${padL(num(capas) + ' / 140 112', 20)}`);
-    l.push(`${pad(T('peso', 'weight'), 14)}${padL(v2PrintPeso().toFixed(2) + ' kg', 20)}`);
-    l.push(`${pad(T('cama', 'bed temp'), 14)}${padL((37.0 + Math.sin(t * 0.7) * 0.2).toFixed(1) + ' C', 20)}`);
-    l.push(`${pad(T('boquillas', 'nozzles'), 14)}${padL((st.fase === 0 ? '8 / 8' : '0 / 8'), 6)}   ${T('caudal', 'flow')} ${(imprimiendo ? 2.4 + Math.sin(t * 2.1) * 0.3 : 0).toFixed(2)} ml/s`);
+    l.push(`${pad(T('capa', 'layer'), 10)}${num(capas)}`);
+    l.push(`${pad('', 10)}/ 140 112`);
+    l.push(`${pad(T('cama', 'bed'), 10)}${(37.0 + Math.sin(t * 0.7) * 0.2).toFixed(1)} C`);
+    l.push(`${pad(T('boquillas', 'nozzles'), 10)}${st.fase === 0 ? '8 / 8' : '0 / 8'}`);
+    l.push(`${pad(T('caudal', 'flow'), 10)}${(imprimiendo ? 2.4 + Math.sin(t * 2.1) * 0.3 : 0).toFixed(2)} ml/s`);
+    l.push('');
     const zona = pct < 20 ? T('esqueleto', 'skeleton') : pct < 45 ? T('organos', 'organs') : pct < 70 ? T('musculo', 'muscle') : pct < 92 ? T('dermis', 'dermis') : T('epidermis', 'epidermis');
     if (st.fase === 0) {
-        l.push(pct >= 100 ? `  ${T('capa final depositada', 'final layer deposited')}`
-             : imprimiendo ? `  ${spin(t)} ${T('depositando', 'depositing')} ${zona}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`
-             :               `  ${T('en pausa', 'paused')} — ${zona}`);
+        l.push(pct >= 100 ? T('capa final', 'final layer')
+             : imprimiendo ? `${spin(t)} ${zona}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`
+             :               `${T('pausa', 'paused')} · ${zona}`);
     } else {
-        l.push(`  !! ${T('DESCARGA ELECTRICA', 'ELECTRICAL DISCHARGE')} 4.2 kV !!`);
-        l.push(`  ${T('peso', 'weight')} 140.00 -> ${v2PrintPeso().toFixed(2)} kg`);
+        l.push(`!! ${T('DESCARGA', 'DISCHARGE')} 4.2 kV`);
+        l.push(`140.00 -> ${v2PrintPeso().toFixed(2)} kg`);
     }
     return l.join('\n');
 };
 
-V2_SCENES.printPct = () => `${v2PrintState.pct.toFixed(1)}%`;
-V2_SCENES.matPct = () => `${v2Materiales(v2PrintState.pct).toFixed(1)}%`;
+// Nombre y cifra juntos, encima de su barra: el bloque entero cabe en un
+// plano cerrado.
+V2_SCENES.printTitulo = () => `${T('IMPRESION', 'PRINT PROGRESS')}   ${v2PrintState.pct.toFixed(1)}%`;
+V2_SCENES.matTitulo = () => `${T('MATERIALES ORGANICOS', 'ORGANIC MATERIALS')}   ${v2Materiales(v2PrintState.pct).toFixed(1)}%`;
+// El peso, grande bajo la barra: es lo que se mira en los 4 s del chispazo.
+V2_SCENES.printPeso = () => `${T('PESO', 'WEIGHT')}   ${v2PrintPeso().toFixed(2)} kg`;
 
 V2_SCENES.matDatos = t => {
     const st = v2PrintState;
@@ -22868,9 +22874,13 @@ V2_SCENES.matDatos = t => {
     const c = k => `${padL(Math.max(0.4, m * k).toFixed(1), 5)} %`;
     const gasto = st.fase === 0 && st.pct < 100 && st.pct !== st.objetivo;
     const l = [];
-    l.push(`${pad(T('proteina', 'protein'), 12)}${c(1.0)}     ${pad(T('colageno', 'collagen'), 11)}${c(0.93)}`);
-    l.push(`${pad(T('lipidos', 'lipids'), 12)}${c(0.81)}     ${pad(T('ligante', 'binder'), 11)}${c(1.0)}`);
-    l.push(`${pad(T('tanque', 'tank'), 12)}${padL(m > 50 ? 'A + B' : m > MATERIAL_ALERTA ? 'B' : '--', 7)}     ${pad(T('consumo', 'usage'), 11)}${gasto ? (11.4 + Math.sin(t * 1.3) * 0.6).toFixed(1) : '0.0'} g/s`);
+    l.push(`${pad(T('proteina', 'protein'), 10)}${c(1.0)}`);
+    l.push(`${pad(T('colageno', 'collagen'), 10)}${c(0.93)}`);
+    l.push(`${pad(T('lipidos', 'lipids'), 10)}${c(0.81)}`);
+    l.push(`${pad(T('ligante', 'binder'), 10)}${c(1.0)}`);
+    l.push('');
+    l.push(`${pad(T('tanque', 'tank'), 10)}${m > 50 ? 'A + B' : m > MATERIAL_ALERTA ? 'B' : '--'}`);
+    l.push(`${pad(T('consumo', 'usage'), 10)}${gasto ? (11.4 + Math.sin(t * 1.3) * 0.6).toFixed(1) : '0.0'} g/s`);
     return l.join('\n');
 };
 
@@ -22878,7 +22888,7 @@ V2_SCENES.matDatos = t => {
 V2_SCENES.matAlerta = t => {
     const m = v2Materiales(v2PrintState.pct);
     if (m < MATERIAL_ALERTA) return Math.floor(t * 2.5) % 2 === 0 ? '!! ORGANIC MATERIAL NEAR EMPTY !!' : '';
-    return `${spin(t)} ${T('suministro organico', 'organic supply')} · ${T('nominal', 'nominal')}`;
+    return `${spin(t)} ${T('suministro', 'supply')} · nominal`;
 };
 
 V2_SCENES.printEstado = t => {
@@ -22935,28 +22945,27 @@ async function buildV2PrintingScreen(output) {
     const pie = mk(3, 26, 2, 6);
     makeLiveTerminal(pie, { scene: 'printEstado', fontSize: 1.7, align: 'center', vAlign: 'middle', fps: 6 });
 
-    // ── Avance: título, cifra grande, barra de bloques y datos ──
+    // Dos bloques compactos a la izquierda de la columna (nombre y cifra
+    // juntos sobre una barra corta: caben en un plano cerrado) y sus datos
+    // en columna a la derecha.
     const ui = {};
-    ui.titulo = mk(29, 70, 41, 44);
-    window.setTextOnPanel(ui.titulo, `${T('IMPRESION', 'PRINT PROGRESS')}   HSAP-0417`, 2.0, 'left',
-        { font: 'terminal', vAlign: 'middle' });
-    ui.num = mk(72, 86, 41, 44);
-    makeLiveTerminal(ui.num, { scene: 'printPct', fontSize: 3.0, align: 'center', vAlign: 'middle', fps: 6 });
-    ui.barra = hacerBarra(mk(29, 86, 36, 39), 40);
-    ui.datos = mk(29, 86, 27, 34);
+    // ── Impresión ──
+    ui.titulo = mk(29, 58, 41, 44);
+    makeLiveTerminal(ui.titulo, { scene: 'printTitulo', fontSize: 2.4, vAlign: 'middle', fps: 6 });
+    ui.barra = hacerBarra(mk(29, 58, 36, 39), 20);
+    ui.peso = mk(29, 58, 27, 34);
+    makeLiveTerminal(ui.peso, { scene: 'printPeso', fontSize: 2.6, align: 'center', vAlign: 'middle', fps: 6 });
+    ui.datos = mk(61, 86, 27, 44);
     makeLiveTerminal(ui.datos, { scene: 'printDatos', fontSize: 1.9, vAlign: 'middle', fps: 8 });
 
-    // ── Materiales orgánicos: lo mismo, más la alerta ──
-    const tMat = mk(29, 70, 21, 24);
-    window.setTextOnPanel(tMat, T('MATERIALES ORGANICOS', 'ORGANIC MATERIALS'), 2.0, 'left',
-        { font: 'terminal', vAlign: 'middle' });
-    const nMat = mk(72, 86, 21, 24);
-    makeLiveTerminal(nMat, { scene: 'matPct', fontSize: 3.0, align: 'center', vAlign: 'middle', fps: 6 });
-    ui.barraMat = hacerBarra(mk(29, 86, 16, 19), 40);
-    const dMat = mk(29, 86, 9, 14);
-    makeLiveTerminal(dMat, { scene: 'matDatos', fontSize: 1.9, vAlign: 'middle', fps: 4 });
-    const alerta = mk(29, 86, 2, 7);
+    // ── Materiales orgánicos, con la alerta debajo de su barra ──
+    const tMat = mk(29, 58, 19, 22);
+    makeLiveTerminal(tMat, { scene: 'matTitulo', fontSize: 2.4, vAlign: 'middle', fps: 6 });
+    ui.barraMat = hacerBarra(mk(29, 58, 14, 17), 20);
+    const alerta = mk(29, 58, 2, 11);
     makeLiveTerminal(alerta, { scene: 'matAlerta', fontSize: 2.6, align: 'center', vAlign: 'middle', fps: 6 });
+    const dMat = mk(61, 86, 2, 22);
+    makeLiveTerminal(dMat, { scene: 'matDatos', fontSize: 1.9, vAlign: 'middle', fps: 4 });
 
     v2PrintState.ui = ui;
     rematarPagina();
