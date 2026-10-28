@@ -923,7 +923,8 @@ const PAGE_NAMES = {
         11: ['RENDER', 'RENDER'],
         12: ['IMPRESION', 'PRINTING'],
         13: ['CORAZON', 'HEART'],
-        14: ['TANQUE', 'TANK']
+        14: ['TANQUE', 'TANK'],
+        15: ['SANGRE', 'BLOOD']
     }
 };
 
@@ -3927,6 +3928,14 @@ document.addEventListener('keydown', (event) => {
     let moveDelta = { dx: 0, dy: 0 };
     let deleteTriggered = false;
 
+    // 🩸 ENTER o espacio en la página de la sangre: insertar la muestra
+    if ((key === 'Enter' || key === ' ') && !activelyWritingText && !terminalIsEffectivelyActive
+        && v2SangreEnPantalla()) {
+        v2SangreAccion();
+        event.preventDefault();
+        return;
+    }
+
     // 🦴 ENTER o espacio en el hueso de ZENG: repetir la impresión
     if ((key === 'Enter' || key === ' ') && !activelyWritingText && !terminalIsEffectivelyActive
         && zengHuesoEnPantalla()) {
@@ -4161,6 +4170,7 @@ document.addEventListener('keydown', (event) => {
         case 'y': case 'Y':
         case 's': case 'S':
         case 'o': case 'O':
+        case 'd': case 'D':
         case 'h': case 'H': {
             if (activelyWritingText || terminalIsEffectivelyActive ||
                 event.ctrlKey || event.altKey || event.metaKey) break;
@@ -4173,7 +4183,7 @@ document.addEventListener('keydown', (event) => {
             }
             const outL = document.getElementById('terminal-output');
             if (letra === 'h') buildHome(outL);
-            else if (letra !== 's') irAPagina({ q: 10, w: 11, e: 12, y: 13, o: 14 }[letra], outL);
+            else if (letra !== 's') irAPagina({ q: 10, w: 11, e: 12, y: 13, o: 14, d: 15 }[letra], outL);
             event.preventDefault();
             return;
         }
@@ -5703,6 +5713,12 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                     // click carga esa página (con flash de confirmación).
                     // Si además tiene redAlertOnNav, activa el parpadeo rojo (ACCESS DENIED).
                     // ⚡ Botón del cluster de GPU: dispara la aceleración
+                    // 🩸 Sangre: tocar la página inserta la muestra
+                    if (clickedPanelData.sangreAccion) {
+                        startFlash(clickedPanelData);
+                        v2SangreAccion();
+                        return;
+                    }
                     // 🛢️ Tanque: tocar cualquiera de sus recuadros carga
                     if (clickedPanelData.tanqueAccion) {
                         startFlash(clickedPanelData);
@@ -22580,7 +22596,8 @@ const PAGE_BUILDERS = {
         11: buildV2RenderScreen,
         12: buildV2PrintingScreen,
         13: buildV2HeartScreen,
-        14: buildV2TankScreen
+        14: buildV2TankScreen,
+        15: buildV2BloodScreen
     }
 };
 
@@ -23377,3 +23394,135 @@ async function buildZengBone(output) {
     return true;
 }
 window.buildZengBone = buildZengBone;
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Página 15 de la verde: la muestra de sangre
+//  El render del perro se detiene: falta su secuencia genética. La app pide
+//  una muestra de sangre en el escáner y explica por qué: la sangre lleva el
+//  ADN completo, de ahí se lee el genoma y sale el plano para imprimir y
+//  replicar. ENTER, espacio o un toque = muestra insertada: se lee el genoma
+//  hasta LISTO. Otra vez, vuelve a la espera. Tecla D o el número 15.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SANGRE_SEG = 12;                 // lo que tarda la lectura del genoma
+const GENOMA_PERRO = 2410000000;       // pares de bases, Canis lupus familiaris
+let v2Sangre = { fase: 'espera', t0: 0, paneles: [] };
+
+function v2SangreEnPantalla() {
+    return v2Sangre.paneles.length > 0 && panels.includes(v2Sangre.paneles[0]);
+}
+
+function v2SangreAccion() {
+    if (v2Sangre.fase === 'espera') {
+        v2Sangre.fase = 'leyendo';
+        v2Sangre.t0 = performance.now();
+        hapticFeedbackAll(0);
+    } else if (v2Sangre.fase === 'listo') {
+        v2Sangre.fase = 'espera';
+    }
+    return true;
+}
+
+function v2SangreAvance() {
+    if (v2Sangre.fase === 'espera') return 0;
+    const k = Math.min(1, (performance.now() - v2Sangre.t0) / 1000 / SANGRE_SEG);
+    if (k >= 1 && v2Sangre.fase === 'leyendo') { v2Sangre.fase = 'listo'; hapticFeedbackAll(0); }
+    return k;
+}
+
+V2_SCENES.sangreAlerta = t => {
+    const k = v2SangreAvance();
+    if (v2Sangre.fase === 'espera') {
+        // Encendido 3/4 del ciclo: apagada la mitad, un plano podía caer vacío
+        return (t * 1.4) % 1 < 0.75
+            ? T('!! INSERTE MUESTRA DE SANGRE !!\nEN EL ESCANER', '!! INSERT BLOOD SAMPLE !!\nINTO SCANNER')
+            : '';
+    }
+    if (v2Sangre.fase === 'leyendo') {
+        return `${T('MUESTRA DETECTADA', 'SAMPLE DETECTED')}\n${T('LEYENDO GENOMA', 'READING GENOME')} ${Math.floor(k * 100)}%`;
+    }
+    return T('GENOMA LEIDO\nLISTO PARA IMPRESION Y REPLICACION', 'GENOME READ\nREADY TO PRINT AND REPLICATE');
+};
+
+V2_SCENES.sangreLog = t => {
+    const k = v2SangreAvance();
+    const l = [];
+    l.push('> render --subject CANIS-0912');
+    l.push(`  ${pad(T('modelo', 'model'), 13)}CANIS LUPUS F.`);
+    l.push(`  ${pad(T('geometria', 'geometry'), 13)}OK`);
+    l.push(`  ${pad(T('tejidos', 'tissues'), 13)}OK`);
+    l.push(`  ${pad(T('genoma', 'genome'), 13)}${v2Sangre.fase === 'listo' ? 'OK' : T('NO ENCONTRADO', 'NOT FOUND')}`);
+    l.push('');
+    l.push(T('  render en pausa:', '  render paused:'));
+    l.push(T('  falta la secuencia genetica', '  genetic sequence missing'));
+    l.push('');
+    l.push(T('  la sangre lleva el ADN completo', '  blood carries the full DNA'));
+    l.push(T('  del sujeto. con una muestra se', '  of the subject. one sample'));
+    l.push(T('  lee su genoma y se obtiene el', '  reads its genome and yields'));
+    l.push(T('  plano biologico para imprimir', '  the biological blueprint to'));
+    l.push(T('  y replicar al animal.', '  print and replicate the animal.'));
+    l.push('');
+    if (v2Sangre.fase === 'espera') {
+        l.push('> scanner --wait sample');
+        l.push(`  ${spin(t)} ${T('esperando muestra', 'awaiting sample')}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
+    } else {
+        const bases = 'GATC';
+        let cadena = '';
+        for (let i = 0; i < 26; i++) cadena += bases[Math.floor(Math.abs(Math.sin((t * 9 + i) * 12.9898)) * 4) % 4];
+        l.push('> genome --read sample:blood');
+        l.push(`  [${bar(k * 100, 26)}] ${padL(Math.floor(k * 100), 3)}%`);
+        l.push(`  ${pad(T('pares de bases', 'base pairs'), 15)}${num(GENOMA_PERRO * k)}`);
+        l.push(`  ${pad(T('cromosomas', 'chromosomes'), 15)}${Math.min(39, Math.floor(39 * k))} / 39`);
+        l.push(v2Sangre.fase === 'listo'
+            ? `> print --replicate CANIS-0912  ${T('LISTO', 'READY')}`
+            : `  ${cadena}`);
+    }
+    return l.join('\n');
+};
+
+async function buildV2BloodScreen(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+    v2Sangre.fase = 'espera';
+    v2TermHeader(mk, 'render --subject CANIS-0912 --genome');
+
+    // El perro, a punto de renderizarse
+    const visor = mk(3, 30, 10, 43);
+    const ok = await loadModelToPanel(visor, './models/dog.obj', gp.cellSize);
+    if (ok) {
+        visor.modelData = {
+            name: 'dog', url: './models/dog.obj',
+            isRotating: true, rotationSpeed: 0.004,
+            isModelDisplay: true, isFromModelCommand: true, isViewer: true
+        };
+        visor.isViewer = true;
+        fitModelInsidePanel(visor);
+    }
+    const nombre = mk(3, 30, 4, 8);
+    window.setTextOnPanel(nombre, modelScientificNames.dog, 1.9, 'center', { font: 'terminal', vAlign: 'middle' });
+
+    // La petición, en grande y parpadeando
+    const alerta = mk(33, 86, 34, 43);
+    makeLiveTerminal(alerta, { scene: 'sangreAlerta', fontSize: 3.6, align: 'center', vAlign: 'middle', fps: 6 });
+
+    // Hélice de ADN: el genoma que se va a leer
+    const helice = mk(33, 44, 4, 31);
+    helice.genomData = { tipo: 'helice' };
+    await loadGenomToPanel(helice, gp.cellSize);
+    helice.group.children.forEach(ch => { if (ch.isGroup) { ch.scale.x *= 3.2; ch.scale.z *= 3.2; } });
+
+    // Por qué la sangre, y la lectura
+    const log = mk(47, 86, 4, 31);
+    makeLiveTerminal(log, { scene: 'sangreLog', fontSize: 1.7, fps: 6 });
+
+    v2Sangre.paneles = [alerta, log, visor, nombre, helice];
+    v2Sangre.paneles.forEach(p => { p.sangreAccion = true; });
+    rematarPagina();
+    if (output) showSuccess(T('Muestra de sangre: ENTER, espacio o un toque la inserta.',
+                              'Blood sample: ENTER, space or a tap inserts it.'), output);
+    return true;
+}
+window.buildV2BloodScreen = buildV2BloodScreen;
+window.v2SangreEstado = () => ({ fase: v2Sangre.fase, avance: +v2SangreAvance().toFixed(2) });
