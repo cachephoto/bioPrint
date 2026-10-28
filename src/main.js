@@ -3888,6 +3888,13 @@ document.addEventListener('keydown', (event) => {
     let moveDelta = { dx: 0, dy: 0 };
     let deleteTriggered = false;
 
+    // 📤 ENTER en el render terminado: SEND TO PRINT, y luego "sí"
+    if (key === 'Enter' && !activelyWritingText && !terminalIsEffectivelyActive
+        && v2RenderEnPantalla() && v2RenderState.envio) {
+        v2RenderAccion(v2RenderState.envio === 2 ? 'si' : 'enviar');
+        return;
+    }
+
     // 📁 ENTER abre Human.exe en la página de archivos; con el corazón ya
     // cargado, ENTER otra vez entra al submenú de órganos (página 13).
     if (key === 'Enter' && !activelyWritingText && !terminalIsEffectivelyActive
@@ -4073,6 +4080,17 @@ document.addEventListener('keydown', (event) => {
             event.preventDefault();
             return;
         }
+        // ✅ N: "no" a ARE YOU SURE? del render
+        case 'n': case 'N': {
+            if (activelyWritingText || terminalIsEffectivelyActive ||
+                event.ctrlKey || event.altKey || event.metaKey) break;
+            if (v2RenderState.envio === 2 && v2RenderEnPantalla()) {
+                v2RenderAccion('no');
+                event.preventDefault();
+                return;
+            }
+            break;
+        }
         case 'q': case 'Q':
         case 'w': case 'W':
         case 'e': case 'E':
@@ -4081,6 +4099,12 @@ document.addEventListener('keydown', (event) => {
             if (activelyWritingText || terminalIsEffectivelyActive ||
                 event.ctrlKey || event.altKey || event.metaKey) break;
             const letra = key.toLowerCase();
+            // Con ARE YOU SURE? en pantalla, Y es "sí", no la página 13
+            if (letra === 'y' && v2RenderState.envio === 2 && v2RenderEnPantalla()) {
+                v2RenderAccion('si');
+                event.preventDefault();
+                return;
+            }
             const outL = document.getElementById('terminal-output');
             if (letra === 'h') buildHome(outL);
             else irAPagina({ q: 10, w: 11, e: 12, y: 13 }[letra], outL);
@@ -5613,6 +5637,14 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                     // click carga esa página (con flash de confirmación).
                     // Si además tiene redAlertOnNav, activa el parpadeo rojo (ACCESS DENIED).
                     // ⚡ Botón del cluster de GPU: dispara la aceleración
+                    // 📤 Envío a impresión del render
+                    if (clickedPanelData.renderEnvio) {
+                        if (clickedPanelData.renderEnvio !== 'pregunta') {
+                            startFlash(clickedPanelData);
+                            v2RenderAccion(clickedPanelData.renderEnvio);
+                        }
+                        return;
+                    }
                     if (clickedPanelData.gpuButton) {
                         if (connectGpuCluster()) {
                             setPanelTextVisible(clickedPanelData, false);   // el botón se apaga al usarse
@@ -21387,8 +21419,78 @@ function connectGpuCluster() {
     return true;
 }
 
+// ── Envío a impresión (página 11) ───────────────────────────────────────────
+// Al terminar el render, el hueco del botón de GPU (que se apaga al usarse)
+// pasa a ser RENDER COMPLETE - SEND TO PRINT; al tocarlo pregunta ARE YOU
+// SURE? con Y y N. Y lleva a la impresión (página 12); N vuelve atrás. En
+// inglés en las dos versiones, como el resto de mensajes de estado del render.
+function quitarPanel(p) {
+    if (!p) return;
+    const i = panels.indexOf(p);
+    if (i >= 0) panels.splice(i, 1);
+    if (p.group && p.group.parent) p.group.parent.remove(p.group);
+    liveTerminals.delete(p);
+}
+
+function v2RenderListo() {
+    const st = v2RenderState;
+    if (st.envio) return;
+    st.envio = 1;
+    setTimeout(() => { if (v2RenderState === st) v2RenderMostrarEnvio(); }, 900);
+}
+
+function v2RenderEnPantalla() {
+    return panels.some(p => p.gpuButton || p.renderEnvio);
+}
+
+function v2RenderLimpiarBoton() {
+    panels.filter(p => p.gpuButton || p.renderEnvio).forEach(quitarPanel);
+}
+
+function v2RenderMostrarEnvio() {
+    const gp = getCurrentGridParams();
+    if (!gp || !v2RenderEnPantalla()) return;
+    const mk = makeMk(gp);
+    v2RenderLimpiarBoton();
+    const b = mk(3, 55, 2, 6);
+    window.setTextOnPanel(b, '>> RENDER COMPLETE  -  SEND TO PRINT <<', 2.4, 'center', { font: 'terminal' });
+    b.renderEnvio = 'enviar';
+    v2RenderState.envio = 1;
+    startFlash(b);
+    hapticFeedbackAll(0);
+}
+
+function v2RenderPreguntar() {
+    const gp = getCurrentGridParams();
+    if (!gp) return;
+    const mk = makeMk(gp);
+    v2RenderLimpiarBoton();
+    const pregunta = mk(3, 31, 2, 6);
+    window.setTextOnPanel(pregunta, 'ARE YOU SURE?', 2.4, 'center', { font: 'terminal' });
+    pregunta.renderEnvio = 'pregunta';            // se toca y no hace nada
+    const si = mk(33, 43, 2, 6);
+    window.setTextOnPanel(si, 'Y', 2.6, 'center', { font: 'terminal' });
+    si.renderEnvio = 'si';
+    const no = mk(45, 55, 2, 6);
+    window.setTextOnPanel(no, 'N', 2.6, 'center', { font: 'terminal' });
+    no.renderEnvio = 'no';
+    v2RenderState.envio = 2;
+}
+
+/** Lo que hace cada botón del envío (también lo usan Y, N y ENTER). */
+function v2RenderAccion(a) {
+    if (a === 'enviar') v2RenderPreguntar();
+    else if (a === 'si') irAPagina(12, document.getElementById('terminal-output'));
+    else if (a === 'no') v2RenderMostrarEnvio();
+}
+
 /** Vuelve al estado inicial para repetir la toma. */
 function resetGpuCluster() {
+    // Con el envío en pantalla el botón de GPU ya no existe: se rehace la página.
+    if (panels.some(p => p.renderEnvio)) {
+        irAPagina(11, document.getElementById('terminal-output'));
+        return true;
+    }
     v2RenderState = { phase: 0, t0: performance.now() };
     panels.forEach(p => {
         if (p.gpuButton) setPanelTextVisible(p, true);
@@ -21437,7 +21539,9 @@ const V2_RENDER_SCENE = t => {
     } else {
         // Segundos: cuenta atrás real y cierre
         const pct = Math.min(100, 63 + dt * 9);
-        const secs = Math.max(0, 38 - dt * 4.2);
+        // El reloj llega a cero con la barra: antes iban a ritmos distintos y
+        // con la barra al 100 % aún quedaban segundos en pantalla.
+        const secs = Math.max(0, 38 * (100 - pct) / 37);
         l.push(T('  ESTADO      MAXIMO RENDIMIENTO','  STATUS      PEAK THROUGHPUT'));
         l.push(T('  COMPUTO     GPU CLUSTER  16 384 nucleos','  COMPUTE     GPU CLUSTER  16 384 cores'));
         l.push(T('  ENLACE      80 Gbps  saturado','  LINK        80 Gbps  saturated'));
@@ -21452,6 +21556,7 @@ const V2_RENDER_SCENE = t => {
             ? `  ${T('capa','layer')} ${num(V2_RENDER_TOTAL)} / ${num(V2_RENDER_TOTAL)}`
             : `  ${spin(t)} ${T('depositando capa','depositing layer')} ${num(Math.min(V2_RENDER_TOTAL, 260000 + dt * 38000))} / ${num(V2_RENDER_TOTAL)}`);
         l.push('');
+        if (pct >= 99.9) v2RenderListo();
         l.push(pct >= 99.9 ? '  RENDER COMPLETE' : T('  volcando geometria a sustrato','  writing geometry to substrate'));
         l.push(pct >= 99.9 ? T('  modelo listo para impresion','  model ready to print') : T('  sin cuello de botella','  no bottleneck'));
     }
@@ -22552,26 +22657,38 @@ function v2PrintTick() {
 }
 
 /** Fase 1: el chispazo. */
+const PRINT_PESO_SEG = 4;         // lo que se ve el peso cambiar antes del glitch
+
 function v2PrintDescarga() {
     const st = v2PrintState;
     if (st.fase !== 0) return;
     st.fase = 1;
+    st.glitch = false;
     st.t0 = performance.now();
-    hapticFeedbackAll(0);
-    v2PrintFXRojo();
-    startRedAlert();                                  // parpadeo rojo
-    if (st.visor) startGlitchEffect(st.visor);        // corrupción de imagen
+    hapticFeedbackAll(0);                             // el chispazo
+    // Primero, quieto y en verde: el peso sube de 140.00 a 140.21 y se queda
+    // a la vista. Al terminar el plazo, todo se corrompe y pasa a rojo.
     setTimeout(() => {
         if (v2PrintState.fase !== 1) return;
-        if (glitchActive) stopGlitchEffect();
-        stopRedAlert(false);
-        colorPicker.value = GRADE_COLORS.rojo;        // rojo fijo
-        updateBioFXEffect();
-        v2PrintState.fase = 2;
-        v2PrintState.t0 = performance.now();
-        hapticFeedbackAll(0);
-        v2PrintPantallaCompleta();
-    }, PRINT_DESCARGA_MS);
+        v2PrintState.glitch = true;
+        v2PrintFXRojo();
+        startRedAlert();                              // parpadeo rojo
+        if (v2PrintState.visor) startGlitchEffect(v2PrintState.visor);   // corrupción
+        setTimeout(v2PrintFinRojo, PRINT_DESCARGA_MS);
+    }, PRINT_PESO_SEG * 1000);
+}
+
+/** Fin del glitch: rojo fijo y la pantalla PRINT COMPLETE. */
+function v2PrintFinRojo() {
+    if (v2PrintState.fase !== 1) return;
+    if (glitchActive) stopGlitchEffect();
+    stopRedAlert(false);
+    colorPicker.value = GRADE_COLORS.rojo;        // rojo fijo
+    updateBioFXEffect();
+    v2PrintState.fase = 2;
+    v2PrintState.t0 = performance.now();
+    hapticFeedbackAll(0);
+    v2PrintPantallaCompleta();
 }
 
 /** Fase 2: la pantalla PRINT COMPLETE, encima de todo. */
@@ -22594,9 +22711,11 @@ function v2PrintPeso() {
     if (st.fase === 0) return PRINT_PESO_FINAL * st.pct / 100;
     const dt = (performance.now() - st.t0) / 1000;
     if (st.fase === 1) {
-        // Sube a saltos durante el chispazo
-        const k = Math.min(1, dt / 1.2);
-        return PRINT_PESO_FINAL + (PRINT_PESO_CHISPA - PRINT_PESO_FINAL) * k + (Math.random() - 0.5) * 0.02;
+        // Sube en un segundo tras el chispazo y se queda; sólo tiembla ya
+        // con el glitch encima.
+        const k = Math.min(1, dt / 1.0);
+        const temblor = st.glitch ? (Math.random() - 0.5) * 0.02 : 0;
+        return PRINT_PESO_FINAL + (PRINT_PESO_CHISPA - PRINT_PESO_FINAL) * k + temblor;
     }
     return PRINT_PESO_CHISPA;
 }
@@ -22624,7 +22743,7 @@ V2_SCENES.impresion = t => {
                           : `  ${spin(t)} ${T('depositando','depositing')} ${zona}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
     } else if (st.fase === 1) {
         l.push(`  !! ${T('DESCARGA ELECTRICA','ELECTRICAL DISCHARGE')} 4.2 kV !!`);
-        l.push(`  ${T('peso','weight')} 140.00 -> 140.21 kg`);
+        l.push(`  ${T('peso','weight')} 140.00 -> ${v2PrintPeso().toFixed(2)} kg`);
     } else {
         l.push('  !! SIGNAL DETECTED !!');
         l.push('  subject responsive');
@@ -22663,7 +22782,9 @@ V2_SCENES.printEstado = t => {
     if (st.fase === 0) {
         return `${PROMPT} print --subject HSAP-0417   ${T('cebado bioelectrico','bio-electric priming')}: ${st.pct < 90 ? 'standby' : T('ARMADO','ARMED')}  ${st.pct >= 90 ? spin(t) : ''}`;
     }
-    if (st.fase === 1) return `${PROMPT} !!!! ${T('DESCARGA','DISCHARGE')} !!!! ${Math.random() < 0.5 ? '####' : '    '} ${T('peso','weight')} ${v2PrintPeso().toFixed(2)} kg`;
+    if (st.fase === 1) return st.glitch
+        ? `${PROMPT} !!!! ${T('DESCARGA','DISCHARGE')} !!!! ${Math.random() < 0.5 ? '####' : '    '} ${T('peso','weight')} ${v2PrintPeso().toFixed(2)} kg`
+        : `${PROMPT} ${T('descarga','discharge')} 4.2 kV   ${T('peso','weight')} ${v2PrintPeso().toFixed(2)} kg`;
     return `${PROMPT} print complete   weight 140.21 kg   status: ALIVE`;
 };
 
