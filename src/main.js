@@ -911,7 +911,7 @@ const PAGE_NAMES = {
         10: ['GENERANDO', 'GENERATING'],
         11: ['RENDER', 'RENDER'],
         12: ['IMPRESION', 'PRINTING'],
-        13: ['CORAZON', 'HEART']
+        13: ['HEART', 'HEART']
     }
 };
 
@@ -4071,6 +4071,15 @@ document.addEventListener('keydown', (event) => {
         // 🔥 NUEVO: Cargar slots con números del teclado (0-9)
         // 🔤 Fila QWERTY: las páginas 10 y 11 no caben en un dígito, y H es
         // la vuelta al home. Sólo cuando no se está escribiendo en ningún lado.
+        // 🖨️ I en la página de impresión: paso intermedio (23 %)
+        case 'i': case 'I': {
+            if (activelyWritingText || terminalIsEffectivelyActive ||
+                event.ctrlKey || event.altKey || event.metaKey) break;
+            if (!v2PrintEnPantalla()) break;
+            v2PrintMedio();
+            event.preventDefault();
+            return;
+        }
         // 🖨️ R en la página de impresión: salto al 98 %
         case 'r': case 'R': {
             if (activelyWritingText || terminalIsEffectivelyActive ||
@@ -9286,6 +9295,13 @@ function processTerminalCommand(command) {
             showSuccess(`Fondo de panel a ${PANEL_BACKING_OPACITY} (${n} paneles)`, output);
             break;
         }
+        // 🖨️ Página 12: paso intermedio, la impresión al 23 % y quieta
+        case 'intermedio':
+        case 'medio':
+            if (!v2PrintEnPantalla()) { showError(T('Primero abre la página 12 (tecla E)', 'Open page 12 first (key E)'), output); break; }
+            v2PrintMedio();
+            showSuccess(T('Impresión al 23 % (paso intermedio)', 'Printing at 23 % (midway step)'), output);
+            break;
         // 🖨️ Página 12: salto al 98 % para llegar enseguida al 100 y al rojo
         case 'final':
             if (!v2PrintEnPantalla()) { showError(T('Primero abre la página 12 (tecla E)', 'Open page 12 first (key E)'), output); break; }
@@ -9298,6 +9314,12 @@ function processTerminalCommand(command) {
         case 'printing': {
             const a = (args[0] || '').toLowerCase();
             if (a === 'reset') { v2PrintReset(); showSuccess(T('Impresión reiniciada', 'Printing reset'), output); break; }
+            if (a === 'medio' || a === 'intermedio') {
+                if (!v2PrintEnPantalla()) { showError(T('Primero abre la página 12 (tecla E)', 'Open page 12 first (key E)'), output); break; }
+                v2PrintMedio();
+                showSuccess(T('Impresión al 23 % (paso intermedio)', 'Printing at 23 % (midway step)'), output);
+                break;
+            }
             if (a === 'final' || a === 'fin') {
                 if (!v2PrintEnPantalla()) { showError(T('Primero abre la página 12 (tecla E)', 'Open page 12 first (key E)'), output); break; }
                 v2PrintFinal();
@@ -22580,7 +22602,9 @@ function v2PrintReset() {
         if (ov.group && ov.group.parent) ov.group.parent.remove(ov.group);
         liveTerminals.delete(ov);
     }
-    v2PrintState = { objetivo: 12, pct: 0, fase: 0, t0: performance.now(), ultimo: performance.now(), overlay: null, visor: v2PrintState.visor };
+    const ui = v2PrintState.ui;
+    v2PrintState = { objetivo: 12, pct: 0, fase: 0, t0: performance.now(), ultimo: performance.now(), overlay: null, visor: v2PrintState.visor, ui };
+    v2PrintUIAvance(true);
 }
 
 /**
@@ -22696,11 +22720,12 @@ function v2PrintPantallaCompleta() {
     const gp = getCurrentGridParams();
     if (!gp) return;
     const mk = makeMk(gp);
-    // Sobre el panel de avance, que se vacía: la mujer y los materiales
-    // (parpadeando "cargar tanque") siguen a la vista, en rojo.
+    // En el sitio del bloque de avance, que se oculta: la mujer y los
+    // materiales (con NEAR EMPTY parpadeando) siguen a la vista, en rojo.
+    // Sin subir el orden de dibujo: subido a 900, el fondo oscuro del propio
+    // panel quedaba encima de sus letras y PRINT COMPLETE salía apagado.
     const ov = mk(29, 86, 27, 44);
-    ov.group.renderOrder = 900;
-    ov.group.traverse(o => { if (o.renderOrder !== undefined) o.renderOrder = Math.max(o.renderOrder, 900); });
+    v2PrintUIAvance(false);
     makeLiveTerminal(ov, { scene: 'printCompleto', fontSize: 2.2, align: 'left', vAlign: 'top', fps: 4 });
     v2PrintState.overlay = ov;
 }
@@ -22720,72 +22745,149 @@ function v2PrintPeso() {
     return PRINT_PESO_CHISPA;
 }
 
-V2_SCENES.impresion = t => {
+// ── Barra gráfica de bloques ────────────────────────────────────────────────
+// Textura de canvas sobre el relleno del panel. Se dibuja en blanco: el tinte
+// de bioFX la pinta del color de la versión (verde, y rojo al final), igual
+// que el texto. Mismo trato que el panel de video: declara su textura para
+// que updatePanelColor no la cambie por el relleno liso, y sus UV se calculan
+// desde los vértices.
+function hacerBarra(panel, segmentos) {
+    if (!panel || !panel.fillMesh) return null;
+    const wc = panel.maxCellIndex.x - panel.minCellIndex.x + 1;
+    const hc = panel.maxCellIndex.y - panel.minCellIndex.y + 1;
+    const W = 1024, H = Math.max(32, Math.round(W * hc / wc));
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    const tex = new THREE.CanvasTexture(cv);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false });
+    panel.fillMesh.material = mat;
+    panel.fillMesh.renderOrder = 700;
+    panel.hasTexture = true;
+    panel.textureMaterials = { normal: mat, hover: mat, selected: mat };
+    panel.keepFillMaterial = true;
+
+    const geo = panel.fillMesh.geometry, uv = geo.attributes.uv, pos = geo.attributes.position;
+    if (uv && pos) {
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (let i = 0; i < pos.count; i++) {
+            x0 = Math.min(x0, pos.getX(i)); x1 = Math.max(x1, pos.getX(i));
+            y0 = Math.min(y0, pos.getY(i)); y1 = Math.max(y1, pos.getY(i));
+        }
+        for (let i = 0; i < uv.count; i++) {
+            uv.setXY(i, (pos.getX(i) - x0) / ((x1 - x0) || 1), (pos.getY(i) - y0) / ((y1 - y0) || 1));
+        }
+        uv.needsUpdate = true;
+    }
+
+    let ultimo = null;
+    panel.dibujarBarra = (pct, t) => {
+        const n = segmentos;
+        const llenos = Math.max(0, Math.min(n, pct / 100 * n));
+        const parpadeo = Math.floor(t * 4) % 2;
+        const clave = Math.round(pct * 10) + '|' + parpadeo;
+        if (clave === ultimo) return;          // nada cambió: no se repinta
+        ultimo = clave;
+        ctx.clearRect(0, 0, W, H);
+        const pad = H * 0.2, gap = W * 0.006;
+        const segW = (W - 2 * pad - gap * (n - 1)) / n;
+        const cabeza = Math.floor(llenos);
+        for (let i = 0; i < n; i++) {
+            let a;
+            if (i < cabeza) a = 1;
+            else if (i === cabeza && llenos < n) a = 0.25 + (llenos - cabeza) * 0.5 + (parpadeo ? 0.25 : 0);
+            else a = 0.12;
+            ctx.fillStyle = `rgba(255,255,255,${a})`;
+            ctx.fillRect(pad + i * (segW + gap), pad, segW, H - 2 * pad);
+        }
+        tex.needsUpdate = true;
+    };
+    panel.dibujarBarra(0, 0);
+    return panel;
+}
+
+// Materiales orgánicos según el avance: al 23 % quedan 84 %, al 100 % ya casi
+// nada (0.4 %). Curva y no recta: así se cumplen los dos puntos pedidos y la
+// caída se acelera hacia el final.
+function v2Materiales(pct) {
+    return Math.max(0.4, 0.4 + 99.6 * Math.pow(1 - Math.min(100, pct) / 100, 0.67));
+}
+const MATERIAL_ALERTA = 15;        // % por debajo del cual parpadea NEAR EMPTY
+
+// Paso intermedio: la impresión al 23 % y quieta, para filmar el estado medio.
+const PRINT_MEDIO = 23;
+function v2PrintMedio() {
+    if (v2PrintState.fase !== 0) v2PrintReset();
+    v2PrintState.pct = PRINT_MEDIO;
+    v2PrintState.objetivo = PRINT_MEDIO;
+    v2PrintState.vel = 0;
+    v2PrintState.ultimo = performance.now();
+    return true;
+}
+
+/** Muestra u oculta el bloque de avance (lo tapa la pantalla PRINT COMPLETE). */
+function v2PrintUIAvance(visible) {
+    const ui = v2PrintState.ui;
+    if (!ui) return;
+    [ui.titulo, ui.num, ui.barra, ui.datos].forEach(p => { if (p && p.group) p.group.visible = visible; });
+}
+
+V2_SCENES.printDatos = t => {
     v2PrintTick();
     const st = v2PrintState;
-    if (st.fase === 2) return '';          // la pantalla final cae encima
     const pct = st.pct;
+    const ui = st.ui || {};
+    if (ui.barra && ui.barra.dibujarBarra) ui.barra.dibujarBarra(pct, t);
+    if (ui.barraMat && ui.barraMat.dibujarBarra) ui.barraMat.dibujarBarra(v2Materiales(pct), t);
+    if (st.fase === 2) return '';
     const capas = Math.floor(140112 * pct / 100);
+    const imprimiendo = st.fase === 0 && pct < 100 && pct !== st.objetivo;
     const l = [];
-    l.push(`${T('IMPRESION','PRINT PROGRESS')}   HSAP-0417   ${T('cama','bed')} A`);
-    l.push('');
-    l.push(`[${bar(pct, 40)}] ${padL(pct.toFixed(1), 5)}%`);
-    l.push('');
-    l.push(`${pad(T('capa','layer'), 14)}${padL(num(capas) + ' / 140 112', 20)}`);
-    l.push(`${pad(T('peso','weight'), 14)}${padL(v2PrintPeso().toFixed(2) + ' kg', 20)}`);
-    l.push(`${pad(T('cama','bed temp'), 14)}${padL((37.0 + Math.sin(t * 0.7) * 0.2).toFixed(1) + ' C', 20)}`);
-    l.push(`${pad(T('boquillas','nozzles'), 14)}${padL((st.fase === 0 ? '8 / 8 ' : '0 / 8 ') + T('activas','active'), 20)}`);
-    l.push(`${pad(T('caudal','flow'), 14)}${padL((st.fase === 0 && pct < 100 ? 2.4 + Math.sin(t * 2.1) * 0.3 : 0).toFixed(2) + ' ml/s', 20)}`);
-    l.push('');
-    const zona = pct < 20 ? T('esqueleto','skeleton') : pct < 45 ? T('organos','organs') : pct < 70 ? T('musculo','muscle') : pct < 92 ? T('dermis','dermis') : T('epidermis','epidermis');
+    l.push(`${pad(T('capa', 'layer'), 14)}${padL(num(capas) + ' / 140 112', 20)}`);
+    l.push(`${pad(T('peso', 'weight'), 14)}${padL(v2PrintPeso().toFixed(2) + ' kg', 20)}`);
+    l.push(`${pad(T('cama', 'bed temp'), 14)}${padL((37.0 + Math.sin(t * 0.7) * 0.2).toFixed(1) + ' C', 20)}`);
+    l.push(`${pad(T('boquillas', 'nozzles'), 14)}${padL((st.fase === 0 ? '8 / 8' : '0 / 8'), 6)}   ${T('caudal', 'flow')} ${(imprimiendo ? 2.4 + Math.sin(t * 2.1) * 0.3 : 0).toFixed(2)} ml/s`);
+    const zona = pct < 20 ? T('esqueleto', 'skeleton') : pct < 45 ? T('organos', 'organs') : pct < 70 ? T('musculo', 'muscle') : pct < 92 ? T('dermis', 'dermis') : T('epidermis', 'epidermis');
     if (st.fase === 0) {
-        l.push(pct >= 100 ? `  ${T('capa final depositada','final layer deposited')}`
-                          : `  ${spin(t)} ${T('depositando','depositing')} ${zona}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
-    } else if (st.fase === 1) {
-        l.push(`  !! ${T('DESCARGA ELECTRICA','ELECTRICAL DISCHARGE')} 4.2 kV !!`);
-        l.push(`  ${T('peso','weight')} 140.00 -> ${v2PrintPeso().toFixed(2)} kg`);
+        l.push(pct >= 100 ? `  ${T('capa final depositada', 'final layer deposited')}`
+             : imprimiendo ? `  ${spin(t)} ${T('depositando', 'depositing')} ${zona}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`
+             :               `  ${T('en pausa', 'paused')} — ${zona}`);
     } else {
-        l.push('  !! SIGNAL DETECTED !!');
-        l.push('  subject responsive');
+        l.push(`  !! ${T('DESCARGA ELECTRICA', 'ELECTRICAL DISCHARGE')} 4.2 kV !!`);
+        l.push(`  ${T('peso', 'weight')} 140.00 -> ${v2PrintPeso().toFixed(2)} kg`);
     }
     return l.join('\n');
 };
 
-V2_SCENES.materiales = t => {
+V2_SCENES.printPct = () => `${v2PrintState.pct.toFixed(1)}%`;
+V2_SCENES.matPct = () => `${v2Materiales(v2PrintState.pct).toFixed(1)}%`;
+
+V2_SCENES.matDatos = t => {
     const st = v2PrintState;
-    const mat = Math.max(0.4, 100 - st.pct * 0.996);    // termina en 0.4 %
-    const bajo = mat < 6;
-    const parpadeo = Math.floor(t * 2.5) % 2 === 0;
+    const m = v2Materiales(st.pct);
+    const c = k => `${padL(Math.max(0.4, m * k).toFixed(1), 5)} %`;
+    const gasto = st.fase === 0 && st.pct < 100 && st.pct !== st.objetivo;
     const l = [];
-    l.push(T('MATERIALES ORGANICOS','ORGANIC MATERIALS'));
-    l.push('');
-    l.push(`[${bar(mat, 40)}] ${padL(mat.toFixed(1), 5)}%`);
-    l.push('');
-    [[T('proteina','protein'), 1.0], [T('colageno','collagen'), 0.93], [T('lipidos','lipids'), 0.81], [T('ligante','binder'), 1.0]].forEach(([n, k]) => {
-        const v = Math.max(0.4, mat * k);
-        l.push(`${pad(n, 12)}[${bar(v, 16)}] ${padL(v.toFixed(1), 5)}%`);
-    });
-    l.push('');
-    l.push(`${pad(T('tanque','tank'), 12)}${mat > 50 ? 'A + B' : mat > 6 ? 'B' : '--'}`);
-    l.push('');
-    if (bajo) {
-        l.push(parpadeo ? T('  !! MATERIALES ORGANICOS BAJOS !!', '  !! ORGANIC MATERIALS LOW !!') : '');
-        l.push(parpadeo ? T('     CARGAR TANQUE', '     LOAD TANK') : '');
-    } else {
-        l.push(`  ${spin(t)} ${T('consumo','consumption')} ${(st.fase === 0 && st.pct < 100 ? 11.4 + Math.sin(t * 1.3) * 0.6 : 0).toFixed(1)} g/s`);
-    }
+    l.push(`${pad(T('proteina', 'protein'), 12)}${c(1.0)}     ${pad(T('colageno', 'collagen'), 11)}${c(0.93)}`);
+    l.push(`${pad(T('lipidos', 'lipids'), 12)}${c(0.81)}     ${pad(T('ligante', 'binder'), 11)}${c(1.0)}`);
+    l.push(`${pad(T('tanque', 'tank'), 12)}${padL(m > 50 ? 'A + B' : m > MATERIAL_ALERTA ? 'B' : '--', 7)}     ${pad(T('consumo', 'usage'), 11)}${gasto ? (11.4 + Math.sin(t * 1.3) * 0.6).toFixed(1) : '0.0'} g/s`);
     return l.join('\n');
+};
+
+// La alerta va en inglés en las dos versiones, como se pidió.
+V2_SCENES.matAlerta = t => {
+    const m = v2Materiales(v2PrintState.pct);
+    if (m < MATERIAL_ALERTA) return Math.floor(t * 2.5) % 2 === 0 ? '!! ORGANIC MATERIAL NEAR EMPTY !!' : '';
+    return `${spin(t)} ${T('suministro organico', 'organic supply')} · ${T('nominal', 'nominal')}`;
 };
 
 V2_SCENES.printEstado = t => {
     const st = v2PrintState;
-    if (st.fase === 0) {
-        return `${PROMPT} print --subject HSAP-0417   ${T('cebado bioelectrico','bio-electric priming')}: ${st.pct < 90 ? 'standby' : T('ARMADO','ARMED')}  ${st.pct >= 90 ? spin(t) : ''}`;
-    }
+    if (st.fase === 0) return `${T('CEBADO BIOELECTRICO', 'BIO-ELECTRIC PRIMING')}\n${st.pct < 90 ? 'STANDBY' : T('ARMADO', 'ARMED') + ' ' + spin(t)}`;
     if (st.fase === 1) return st.glitch
-        ? `${PROMPT} !!!! ${T('DESCARGA','DISCHARGE')} !!!! ${Math.random() < 0.5 ? '####' : '    '} ${T('peso','weight')} ${v2PrintPeso().toFixed(2)} kg`
-        : `${PROMPT} ${T('descarga','discharge')} 4.2 kV   ${T('peso','weight')} ${v2PrintPeso().toFixed(2)} kg`;
-    return `${PROMPT} print complete   weight 140.21 kg   status: ALIVE`;
+        ? `!!!! ${T('DESCARGA', 'DISCHARGE')} !!!!\n${Math.random() < 0.5 ? '########' : '        '}`
+        : `${T('DESCARGA', 'DISCHARGE')} 4.2 kV\n${T('peso', 'weight')} ${v2PrintPeso().toFixed(2)} kg`;
+    return 'PRINT COMPLETE\nstatus: ALIVE';
 };
 
 // En inglés en los dos idiomas: así lo pidió el guion.
@@ -22817,9 +22919,7 @@ async function buildV2PrintingScreen(output) {
     const mk = makeMk(gp);
     v2TermHeader(mk, 'print --subject HSAP-0417 --bed A');
 
-    // La mujer, de pie y aparte, a la izquierda: como en la página 9. Las
-    // barras van a la derecha, y la pantalla final cae sobre ellas, no sobre
-    // ella — se pidió no acostarla y mantenerla separada.
+    // La mujer, de pie y aparte, a la izquierda (como en la página 9)
     const visor = mk(3, 26, 8, 44);
     v2PrintState.visor = visor;
     const ok = await loadModelToPanel(visor, './models/maniqui.obj', gp.cellSize);
@@ -22832,20 +22932,36 @@ async function buildV2PrintingScreen(output) {
         visor.isViewer = true;
         fitModelInsidePanel(visor);
     }
+    const pie = mk(3, 26, 2, 6);
+    makeLiveTerminal(pie, { scene: 'printEstado', fontSize: 1.7, align: 'center', vAlign: 'middle', fps: 6 });
 
-    // Derecha: avance arriba, materiales abajo
-    const avance = mk(29, 86, 27, 44);
-    makeLiveTerminal(avance, { scene: 'impresion', fontSize: 2.0, fps: 6 });
-    const materiales = mk(29, 86, 8, 25);
-    makeLiveTerminal(materiales, { scene: 'materiales', fontSize: 2.0, fps: 6 });
+    // ── Avance: título, cifra grande, barra de bloques y datos ──
+    const ui = {};
+    ui.titulo = mk(29, 70, 41, 44);
+    window.setTextOnPanel(ui.titulo, `${T('IMPRESION', 'PRINT PROGRESS')}   HSAP-0417`, 2.0, 'left',
+        { font: 'terminal', vAlign: 'middle' });
+    ui.num = mk(72, 86, 41, 44);
+    makeLiveTerminal(ui.num, { scene: 'printPct', fontSize: 3.0, align: 'center', vAlign: 'middle', fps: 6 });
+    ui.barra = hacerBarra(mk(29, 86, 36, 39), 40);
+    ui.datos = mk(29, 86, 27, 34);
+    makeLiveTerminal(ui.datos, { scene: 'printDatos', fontSize: 1.9, vAlign: 'middle', fps: 8 });
 
-    // Pie: el cebado eléctrico, que es lo que se dispara al final
-    const pie = mk(3, 86, 2, 6);
-    makeLiveTerminal(pie, { scene: 'printEstado', fontSize: 1.9, vAlign: 'middle', fps: 6 });
+    // ── Materiales orgánicos: lo mismo, más la alerta ──
+    const tMat = mk(29, 70, 21, 24);
+    window.setTextOnPanel(tMat, T('MATERIALES ORGANICOS', 'ORGANIC MATERIALS'), 2.0, 'left',
+        { font: 'terminal', vAlign: 'middle' });
+    const nMat = mk(72, 86, 21, 24);
+    makeLiveTerminal(nMat, { scene: 'matPct', fontSize: 3.0, align: 'center', vAlign: 'middle', fps: 6 });
+    ui.barraMat = hacerBarra(mk(29, 86, 16, 19), 40);
+    const dMat = mk(29, 86, 9, 14);
+    makeLiveTerminal(dMat, { scene: 'matDatos', fontSize: 1.9, vAlign: 'middle', fps: 4 });
+    const alerta = mk(29, 86, 2, 7);
+    makeLiveTerminal(alerta, { scene: 'matAlerta', fontSize: 2.6, align: 'center', vAlign: 'middle', fps: 6 });
 
+    v2PrintState.ui = ui;
     rematarPagina();
-    if (output) showSuccess(T('Página de impresión construida. "impresion 100" la lleva al final.',
-                              'Printing page built. "printing 100" runs it to the end.'), output);
+    if (output) showSuccess(T('Página de impresión construida. I = paso intermedio (23 %), R = salto al final.',
+                              'Printing page built. I = midway step (23 %), R = jump to the end.'), output);
     return true;
 }
 window.buildV2PrintingScreen = buildV2PrintingScreen;
@@ -22879,35 +22995,35 @@ V2_SCENES.corazon = () => {
     const pct = Math.min(100, t / CORAZON_SEG * 100);
     const CAPAS = 48200;
     const capas = Math.floor(CAPAS * pct / 100);
-    const etapa = pct < 15 ? T('andamiaje de colageno', 'collagen scaffold')
-                : pct < 40 ? T('miocardio', 'myocardium')
-                : pct < 60 ? T('red coronaria', 'coronary network')
-                : pct < 78 ? T('valvulas', 'valves')
-                : pct < 95 ? T('tejido de conduccion', 'conduction tissue')
-                :            T('pericardio', 'pericardium');
+    const etapa = pct < 15 ? 'collagen scaffold'
+                : pct < 40 ? 'myocardium'
+                : pct < 60 ? 'coronary network'
+                : pct < 78 ? 'valves'
+                : pct < 95 ? 'conduction tissue'
+                :            'pericardium';
     const l = [];
-    l.push(`${T('IMPRESION DE ORGANO', 'ORGAN PRINT')}   HUMAN.EXE`);
+    l.push(`${'ORGAN PRINT'}   HUMAN.EXE`);
     l.push('');
-    l.push(`${pad(T('organo', 'organ'), 16)}${T('CORAZON HUMANO', 'HUMAN HEART')}`);
-    l.push(`${pad(T('donante', 'donor'), 16)}HSAP-0417`);
-    l.push(`${pad(T('masa', 'mass'), 16)}${(310 * pct / 100).toFixed(1)} / 310 g`);
-    l.push(`${pad(T('camaras', 'chambers'), 16)}${Math.min(4, Math.floor(pct / 22))} / 4`);
-    l.push(`${pad(T('valvulas', 'valves'), 16)}${pct < 60 ? 0 : Math.min(4, 1 + Math.floor((pct - 60) / 6))} / 4`);
+    l.push(`${pad('organ', 16)}${'HUMAN HEART'}`);
+    l.push(`${pad('donor', 16)}HSAP-0417`);
+    l.push(`${pad('mass', 16)}${(310 * pct / 100).toFixed(1)} / 310 g`);
+    l.push(`${pad('chambers', 16)}${Math.min(4, Math.floor(pct / 22))} / 4`);
+    l.push(`${pad('valves', 16)}${pct < 60 ? 0 : Math.min(4, 1 + Math.floor((pct - 60) / 6))} / 4`);
     l.push('');
     l.push(`[${bar(pct, 30)}] ${padL(pct.toFixed(1), 5)}%`);
     l.push('');
-    l.push(`${pad(T('capa', 'layer'), 16)}${num(capas)} / ${num(CAPAS)}`);
-    l.push(`${pad(T('cardiomiocitos', 'cardiomyocytes'), 16)}${(2.0 * pct / 100).toFixed(2)}e9`);
-    l.push(`${pad(T('lineas cel.', 'cell lines'), 16)}12`);
-    l.push(`${pad(T('biotinta', 'bioink'), 16)}${(0.62 * (1 - pct / 100) + 0.04).toFixed(2)} L`);
-    l.push(`${pad(T('cama', 'bed'), 16)}${(36.9 + Math.sin(t * 0.8) * 0.2).toFixed(1)} C`);
+    l.push(`${pad('layer', 16)}${num(capas)} / ${num(CAPAS)}`);
+    l.push(`${pad('cardiomyocytes', 16)}${(2.0 * pct / 100).toFixed(2)}e9`);
+    l.push(`${pad('cell lines', 16)}12`);
+    l.push(`${pad('bioink', 16)}${(0.62 * (1 - pct / 100) + 0.04).toFixed(2)} L`);
+    l.push(`${pad('bed', 16)}${(36.9 + Math.sin(t * 0.8) * 0.2).toFixed(1)} C`);
     l.push('');
     if (pct >= 100) {
         const bpm = Math.min(72, Math.floor(ramp(t - CORAZON_SEG, 72, 4)));
-        l.push(T('  ORGANO LISTO', '  ORGAN READY'));
-        l.push(`  ${T('latido detectado', 'heartbeat detected')}  ${bpm} bpm  ${Math.floor(t * 1.2) % 2 ? '<3' : '  '}`);
+        l.push('  ORGAN READY');
+        l.push(`  ${'heartbeat detected'}  ${bpm} bpm  ${Math.floor(t * 1.2) % 2 ? '<3' : '  '}`);
     } else {
-        l.push(`  ${spin(t)} ${T('depositando', 'depositing')} ${etapa}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
+        l.push(`  ${spin(t)} ${'depositing'} ${etapa}${'.'.repeat(1 + Math.floor(t * 2) % 3)}`);
     }
     return l.join('\n');
 };
@@ -22921,13 +23037,13 @@ async function buildV2HeartScreen(output) {
 
     // ── Submenú de órganos: una fila por órgano, el corazón seleccionado ──
     const titulo = mk(2, 22, 41, 43);
-    window.setTextOnPanel(titulo, T('ORGANOS', 'ORGANS'), 1.9, 'left',
+    window.setTextOnPanel(titulo, 'ORGANS', 1.9, 'left',
         { font: 'terminal', vAlign: 'middle' });
     let seleccionado = null;
     V2_ORGANOS.forEach((o, i) => {
         const y = 37 - i * 4;
         const fila = mk(2, 22, y, y + 2);
-        const nombre = T(o.es, o.en);
+        const nombre = o.en;
         window.setTextOnPanel(fila, o.activo ? `> ${nombre}` : `  ${nombre}`, 1.8, 'left',
             { font: 'terminal', vAlign: 'middle' });
         if (o.activo) seleccionado = fila;
@@ -22949,7 +23065,7 @@ async function buildV2HeartScreen(output) {
         fitModelInsidePanel(visor);
     }
     const etiqueta = mk(25, 56, 41, 43);
-    window.setTextOnPanel(etiqueta, T('CORAZON HUMANO', 'HUMAN HEART'), 1.9, 'center',
+    window.setTextOnPanel(etiqueta, 'HUMAN HEART', 1.9, 'center',
         { font: 'terminal', vAlign: 'middle' });
 
     // ── Su impresión ──
@@ -22957,7 +23073,7 @@ async function buildV2HeartScreen(output) {
     makeLiveTerminal(impresion, { scene: 'corazon', fontSize: 1.9, fps: 6 });
 
     rematarPagina();
-    if (output) showSuccess(T('Human.exe › órganos › corazón', 'Human.exe › organs › heart'), output);
+    if (output) showSuccess('Human.exe › organs › heart', output);
     return true;
 }
 window.buildV2HeartScreen = buildV2HeartScreen;
