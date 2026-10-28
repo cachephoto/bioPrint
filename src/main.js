@@ -1657,10 +1657,10 @@ function controlesAjustes() {
         { sec: T('LETRA', 'TYPE') },
         { id: 'letra', es: 'TAMAÑO DE LETRA CHICA', en: 'SMALL TYPE SIZE', min: 1, max: 1.4, step: 0.02,
           get: () => escalaLetra(), fmt: v => `+${Math.round((v - 1) * 100)}%`,
-          set: v => { ESCALA_LETRA_AJ[getProfile()] = v; reconstruirPaginaActual(); } },
+          set: v => { ESCALA_LETRA_AJ[getProfile()] = v; reaplicarTamanos(); } },
         { id: 'titulos', es: 'TITULOS Y CIFRAS', en: 'HEADLINES & FIGURES', min: 1, max: 1.7, step: 0.02,
           get: () => escalaTitulos(), fmt: v => `+${Math.round((v - 1) * 100)}%`,
-          set: v => { ESCALA_TITULOS_AJ[getProfile()] = v; reconstruirPaginaActual(); } }
+          set: v => { ESCALA_TITULOS_AJ[getProfile()] = v; reaplicarTamanos(); } }
     ];
 }
 
@@ -1792,7 +1792,22 @@ function restablecerAjustes() {
     setMasterBrightness(5);
     if (ajustesBase) aplicarAjustes(ajustesBase);
     else aplicarBrilloPerfil();
-    reconstruirPaginaActual();
+    reaplicarTamanos();
+}
+
+/**
+ * Reescala al instante todos los textos de la pantalla: los vivos se repintan
+ * en su siguiente cuadro y los fijos se reescriben con su texto y cuerpo base.
+ * Sin rehacer la página: la impresión, el tanque o el render siguen donde iban.
+ */
+function reaplicarTamanos() {
+    panels.forEach(p => {
+        if (p.__fsBase == null || p.__fsExacto) return;
+        if (p.liveTermState) { p.liveTermState.ultimo = null; return; }
+        if (typeof p.__textoBase !== 'string') return;
+        window.setTextOnPanel(p, p.__textoBase, p.__fsDef ? undefined : p.__fsBase,
+                              p.__alinBase, p.__optsBase);
+    });
 }
 
 /** El tamaño de letra se fija al construir: la página se rehace sola. */
@@ -19417,13 +19432,37 @@ window.setTextOnPanel = function(panel, text, fontSize, align, opts) {
     const gp = getCurrentGridParams();
     if (!panel || !gp) return false;
     opts = opts || {};
-    // Hay quien relee el cuerpo guardado y lo vuelve a pasar (los +/-): ese
-    // ya va ajustado, no se agranda dos veces. Y el home calcula sus cuerpos
-    // al milímetro para que quepan: pide 'exacto'.
+    // Escala de letra (panel de ajustes). Cada panel recuerda su cuerpo base
+    // para poder reescalarse al instante. Hay quien relee el cuerpo ya
+    // ajustado y lo vuelve a pasar (los +/-): se reconoce porque coincide con
+    // el guardado y no con el base, y se recalcula desde el base. El home
+    // calcula sus cuerpos al milímetro para que quepan: pide 'exacto'.
+    // Sin cuerpo explícito (casi todo ZENG) la base es el cuerpo por defecto,
+    // pero sólo se fija si la escala lo cambia: con escala 1 no se toca nada.
     const guardado = panelTextState.get(panel);
-    if (fontSize && !opts.exacto && !(guardado && guardado.customFontSize === fontSize)) {
-        fontSize = cuerpoLegible(fontSize);
+    panel.__fsExacto = !!opts.exacto;
+    if (!opts.exacto) {
+        if (fontSize) {
+            panel.__fsDef = false;
+            if (guardado && fontSize === guardado.customFontSize &&
+                panel.__fsBase != null && panel.__fsBase !== fontSize) {
+                fontSize = cuerpoLegible(panel.__fsBase);
+            } else {
+                panel.__fsBase = fontSize;
+                fontSize = cuerpoLegible(fontSize);
+            }
+        } else {
+            const def = TEXT_CONFIG.fontSize;
+            panel.__fsBase = def;
+            const ajustado = cuerpoLegible(def);
+            if (Math.abs(ajustado - def) > 1e-6) fontSize = ajustado;
+            else if (guardado && guardado.customFontSize && panel.__fsDef) delete guardado.customFontSize;
+            panel.__fsDef = true;               // el cuerpo vino por defecto
+        }
     }
+    panel.__textoBase = text;
+    panel.__alinBase = align;
+    panel.__optsBase = { font: opts.font, vAlign: opts.vAlign };
     panel.hasText = true;
     createPanelText(panel, gp.cellSize);
     // El salto de línea se calcula con el cuerpo y la fuente que el panel tenga
