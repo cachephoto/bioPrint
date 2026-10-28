@@ -911,7 +911,8 @@ const PAGE_NAMES = {
         10: ['GENERANDO', 'GENERATING'],
         11: ['RENDER', 'RENDER'],
         12: ['IMPRESION', 'PRINTING'],
-        13: ['HEART', 'HEART']
+        13: ['HEART', 'HEART'],
+        14: ['TANQUE', 'TANK']
     }
 };
 
@@ -3888,6 +3889,14 @@ document.addEventListener('keydown', (event) => {
     let moveDelta = { dx: 0, dy: 0 };
     let deleteTriggered = false;
 
+    // 🛢️ ENTER o espacio en la página del tanque: cargar materiales
+    if ((key === 'Enter' || key === ' ') && !activelyWritingText && !terminalIsEffectivelyActive
+        && v2TanqueEnPantalla()) {
+        v2TanqueAccion();
+        event.preventDefault();
+        return;
+    }
+
     // 📤 ENTER en el render terminado: SEND TO PRINT, y luego "sí"
     if (key === 'Enter' && !activelyWritingText && !terminalIsEffectivelyActive
         && v2RenderEnPantalla() && v2RenderState.envio) {
@@ -4104,6 +4113,7 @@ document.addEventListener('keydown', (event) => {
         case 'w': case 'W':
         case 'e': case 'E':
         case 'y': case 'Y':
+        case 'o': case 'O':
         case 'h': case 'H': {
             if (activelyWritingText || terminalIsEffectivelyActive ||
                 event.ctrlKey || event.altKey || event.metaKey) break;
@@ -4116,7 +4126,7 @@ document.addEventListener('keydown', (event) => {
             }
             const outL = document.getElementById('terminal-output');
             if (letra === 'h') buildHome(outL);
-            else irAPagina({ q: 10, w: 11, e: 12, y: 13 }[letra], outL);
+            else irAPagina({ q: 10, w: 11, e: 12, y: 13, o: 14 }[letra], outL);
             event.preventDefault();
             return;
         }
@@ -5646,6 +5656,12 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                     // click carga esa página (con flash de confirmación).
                     // Si además tiene redAlertOnNav, activa el parpadeo rojo (ACCESS DENIED).
                     // ⚡ Botón del cluster de GPU: dispara la aceleración
+                    // 🛢️ Tanque: tocar cualquiera de sus recuadros carga
+                    if (clickedPanelData.tanqueAccion) {
+                        startFlash(clickedPanelData);
+                        v2TanqueAccion();
+                        return;
+                    }
                     // 📤 Envío a impresión del render
                     if (clickedPanelData.renderEnvio) {
                         if (clickedPanelData.renderEnvio !== 'pregunta') {
@@ -9335,6 +9351,22 @@ function processTerminalCommand(command) {
             v2PrintState.objetivo = Math.max(0, Math.min(100, pctArg));
             v2PrintState.vel = 0;          // velocidad normal: el tramo lento es sólo del salto
             showSuccess(T(`Impresión avanzando hacia ${v2PrintState.objetivo}%`, `Printing heading to ${v2PrintState.objetivo}%`), output);
+            break;
+        }
+        // 🛢️ Página 14: "carga" la dispara; "carga 81.3 83" cambia de dónde a dónde
+        case 'carga':
+        case 'cargar':
+        case 'load': {
+            const desde = parseFloat(args[0]), hasta = parseFloat(args[1]);
+            if (!isNaN(desde) && !isNaN(hasta)) {
+                V2_TANQUE.desde = Math.max(0, Math.min(100, desde));
+                V2_TANQUE.hasta = Math.max(0, Math.min(100, hasta));
+                v2TanqueReset();
+                showSuccess(T(`Tanque: de ${V2_TANQUE.desde}% a ${V2_TANQUE.hasta}%`, `Tank: ${V2_TANQUE.desde}% to ${V2_TANQUE.hasta}%`), output);
+                break;
+            }
+            if (!v2TanqueEnPantalla()) { showError(T('Primero abre la página 14 (tecla O)', 'Open page 14 first (key O)'), output); break; }
+            v2TanqueAccion();
             break;
         }
         // 🏠 Pantalla de inicio: elegir versión, idioma y página
@@ -22472,7 +22504,8 @@ const PAGE_BUILDERS = {
         10: buildV2GeneratingScreen,
         11: buildV2RenderScreen,
         12: buildV2PrintingScreen,
-        13: buildV2HeartScreen
+        13: buildV2HeartScreen,
+        14: buildV2TankScreen
     }
 };
 
@@ -23086,3 +23119,83 @@ async function buildV2HeartScreen(output) {
     return true;
 }
 window.buildV2HeartScreen = buildV2HeartScreen;
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Página 14 de la verde: el tanque de material orgánico
+//  Sólo dice cuánto queda: la cifra en grande y su barra. Con ENTER, espacio o
+//  un toque, carga con su leyenda hasta el objetivo; otra vez, vuelve al punto
+//  de partida para repetir la toma. Tecla O o el número 14.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const V2_TANQUE = { desde: 81.3, hasta: 83.0, seg: 6 };
+let v2Tanque = { valor: V2_TANQUE.desde, fase: 'quieto', t0: 0, barra: null, paneles: [] };
+
+function v2TanqueEnPantalla() {
+    return v2Tanque.paneles.length > 0 && panels.includes(v2Tanque.paneles[0]);
+}
+
+function v2TanqueReset() {
+    v2Tanque.valor = V2_TANQUE.desde;
+    v2Tanque.fase = 'quieto';
+}
+
+/** ENTER / espacio / toque: carga; si ya cargó, vuelve a empezar. */
+function v2TanqueAccion() {
+    if (v2Tanque.fase === 'quieto') {
+        v2Tanque.fase = 'cargando';
+        v2Tanque.t0 = performance.now();
+        hapticFeedbackAll(0);
+    } else if (v2Tanque.fase === 'lleno') {
+        v2TanqueReset();
+    }
+    return true;
+}
+
+/** Avanza la carga. Sube rápido y se asienta al llegar, como un llenado real. */
+function v2TanqueTick() {
+    if (v2Tanque.fase !== 'cargando') return;
+    const k = Math.min(1, (performance.now() - v2Tanque.t0) / 1000 / V2_TANQUE.seg);
+    const suave = 1 - Math.pow(1 - k, 2);
+    v2Tanque.valor = V2_TANQUE.desde + (V2_TANQUE.hasta - V2_TANQUE.desde) * suave;
+    if (k >= 1) { v2Tanque.valor = V2_TANQUE.hasta; v2Tanque.fase = 'lleno'; hapticFeedbackAll(0); }
+}
+
+V2_SCENES.tanqueNum = t => {
+    v2TanqueTick();
+    if (v2Tanque.barra && v2Tanque.barra.dibujarBarra) v2Tanque.barra.dibujarBarra(v2Tanque.valor, t);
+    return `${v2Tanque.valor.toFixed(1)}%`;
+};
+
+V2_SCENES.tanqueLeyenda = t => {
+    const puntos = '.'.repeat(1 + Math.floor(t * 2) % 3);
+    if (v2Tanque.fase === 'cargando') return `${spin(t)} ${T('CARGANDO MATERIALES ORGANICOS', 'LOADING ORGANIC MATERIALS')}${puntos}`;
+    if (v2Tanque.fase === 'lleno') return T('MATERIALES CARGADOS', 'MATERIALS LOADED');
+    return `${T('tanque B', 'tank B')} · ${T('en espera', 'standby')}${puntos}`;
+};
+
+async function buildV2TankScreen(output) {
+    const gp = await prepararPagina();
+    if (!gp) { showError('Grid no disponible', output); return false; }
+    const mk = makeMk(gp);
+    v2TanqueReset();
+    v2TermHeader(mk, 'tank --status organic');
+
+    const titulo = mk(14, 74, 37, 42);
+    window.setTextOnPanel(titulo, T('MATERIAL ORGANICO', 'ORGANIC MATERIAL'), 3.0, 'center',
+        { font: 'terminal', vAlign: 'middle' });
+    const numero = mk(14, 74, 22, 35);
+    makeLiveTerminal(numero, { scene: 'tanqueNum', fontSize: 9, align: 'center', vAlign: 'middle', fps: 10 });
+    v2Tanque.barra = hacerBarra(mk(14, 74, 16, 19), 30);
+    const leyenda = mk(14, 74, 7, 13);
+    makeLiveTerminal(leyenda, { scene: 'tanqueLeyenda', fontSize: 2.6, align: 'center', vAlign: 'middle', fps: 6 });
+
+    v2Tanque.paneles = [titulo, numero, v2Tanque.barra, leyenda];
+    v2Tanque.paneles.forEach(p => { p.tanqueAccion = true; });
+    rematarPagina();
+    if (output) showSuccess(T('Tanque: ENTER, espacio o un toque carga los materiales.',
+                              'Tank: ENTER, space or a tap loads the materials.'), output);
+    return true;
+}
+window.buildV2TankScreen = buildV2TankScreen;
+window.v2TanqueEstado = () => ({ valor: +v2Tanque.valor.toFixed(1), fase: v2Tanque.fase });
