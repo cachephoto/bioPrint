@@ -23321,15 +23321,18 @@ window.v2TanqueEstado = () => ({ valor: +v2Tanque.valor.toFixed(1), fase: v2Tanq
 
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  ZENG, página 2: imprimió un hueso
-//  El hueso girando y, al lado, cómo el material orgánico baja de 100 % a
-//  99.6 % mientras termina la impresión. ENTER o espacio la repiten.
+//  ZENG, página 2: imprime un hueso
+//  Como la impresión de la verde, en azul: el hueso girando y, al lado, la
+//  barra de impresión y la de material orgánico, que baja de 100 % a 99.6 %
+//  mientras imprime, con su desglose. ENTER o espacio la repiten.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const ZENG_HUESO_SEG = 5;          // lo que tarda en bajar de 100 a 99.6
-const ZENG_HUESO_GASTO = 0.4;
+const ZENG_HUESO_SEG = 10;         // lo que tarda la impresión del hueso
+const ZENG_HUESO_GASTO = 0.4;      // % de material orgánico que consume
+const ZENG_TANQUE_KG = 103;        // 0.4 % de 103 kg = 412 g de hueso
 let zengHuesoT0 = performance.now();
 let zengHuesoPaneles = [];
+let zengHuesoBarras = {};
 
 function zengHuesoEnPantalla() {
     return zengHuesoPaneles.length > 0 && panels.includes(zengHuesoPaneles[0]);
@@ -23339,17 +23342,30 @@ function zengHuesoAvance() {
     return Math.min(1, (performance.now() - zengHuesoT0) / 1000 / ZENG_HUESO_SEG);
 }
 
-V2_SCENES.zengHuesoEstado = t => {
-    if (zengHuesoAvance() < 1) return T('IMPRIMIENDO', 'PRINTING') + '.'.repeat(1 + Math.floor(t * 2) % 3);
-    return T('IMPRESION COMPLETA', 'PRINT COMPLETE');
+V2_SCENES.zengHuesoImp = t => {
+    const k = zengHuesoAvance();
+    if (zengHuesoBarras.imp && zengHuesoBarras.imp.dibujarBarra) zengHuesoBarras.imp.dibujarBarra(k * 100, t);
+    return k < 1 ? `${T('IMPRIMIENDO', 'PRINTING')} ${(k * 100).toFixed(1)}%`
+                 : T('IMPRESION COMPLETA', 'PRINT COMPLETE');
 };
 
 V2_SCENES.zengHuesoMat = t => {
+    const v = 100 - ZENG_HUESO_GASTO * zengHuesoAvance();
+    if (zengHuesoBarras.mat && zengHuesoBarras.mat.dibujarBarra) zengHuesoBarras.mat.dibujarBarra(v, t);
+    return `${T('MATERIAL ORGANICO', 'ORGANIC MATERIAL')} ${v.toFixed(1)}%`;
+};
+
+// Un hueso es sobre todo colágeno y calcio: es lo que más baja.
+V2_SCENES.zengHuesoDet = () => {
     const k = zengHuesoAvance();
-    const v = 100 - ZENG_HUESO_GASTO * (1 - Math.pow(1 - k, 2));
-    const barra = zengHuesoPaneles[1];
-    if (barra && barra.dibujarBarra) barra.dibujarBarra(v, t);
-    return `${v.toFixed(1)}%`;
+    const c = (n, gasto) => `${pad(n, 13)}${padL((100 - gasto * k).toFixed(1), 5)}%`;
+    const l = [];
+    l.push(c(T('COLAGENO', 'COLLAGEN'), 1.10));
+    l.push(c(T('CALCIO', 'CALCIUM'), 0.95));
+    l.push(c(T('PROTEINA', 'PROTEIN'), 0.30));
+    l.push(c(T('LIPIDOS', 'LIPIDS'), 0.02));
+    l.push(`${pad(T('USADO', 'USED'), 13)}${padL(Math.round(ZENG_TANQUE_KG * 1000 * ZENG_HUESO_GASTO / 100 * k), 5)} G`);
+    return l.join('\n');
 };
 
 async function buildZengBone(output) {
@@ -23359,7 +23375,7 @@ async function buildZengBone(output) {
     zengHuesoT0 = performance.now();
 
     // El hueso, girando
-    const visor = mk(2, 20, 5, 21);
+    const visor = mk(2, 15, 6, 21);
     const ok = await loadModelToPanel(visor, './models/hueso.obj', gp.cellSize);
     if (ok) {
         visor.modelData = {
@@ -23370,27 +23386,30 @@ async function buildZengBone(output) {
         visor.isViewer = true;
         fitModelInsidePanel(visor);
     }
-    const nombre = mk(2, 20, 2, 3);
-    window.setTextOnPanel(nombre, T('HUESO', 'BONE'), 1.3, 'center', { font: 'arcade' });
+    const nombre = mk(2, 15, 3, 4);
+    window.setTextOnPanel(nombre, T('HUESO', 'BONE'), 1.2, 'center', { font: 'arcade' });
 
-    // Al lado: estado, material orgánico con su cifra y su barra
-    applyImageTextureToPanel(mk(23, 41, 19, 22), ZENG_LOGO);
-    const estado = mk(23, 41, 15, 17);
-    makeLiveTerminal(estado, { scene: 'zengHuesoEstado', fontSize: 1.3, align: 'center',
-                               vAlign: 'middle', fps: 4, font: 'arcade' });
-    const etiqueta = mk(23, 41, 12, 13);
-    window.setTextOnPanel(etiqueta, T('MATERIAL ORGANICO', 'ORGANIC MATERIAL'), 1.0, 'center', { font: 'arcade' });
-    const barra = hacerBarra(mk(23, 41, 7, 8), 20);
-    const cifra = mk(23, 41, 9, 11);
-    makeLiveTerminal(cifra, { scene: 'zengHuesoMat', fontSize: 1.8, align: 'center',
-                              vAlign: 'middle', fps: 8, font: 'arcade' });
+    // Impresión: nombre y cifra juntos sobre su barra
+    const imp = mk(18, 41, 20, 21);
+    makeLiveTerminal(imp, { scene: 'zengHuesoImp', fontSize: 1.5, align: 'left',
+                            vAlign: 'middle', fps: 8, font: 'arcade' });
+    zengHuesoBarras.imp = hacerBarra(mk(18, 41, 18, 19), 20);
 
-    zengBoton(mk, 23, 41, 4, 5, T('VOLVER', 'BACK'), 4, { fontSize: 1.3 });
-    zengVivo(mk, 23, 41, 1, 2);
+    // Material orgánico: lo mismo, y su desglose debajo
+    const mat = mk(18, 41, 15, 16);
+    makeLiveTerminal(mat, { scene: 'zengHuesoMat', fontSize: 1.5, align: 'left',
+                            vAlign: 'middle', fps: 8, font: 'arcade' });
+    zengHuesoBarras.mat = hacerBarra(mk(18, 41, 13, 14), 20);
+    const det = mk(18, 41, 6, 11);
+    makeLiveTerminal(det, { scene: 'zengHuesoDet', fontSize: 1.25, align: 'left',
+                            vAlign: 'middle', fps: 6, font: 'arcade' });
 
-    zengHuesoPaneles = [estado, barra, cifra];
+    zengBoton(mk, 18, 28, 2, 4, T('VOLVER', 'BACK'), 4, { fontSize: 1.1 });
+    zengVivo(mk, 30, 41, 2, 4);
+
+    zengHuesoPaneles = [imp, mat, det];
     rematarPagina();
-    if (output) showSuccess(T('Hueso impreso. ENTER o espacio repite.', 'Bone printed. ENTER or space repeats.'), output);
+    if (output) showSuccess(T('Hueso: ENTER o espacio repite la impresión.', 'Bone: ENTER or space repeats the print.'), output);
     return true;
 }
 window.buildZengBone = buildZengBone;
