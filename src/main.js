@@ -3928,6 +3928,18 @@ document.addEventListener('keydown', (event) => {
     let moveDelta = { dx: 0, dy: 0 };
     let deleteTriggered = false;
 
+    // 🖨️ Pop-up de envío de la página 12: Y/S, N, flechas, ENTER/espacio
+    if (!activelyWritingText && !terminalIsEffectivelyActive && !event.ctrlKey &&
+        !event.metaKey && !event.altKey && v2PrintPopupActivo()) {
+        const k = key.length === 1 ? key.toLowerCase() : key;
+        if (k === 'y' || k === 's') { v2PrintPopupConfirmar('si'); event.preventDefault(); return; }
+        if (k === 'n') { v2PrintPopupConfirmar('no'); event.preventDefault(); return; }
+        if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown' || k === 'Tab') {
+            v2PrintPopupMover(); event.preventDefault(); return;
+        }
+        if (k === 'Enter' || k === ' ') { v2PrintPopupConfirmar(); event.preventDefault(); return; }
+    }
+
     // 🩸 ENTER o espacio en la página de la sangre: insertar la muestra
     if ((key === 'Enter' || key === ' ') && !activelyWritingText && !terminalIsEffectivelyActive
         && v2SangreEnPantalla()) {
@@ -5713,6 +5725,11 @@ renderer.domElement.addEventListener('mousedown', (event) => {
                     // click carga esa página (con flash de confirmación).
                     // Si además tiene redAlertOnNav, activa el parpadeo rojo (ACCESS DENIED).
                     // ⚡ Botón del cluster de GPU: dispara la aceleración
+                    // 🖨️ Botones del pop-up de envío (página 12)
+                    if (clickedPanelData.printPopupBoton) {
+                        v2PrintPopupConfirmar(clickedPanelData.printPopupBoton);
+                        return;
+                    }
                     // 🩸 Sangre: tocar la página inserta la muestra
                     if (clickedPanelData.sangreAccion) {
                         startFlash(clickedPanelData);
@@ -9392,7 +9409,7 @@ function processTerminalCommand(command) {
         case 'impresión':
         case 'printing': {
             const a = (args[0] || '').toLowerCase();
-            if (a === 'reset') { v2PrintReset(); showSuccess(T('Impresión reiniciada', 'Printing reset'), output); break; }
+            if (a === 'reset') { v2PrintReset(); if (v2PrintEnPantalla()) v2PrintPopupAbrir(); showSuccess(T('Impresión reiniciada', 'Printing reset'), output); break; }
             if (a === 'medio' || a === 'intermedio') {
                 if (!v2PrintEnPantalla()) { showError(T('Primero abre la página 12 (tecla E)', 'Open page 12 first (key E)'), output); break; }
                 v2PrintMedio();
@@ -9411,6 +9428,7 @@ function processTerminalCommand(command) {
                            `Usage: printing <0-100> | printing reset. Now: ${v2PrintState.pct.toFixed(1)}% → ${v2PrintState.objetivo}%`), output);
                 break;
             }
+            v2PrintPopupCerrar();
             v2PrintState.objetivo = Math.max(0, Math.min(100, pctArg));
             v2PrintState.vel = 0;          // velocidad normal: el tramo lento es sólo del salto
             showSuccess(T(`Impresión avanzando hacia ${v2PrintState.objetivo}%`, `Printing heading to ${v2PrintState.objetivo}%`), output);
@@ -21625,7 +21643,7 @@ function v2RenderPreguntar() {
 /** Lo que hace cada botón del envío (también lo usan Y, N y ENTER). */
 function v2RenderAccion(a) {
     if (a === 'enviar') v2RenderPreguntar();
-    else if (a === 'si') irAPagina(12, document.getElementById('terminal-output'));
+    else if (a === 'si') { v2PrintSinPopup = true; irAPagina(12, document.getElementById('terminal-output')); }
     else if (a === 'no') v2RenderMostrarEnvio();
 }
 
@@ -22741,6 +22759,7 @@ const PRINT_SALTO = 98;
 const PRINT_FINAL_SEG = 10;       // lo que tarda el último tramo, del 98 al 100
 function v2PrintFinal() {
     if (v2PrintState.fase !== 0) v2PrintReset();
+    v2PrintPopupCerrar();
     v2PrintState.pct = PRINT_SALTO;
     v2PrintState.objetivo = 100;
     // Velocidad propia para el tramo final: a la normal (3 %/s) el 98→100
@@ -22930,12 +22949,112 @@ const MATERIAL_ALERTA = 15;        // % por debajo del cual parpadea NEAR EMPTY
 const PRINT_MEDIO = 23;
 function v2PrintMedio() {
     if (v2PrintState.fase !== 0) v2PrintReset();
+    v2PrintPopupCerrar();
     v2PrintState.pct = PRINT_MEDIO;
     v2PrintState.objetivo = PRINT_MEDIO;
     v2PrintState.vel = 0;
     v2PrintState.ultimo = performance.now();
     return true;
 }
+
+// ── Pop-up de envío a impresión ─────────────────────────────────────────────
+// Paso 1: SEND TO PRINT?  Paso 2: ARE YOU SURE?  La opción elegida se ve
+// resaltada (el Y de entrada); las flechas la mueven. Al confirmar, el botón
+// queda encendido un instante antes de avanzar, para que se vea en cámara.
+let v2PrintSinPopup = false;
+
+function v2PrintPopupActivo() {
+    const pop = v2PrintState.ui && v2PrintState.ui.popup;
+    return !!(v2PrintState.popup && pop && panels.includes(pop.si));
+}
+
+function v2PrintPintarBotones() {
+    const pop = v2PrintState.ui && v2PrintState.ui.popup;
+    if (!pop) return;
+    const sel = v2PrintState.sel;
+    const si = T('S', 'Y'), no = 'N';
+    window.setTextOnPanel(pop.si, sel === 'si' ? `> ${si} <` : si, 3.2, 'center', { font: 'terminal', vAlign: 'middle' });
+    window.setTextOnPanel(pop.no, sel === 'no' ? `> ${no} <` : no, 3.2, 'center', { font: 'terminal', vAlign: 'middle' });
+    destacarPanel(sel === 'si' ? pop.si : pop.no);
+}
+
+function v2PrintPopupVisible(visible) {
+    const ui = v2PrintState.ui;
+    if (!ui) return;
+    const pop = ui.popup || {};
+    [pop.titulo, pop.si, pop.no, pop.ayuda].forEach(p => { if (p && p.group) p.group.visible = visible; });
+    [ui.titulo, ui.barra, ui.peso, ui.datos].concat(ui.mat || [])
+        .forEach(p => { if (p && p.group) p.group.visible = !visible; });
+}
+
+function v2PrintPopupAbrir() {
+    v2PrintState.popup = 1;
+    v2PrintState.sel = 'si';
+    v2PrintState.pct = 0;
+    v2PrintState.objetivo = 0;
+    v2PrintState.vel = 0;
+    v2PrintPopupVisible(true);
+    v2PrintPintarBotones();
+}
+
+function v2PrintPopupCerrar() {
+    v2PrintState.popup = 0;
+    v2PrintPopupVisible(false);
+    panels.forEach(p => {
+        if (!p.destacado) return;
+        p.destacado = false;
+        if (p.backingMesh && p.backingMaterialBase) p.backingMesh.material = p.backingMaterialBase;
+        updatePanelColor(p);
+    });
+}
+
+function v2PrintPopupMover(sel) {
+    if (!v2PrintPopupActivo()) return;
+    v2PrintState.sel = sel || (v2PrintState.sel === 'si' ? 'no' : 'si');
+    v2PrintPintarBotones();
+}
+
+/** Confirma la opción elegida (o la que se pase). */
+function v2PrintPopupConfirmar(sel) {
+    if (!v2PrintPopupActivo() || v2PrintState.popupEsperando) return;
+    if (sel) v2PrintPopupMover(sel);
+    const pop = v2PrintState.ui.popup;
+    const elegida = v2PrintState.sel;
+    startFlash(elegida === 'si' ? pop.si : pop.no);
+    v2PrintState.popupEsperando = true;
+    setTimeout(() => {
+        v2PrintState.popupEsperando = false;
+        if (!v2PrintPopupActivo()) return;
+        if (elegida === 'no') {
+            // N en el paso 2 vuelve al 1; en el 1, se queda esperando
+            v2PrintState.popup = 1;
+            v2PrintState.sel = 'si';
+            v2PrintPintarBotones();
+            return;
+        }
+        if (v2PrintState.popup === 1) {
+            v2PrintState.popup = 2;
+            v2PrintState.sel = 'si';
+            v2PrintPintarBotones();
+            hapticFeedbackAll(0);
+            return;
+        }
+        // Paso 2 confirmado: arranca la impresión
+        v2PrintPopupCerrar();
+        v2PrintState.pct = 0;
+        v2PrintState.objetivo = 100;
+        v2PrintState.vel = 0;
+        v2PrintState.ultimo = performance.now();
+        hapticFeedbackAll(0);
+    }, 650);
+}
+
+V2_SCENES.printPopup = t => {
+    if (v2PrintState.popup === 2) {
+        return `${T('¿ESTA SEGURO?', 'ARE YOU SURE?')}\n${T('la impresion no se puede detener', 'printing cannot be stopped')}`;
+    }
+    return `${T('¿ENVIAR A IMPRESION?', 'SEND TO PRINT?')}\nHSAP-0417 · Homo sapiens · 140.00 kg`;
+};
 
 /** Muestra u oculta el bloque de avance (lo tapa la pantalla PRINT COMPLETE). */
 function v2PrintUIAvance(visible) {
@@ -23080,14 +23199,39 @@ async function buildV2PrintingScreen(output) {
     const dMat = mk(61, 86, 2, 22);
     makeLiveTerminal(dMat, { scene: 'matDatos', fontSize: 1.9, vAlign: 'middle', fps: 4 });
 
+    ui.mat = [tMat, ui.barraMat, alerta, dMat];
+
+    // ── Pop-up de envío: SEND TO PRINT? Y / N, luego ARE YOU SURE? Y / N ──
+    // Ocupa el lado derecho mientras está abierto; las barras se ocultan.
+    const pop = {};
+    pop.titulo = mk(29, 86, 27, 38);
+    makeLiveTerminal(pop.titulo, { scene: 'printPopup', fontSize: 3.4, align: 'center', vAlign: 'middle', fps: 6 });
+    pop.si = mk(36, 54, 17, 23);
+    pop.si.printPopupBoton = 'si';
+    pop.no = mk(61, 79, 17, 23);
+    pop.no.printPopupBoton = 'no';
+    pop.ayuda = mk(29, 86, 9, 13);
+    window.setTextOnPanel(pop.ayuda, T('S / N  ·  flechas para elegir  ·  ENTER confirma',
+                                       'Y / N  ·  arrows to choose  ·  ENTER confirms'), 1.7, 'center',
+        { font: 'terminal', vAlign: 'middle' });
+    ui.popup = pop;
+
     v2PrintState.ui = ui;
+    // Si se llega desde el render (página 11) ya se confirmó allí: imprime directo.
+    if (v2PrintSinPopup) {
+        v2PrintSinPopup = false;
+        v2PrintPopupCerrar();
+        v2PrintState.objetivo = 100;
+    } else {
+        v2PrintPopupAbrir();
+    }
     rematarPagina();
     if (output) showSuccess(T('Página de impresión construida. I = paso intermedio (23 %), R = salto al final.',
                               'Printing page built. I = midway step (23 %), R = jump to the end.'), output);
     return true;
 }
 window.buildV2PrintingScreen = buildV2PrintingScreen;
-window.v2PrintEstado = () => ({ pct: +v2PrintState.pct.toFixed(1), fase: v2PrintState.fase, glitch: !!v2PrintState.glitch, peso: +v2PrintPeso().toFixed(2) });
+window.v2PrintEstado = () => ({ pct: +v2PrintState.pct.toFixed(1), fase: v2PrintState.fase, glitch: !!v2PrintState.glitch, peso: +v2PrintPeso().toFixed(2), popup: v2PrintState.popup || 0, sel: v2PrintState.sel });
 
 
 // ═══════════════════════════════════════════════════════════════════════════
