@@ -23204,13 +23204,14 @@ async function buildV2PrintingScreen(output) {
     // ── Pop-up de envío: SEND TO PRINT? Y / N, luego ARE YOU SURE? Y / N ──
     // Ocupa el lado derecho mientras está abierto; las barras se ocultan.
     const pop = {};
-    pop.titulo = mk(29, 86, 27, 38);
+    // Bloque compacto: título, botones y ayuda juntos, centrados en el lado derecho
+    pop.titulo = mk(33, 82, 31, 36);
     makeLiveTerminal(pop.titulo, { scene: 'printPopup', fontSize: 3.4, align: 'center', vAlign: 'middle', fps: 6 });
-    pop.si = mk(36, 54, 17, 23);
+    pop.si = mk(40, 55, 24, 29);
     pop.si.printPopupBoton = 'si';
-    pop.no = mk(61, 79, 17, 23);
+    pop.no = mk(60, 75, 24, 29);
     pop.no.printPopupBoton = 'no';
-    pop.ayuda = mk(29, 86, 9, 13);
+    pop.ayuda = mk(33, 82, 20, 22);
     window.setTextOnPanel(pop.ayuda, T('S / N  ·  flechas para elegir  ·  ENTER confirma',
                                        'Y / N  ·  arrows to choose  ·  ENTER confirms'), 1.7, 'center',
         { font: 'terminal', vAlign: 'middle' });
