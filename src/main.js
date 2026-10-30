@@ -23012,7 +23012,7 @@ function v2PrintPopupVisible(visible) {
     const ui = v2PrintState.ui;
     if (!ui) return;
     const pop = ui.popup || {};
-    [pop.titulo, pop.si, pop.no, pop.ayuda].forEach(p => { if (p && p.group) p.group.visible = visible; });
+    [pop.titulo, pop.si, pop.no].forEach(p => { if (p && p.group) p.group.visible = visible; });
     [ui.titulo, ui.barra, ui.peso, ui.datos].concat(ui.mat || [])
         .forEach(p => { if (p && p.group) p.group.visible = !visible; });
 }
@@ -23232,17 +23232,13 @@ async function buildV2PrintingScreen(output) {
     // ── Pop-up de envío: SEND TO PRINT? Y / N, luego ARE YOU SURE? Y / N ──
     // Ocupa el lado derecho mientras está abierto; las barras se ocultan.
     const pop = {};
-    // Bloque compacto: título, botones y ayuda juntos, centrados en el lado derecho
+    // Bloque compacto: la pregunta y los botones juntos, centrados en el lado derecho
     pop.titulo = mk(33, 82, 30, 33);
     makeLiveTerminal(pop.titulo, { scene: 'printPopup', fontSize: 3.4, align: 'center', vAlign: 'middle', fps: 6 });
     pop.si = mk(46, 56, 25, 28);       // pegados, centrados bajo la pregunta
     pop.si.printPopupBoton = 'si';
     pop.no = mk(58, 68, 25, 28);
     pop.no.printPopupBoton = 'no';
-    pop.ayuda = mk(33, 82, 21, 23);
-    window.setTextOnPanel(pop.ayuda, T('S / N  ·  flechas para elegir  ·  ENTER confirma',
-                                       'Y / N  ·  arrows to choose  ·  ENTER confirms'), 1.7, 'center',
-        { font: 'terminal', vAlign: 'middle' });
     ui.popup = pop;
 
     v2PrintState.ui = ui;
