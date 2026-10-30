@@ -22737,6 +22737,7 @@ const PRINT_DESCARGA_MS = 3400;   // lo que dura el chispazo antes del rojo fijo
 let v2PrintState = { objetivo: 12, pct: 0, fase: 0, t0: performance.now(), ultimo: performance.now(), overlay: null, visor: null };
 
 function v2PrintReset() {
+    clearInterval(v2PrintState.parpadeo);         // el estado se reemplaza: que no quede corriendo
     v2PrintRestaurarColor();
     if (v2PrintState.overlay) {
         const ov = v2PrintState.overlay;
@@ -22968,14 +22969,43 @@ function v2PrintPopupActivo() {
     return !!(v2PrintState.popup && pop && panels.includes(pop.si));
 }
 
-function v2PrintPintarBotones() {
+function quitarDestacados() {
+    panels.forEach(p => {
+        if (!p.destacado) return;
+        p.destacado = false;
+        if (p.backingMesh && p.backingMaterialBase) p.backingMesh.material = p.backingMaterialBase;
+        updatePanelColor(p);
+    });
+}
+
+/** Pinta los botones; 'encendido' es la fase del parpadeo del seleccionado. */
+function v2PrintPintarBotones(encendido = true) {
     const pop = v2PrintState.ui && v2PrintState.ui.popup;
     if (!pop) return;
     const sel = v2PrintState.sel;
     const si = T('S', 'Y'), no = 'N';
-    window.setTextOnPanel(pop.si, sel === 'si' ? `> ${si} <` : si, 3.2, 'center', { font: 'terminal', vAlign: 'middle' });
-    window.setTextOnPanel(pop.no, sel === 'no' ? `> ${no} <` : no, 3.2, 'center', { font: 'terminal', vAlign: 'middle' });
-    destacarPanel(sel === 'si' ? pop.si : pop.no);
+    const marca = (txt, es) => (es && encendido) ? `> ${txt} <` : txt;
+    window.setTextOnPanel(pop.si, marca(si, sel === 'si'), 3.2, 'center', { font: 'terminal', vAlign: 'middle' });
+    window.setTextOnPanel(pop.no, marca(no, sel === 'no'), 3.2, 'center', { font: 'terminal', vAlign: 'middle' });
+    if (encendido) destacarPanel(sel === 'si' ? pop.si : pop.no);
+    else quitarDestacados();
+}
+
+// El seleccionado parpadea hasta que se confirma: así se lee en cámara que
+// es una elección pendiente, no un botón cualquiera.
+function v2PrintParpadeo(activo) {
+    clearInterval(v2PrintState.parpadeo);
+    v2PrintState.parpadeo = null;
+    if (!activo) return;
+    let on = true;
+    v2PrintState.parpadeo = setInterval(() => {
+        if (!v2PrintPopupActivo() || v2PrintState.popupEsperando) {
+            if (!v2PrintPopupActivo()) v2PrintParpadeo(false);
+            return;
+        }
+        on = !on;
+        v2PrintPintarBotones(on);
+    }, 420);
 }
 
 function v2PrintPopupVisible(visible) {
@@ -22995,17 +23025,14 @@ function v2PrintPopupAbrir() {
     v2PrintState.vel = 0;
     v2PrintPopupVisible(true);
     v2PrintPintarBotones();
+    v2PrintParpadeo(true);
 }
 
 function v2PrintPopupCerrar() {
+    v2PrintParpadeo(false);
     v2PrintState.popup = 0;
     v2PrintPopupVisible(false);
-    panels.forEach(p => {
-        if (!p.destacado) return;
-        p.destacado = false;
-        if (p.backingMesh && p.backingMaterialBase) p.backingMesh.material = p.backingMaterialBase;
-        updatePanelColor(p);
-    });
+    quitarDestacados();
 }
 
 function v2PrintPopupMover(sel) {
@@ -23020,6 +23047,8 @@ function v2PrintPopupConfirmar(sel) {
     if (sel) v2PrintPopupMover(sel);
     const pop = v2PrintState.ui.popup;
     const elegida = v2PrintState.sel;
+    v2PrintParpadeo(false);
+    v2PrintPintarBotones(true);                   // confirmado: fijo y encendido
     startFlash(elegida === 'si' ? pop.si : pop.no);
     v2PrintState.popupEsperando = true;
     setTimeout(() => {
@@ -23030,12 +23059,14 @@ function v2PrintPopupConfirmar(sel) {
             v2PrintState.popup = 1;
             v2PrintState.sel = 'si';
             v2PrintPintarBotones();
+            v2PrintParpadeo(true);
             return;
         }
         if (v2PrintState.popup === 1) {
             v2PrintState.popup = 2;
             v2PrintState.sel = 'si';
             v2PrintPintarBotones();
+            v2PrintParpadeo(true);
             hapticFeedbackAll(0);
             return;
         }
@@ -23049,12 +23080,9 @@ function v2PrintPopupConfirmar(sel) {
     }, 650);
 }
 
-V2_SCENES.printPopup = t => {
-    if (v2PrintState.popup === 2) {
-        return `${T('¿ESTA SEGURO?', 'ARE YOU SURE?')}\n${T('la impresion no se puede detener', 'printing cannot be stopped')}`;
-    }
-    return `${T('¿ENVIAR A IMPRESION?', 'SEND TO PRINT?')}\nHSAP-0417 · Homo sapiens · 140.00 kg`;
-};
+V2_SCENES.printPopup = () => v2PrintState.popup === 2
+    ? T('¿ESTA SEGURO?', 'ARE YOU SURE?')
+    : T('¿ENVIAR A IMPRESION?', 'SEND TO PRINT?');
 
 /** Muestra u oculta el bloque de avance (lo tapa la pantalla PRINT COMPLETE). */
 function v2PrintUIAvance(visible) {
@@ -23205,13 +23233,13 @@ async function buildV2PrintingScreen(output) {
     // Ocupa el lado derecho mientras está abierto; las barras se ocultan.
     const pop = {};
     // Bloque compacto: título, botones y ayuda juntos, centrados en el lado derecho
-    pop.titulo = mk(33, 82, 31, 36);
+    pop.titulo = mk(33, 82, 30, 33);
     makeLiveTerminal(pop.titulo, { scene: 'printPopup', fontSize: 3.4, align: 'center', vAlign: 'middle', fps: 6 });
-    pop.si = mk(40, 55, 24, 29);
+    pop.si = mk(40, 55, 25, 28);
     pop.si.printPopupBoton = 'si';
-    pop.no = mk(60, 75, 24, 29);
+    pop.no = mk(60, 75, 25, 28);
     pop.no.printPopupBoton = 'no';
-    pop.ayuda = mk(33, 82, 20, 22);
+    pop.ayuda = mk(33, 82, 21, 23);
     window.setTextOnPanel(pop.ayuda, T('S / N  ·  flechas para elegir  ·  ENTER confirma',
                                        'Y / N  ·  arrows to choose  ·  ENTER confirms'), 1.7, 'center',
         { font: 'terminal', vAlign: 'middle' });
