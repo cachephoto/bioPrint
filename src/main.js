@@ -23235,9 +23235,9 @@ async function buildV2PrintingScreen(output) {
     // Bloque compacto: título, botones y ayuda juntos, centrados en el lado derecho
     pop.titulo = mk(33, 82, 30, 33);
     makeLiveTerminal(pop.titulo, { scene: 'printPopup', fontSize: 3.4, align: 'center', vAlign: 'middle', fps: 6 });
-    pop.si = mk(40, 55, 25, 28);
+    pop.si = mk(46, 56, 25, 28);       // pegados, centrados bajo la pregunta
     pop.si.printPopupBoton = 'si';
-    pop.no = mk(60, 75, 25, 28);
+    pop.no = mk(58, 68, 25, 28);
     pop.no.printPopupBoton = 'no';
     pop.ayuda = mk(33, 82, 21, 23);
     window.setTextOnPanel(pop.ayuda, T('S / N  ·  flechas para elegir  ·  ENTER confirma',
